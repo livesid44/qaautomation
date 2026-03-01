@@ -448,6 +448,63 @@ public class AppDbContext : DbContext
             await SaveChangesAsync();
         }
 
+        // Seed sample evaluation (audit) records so the dashboard and Audit page show real data
+        if (!await EvaluationResults.AnyAsync())
+        {
+            var form = await EvaluationForms
+                .Include(f => f.Sections).ThenInclude(s => s.Fields)
+                .FirstOrDefaultAsync(f => f.Name.Contains("Capital One"));
+
+            if (form != null)
+            {
+                var fields = form.Sections.SelectMany(s => s.Fields).ToDictionary(f => f.Label);
+                // Returns 0 when the form field is not found (guard below skips those records)
+                int GetFieldId(string label) => fields.TryGetValue(label, out var ff) ? ff.Id : 0;
+
+                // 5 realistic Capital One QA evaluations with varying performance
+                var samples = new[]
+                {
+                    (agent: "Sarah Mitchell",  callRef: "COF-2025-00142", callDate: new DateTime(2025, 1, 14),  evaluatedBy: "admin", notes: "Excellent across all areas. Strong compliance adherence and outstanding customer rapport.",
+                     scores: new[] { ("Professional Greeting",4.0),("Customer Identity Verification",1.0),("Brand Introduction",4.0),("First Call Resolution",5.0),("Product & Policy Knowledge",4.0),("Information Accuracy",5.0),("Problem-Solving Ability",4.0),("Verbal Clarity & Articulation",5.0),("Active Listening",4.0),("Empathy & Rapport Building",5.0),("Pace, Tone & Energy",4.0),("CFPB Regulatory Compliance",1.0),("Required Disclosures",1.0),("PCI Data Security",1.0),("Issue Summary & Confirmation",5.0),("Offer of Further Assistance",5.0),("Professional Sign-Off",4.0) }),
+                    (agent: "James Kowalski",  callRef: "COF-2025-00215", callDate: new DateTime(2025, 1, 21),  evaluatedBy: "admin", notes: "Good performance overall. Missed required APR disclosure on the first attempt — corrected after customer prompt.",
+                     scores: new[] { ("Professional Greeting",4.0),("Customer Identity Verification",1.0),("Brand Introduction",3.0),("First Call Resolution",4.0),("Product & Policy Knowledge",3.0),("Information Accuracy",4.0),("Problem-Solving Ability",3.0),("Verbal Clarity & Articulation",4.0),("Active Listening",3.0),("Empathy & Rapport Building",3.0),("Pace, Tone & Energy",3.0),("CFPB Regulatory Compliance",1.0),("Required Disclosures",0.0),("PCI Data Security",1.0),("Issue Summary & Confirmation",3.0),("Offer of Further Assistance",3.0),("Professional Sign-Off",4.0) }),
+                    (agent: "Priya Nair",      callRef: "COF-2025-00318", callDate: new DateTime(2025, 2,  4),  evaluatedBy: "admin", notes: "Outstanding call. Customer escalation handled with exceptional empathy. Full compliance adherence throughout.",
+                     scores: new[] { ("Professional Greeting",5.0),("Customer Identity Verification",1.0),("Brand Introduction",5.0),("First Call Resolution",5.0),("Product & Policy Knowledge",5.0),("Information Accuracy",5.0),("Problem-Solving Ability",5.0),("Verbal Clarity & Articulation",5.0),("Active Listening",5.0),("Empathy & Rapport Building",5.0),("Pace, Tone & Energy",5.0),("CFPB Regulatory Compliance",1.0),("Required Disclosures",1.0),("PCI Data Security",1.0),("Issue Summary & Confirmation",5.0),("Offer of Further Assistance",5.0),("Professional Sign-Off",5.0) }),
+                    (agent: "Derek Thompson", callRef: "COF-2025-00401", callDate: new DateTime(2025, 2, 11),  evaluatedBy: "admin", notes: "Below standard. Failed to complete full CID verification and asked customer to repeat card number aloud — PCI violation. Immediate coaching required.",
+                     scores: new[] { ("Professional Greeting",3.0),("Customer Identity Verification",0.0),("Brand Introduction",2.0),("First Call Resolution",2.0),("Product & Policy Knowledge",2.0),("Information Accuracy",3.0),("Problem-Solving Ability",2.0),("Verbal Clarity & Articulation",3.0),("Active Listening",2.0),("Empathy & Rapport Building",2.0),("Pace, Tone & Energy",2.0),("CFPB Regulatory Compliance",1.0),("Required Disclosures",1.0),("PCI Data Security",0.0),("Issue Summary & Confirmation",2.0),("Offer of Further Assistance",2.0),("Professional Sign-Off",3.0) }),
+                    (agent: "Maria Gonzalez", callRef: "COF-2025-00487", callDate: new DateTime(2025, 2, 19),  evaluatedBy: "admin", notes: "Solid performance with good first-call resolution. Slight hesitation on product knowledge for balance transfer promotions.",
+                     scores: new[] { ("Professional Greeting",5.0),("Customer Identity Verification",1.0),("Brand Introduction",4.0),("First Call Resolution",4.0),("Product & Policy Knowledge",3.0),("Information Accuracy",4.0),("Problem-Solving Ability",4.0),("Verbal Clarity & Articulation",4.0),("Active Listening",4.0),("Empathy & Rapport Building",4.0),("Pace, Tone & Energy",4.0),("CFPB Regulatory Compliance",1.0),("Required Disclosures",1.0),("PCI Data Security",1.0),("Issue Summary & Confirmation",4.0),("Offer of Further Assistance",4.0),("Professional Sign-Off",5.0) }),
+                };
+
+                // Each evaluation is recorded the next business day at 9 AM, staggered by index within the 7-hour window
+                int index = 0;
+                foreach (var s in samples)
+                {
+                    if (s.scores.Any(sc => GetFieldId(sc.Item1) == 0)) continue; // skip if form fields not found
+                    var result = new EvaluationResult
+                    {
+                        FormId = form.Id,
+                        EvaluatedBy = s.evaluatedBy,
+                        EvaluatedAt = s.callDate.AddDays(1).AddHours(9 + index % 7),
+                        Notes = s.notes,
+                        AgentName = s.agent,
+                        CallReference = s.callRef,
+                        CallDate = s.callDate,
+                        Scores = s.scores.Select(sc => new EvaluationScore
+                        {
+                            FieldId = GetFieldId(sc.Item1),
+                            // Store the raw integer value as a string (e.g. "4", "1", "0")
+                            Value = ((int)sc.Item2).ToString(),
+                            NumericValue = sc.Item2
+                        }).ToList()
+                    };
+                    EvaluationResults.Add(result);
+                    index++;
+                }
+                await SaveChangesAsync();
+            }
+        }
+
         // Seed default AI config if not present
         if (!await AiConfigs.AnyAsync())
         {
