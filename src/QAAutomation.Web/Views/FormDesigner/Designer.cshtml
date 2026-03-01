@@ -116,7 +116,7 @@
                                         <button type="button" class="dropdown-item"
                                                 data-club-id="@club.Id"
                                                 data-club-name="@club.Name"
-                                                data-club-items="@Html.Raw(System.Text.Json.JsonSerializer.Serialize(club.Items.Select(i => new { parameterId = i.ParameterId, parameterName = i.ParameterName, ratingCriteriaId = i.RatingCriteriaId })))"
+                                                data-club-items="@System.Text.Json.JsonSerializer.Serialize(club.Items.Select(i => new { parameterId = i.ParameterId, parameterName = i.ParameterName, ratingCriteriaId = i.RatingCriteriaId }))"
                                                 onclick="addSectionFromClubBtn(this)">
                                             <i class="bi bi-collection me-1"></i>@club.Name
                                             <span class="badge bg-secondary ms-1">@club.Items.Count</span>

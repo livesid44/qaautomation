@@ -47,11 +47,22 @@ public class ParameterClubsController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            Items = dto.Items.Select((item, idx) => new ParameterClubItem
+            {
+                ParameterId = item.ParameterId,
+                Order = item.Order == 0 ? idx : item.Order,
+                WeightOverride = item.WeightOverride,
+                RatingCriteriaId = item.RatingCriteriaId
+            }).ToList()
         };
         _db.ParameterClubs.Add(club);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = club.Id }, MapToDto(club));
+        var created = await _db.ParameterClubs
+            .Include(c => c.Items).ThenInclude(i => i.Parameter)
+            .Include(c => c.Items).ThenInclude(i => i.RatingCriteria)
+            .FirstAsync(c => c.Id == club.Id);
+        return CreatedAtAction(nameof(GetById), new { id = club.Id }, MapToDto(created));
     }
 
     [HttpPut("{id}")]
