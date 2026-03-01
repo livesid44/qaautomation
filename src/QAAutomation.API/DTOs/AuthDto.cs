@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace QAAutomation.API.DTOs;
 
 public class LoginRequestDto
 {
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    [Required] public string Username { get; set; } = string.Empty;
+    [Required] public string Password { get; set; } = string.Empty;
 }
 
 public class LoginResponseDto
