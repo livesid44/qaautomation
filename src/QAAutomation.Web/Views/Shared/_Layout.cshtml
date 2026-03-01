@@ -118,6 +118,10 @@
                href="/Audit">
                 <i class="bi bi-clipboard2-check"></i> Audit Records
             </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AutoAudit" ? "active" : "")"
+               href="/AutoAudit/Upload">
+                <i class="bi bi-robot"></i> Auto Audit <span class="badge bg-primary ms-1" style="font-size:.65rem">AI</span>
+            </a>
 
             @if (User.IsInRole("Admin"))
             {

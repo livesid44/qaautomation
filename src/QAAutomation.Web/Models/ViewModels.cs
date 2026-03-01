@@ -227,3 +227,48 @@ public class NewAuditFormViewModel
 {
     public List<EvaluationFormViewModel> Forms { get; set; } = new();
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Auto Audit (transcript upload + LLM scoring) view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class AutoAuditUploadViewModel
+{
+    [Required] public int FormId { get; set; }
+    [Required] public string EvaluatedBy { get; set; } = string.Empty;
+    public string? AgentName { get; set; }
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    /// <summary>Pasted transcript text (alternative to file upload).</summary>
+    public string? TranscriptText { get; set; }
+}
+
+public class AutoAuditFieldReviewViewModel
+{
+    public int FieldId { get; set; }
+    public string SectionTitle { get; set; } = string.Empty;
+    public string FieldLabel { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public double SuggestedScore { get; set; }
+    public string Reasoning { get; set; } = string.Empty;
+    /// <summary>Final score (may be adjusted by the reviewer).</summary>
+    public double FinalScore { get; set; }
+}
+
+public class AutoAuditReviewViewModel
+{
+    public int FormId { get; set; }
+    public string FormName { get; set; } = string.Empty;
+    public string Transcript { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+    public string EvaluatedBy { get; set; } = string.Empty;
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    public string OverallReasoning { get; set; } = string.Empty;
+    public bool IsAiGenerated { get; set; }
+    public string? AnalysisError { get; set; }
+    public List<AutoAuditFieldReviewViewModel> Fields { get; set; } = new();
+    public double TotalScore => Fields.Sum(f => f.FinalScore);
+    public double MaxPossibleScore => Fields.Sum(f => f.MaxRating);
+    public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
+}

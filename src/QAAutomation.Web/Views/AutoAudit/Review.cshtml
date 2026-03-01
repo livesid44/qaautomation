@@ -1,0 +1,323 @@
+@model AutoAuditReviewViewModel
+@{
+    ViewData["Title"] = "Auto Audit — Review AI Scores";
+    var pct = Model.ScorePercent;
+    var scoreClass = pct >= 80 ? "text-success" : pct >= 60 ? "text-warning" : "text-danger";
+    var statusText = pct >= 80 ? "PASS" : pct >= 60 ? "NEEDS IMPROVEMENT" : "FAIL";
+    var statusBadge = pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
+
+    // Group fields by section title
+    var sections = Model.Fields
+        .GroupBy(f => f.SectionTitle)
+        .ToList();
+}
+@section Styles {
+<style>
+    .badge-ai { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+    .score-cell { min-width: 160px; }
+    .star-rating { display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:3px; }
+    .star-rating input { display:none; }
+    .star-rating label { font-size:1.5rem; color:#dee2e6; cursor:pointer; transition:color .15s; }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { color:#ffc107; }
+    .compliance-toggle .btn { min-width: 70px; }
+    .reasoning-box {
+        background: #f8f9fa;
+        border-left: 3px solid #6c757d;
+        padding: 8px 12px;
+        border-radius: 0 6px 6px 0;
+        font-size: .85rem;
+        color: #495057;
+    }
+    .ai-badge { background: #6f42c1; color: white; font-size: .7rem; padding: 2px 6px; border-radius: 4px; }
+    .section-card { border-left: 4px solid #0d6efd; }
+    .compliance-section { border-left-color: #dc3545 !important; }
+    #scorePreview { position: sticky; top: 80px; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-robot me-2 text-primary"></i>Review AI Scores
+            @if (Model.IsAiGenerated)
+            {
+                <span class="badge badge-ai ms-2 fs-6"><i class="bi bi-stars me-1"></i>Azure OpenAI</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary ms-2 fs-6">Simulated</span>
+            }
+        </h4>
+        <p class="text-muted mb-0">@Model.FormName · Agent: <strong>@(Model.AgentName ?? "Unknown")</strong></p>
+    </div>
+    <a href="/AutoAudit/Upload" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>New Analysis
+    </a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.AnalysisError))
+{
+    <div class="alert alert-warning d-flex gap-2">
+        <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+        <div>
+            <strong>Analysis warning:</strong> @Model.AnalysisError<br/>
+            <small>Default scores have been applied — please review and adjust manually.</small>
+        </div>
+    </div>
+}
+
+@if (!Model.IsAiGenerated)
+{
+    <div class="alert alert-info d-flex gap-2">
+        <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+        <div>
+            <strong>Using simulated scores</strong> — Azure OpenAI is not configured.
+            To enable real AI analysis, set <code>AzureOpenAI:Endpoint</code>, <code>AzureOpenAI:ApiKey</code>,
+            and <code>AzureOpenAI:DeploymentName</code> in the API's <code>appsettings.json</code>.
+        </div>
+    </div>
+}
+
+<form method="post" action="/AutoAudit/Save" id="reviewForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="reviewJsonInput" name="reviewJson" />
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+
+            <!-- Overall AI reasoning -->
+            @if (!string.IsNullOrEmpty(Model.OverallReasoning))
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body d-flex gap-3">
+                        <i class="bi bi-chat-quote-fill fs-4 text-primary mt-1"></i>
+                        <div>
+                            <div class="fw-semibold small text-muted mb-1">AI Overall Assessment</div>
+                            <p class="mb-0">@Model.OverallReasoning</p>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Scored sections -->
+            @foreach (var grp in sections)
+            {
+                var isCompliance = grp.Key.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
+                <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
+                    <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                        <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
+                        <h6 class="fw-bold mb-0">@grp.Key</h6>
+                        @if (isCompliance)
+                        {
+                            <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
+                        }
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover align-middle mb-0">
+                            <tbody>
+                                @foreach (var field in grp)
+                                {
+                                    var fieldIdx = Model.Fields.IndexOf(field);
+                                    <tr>
+                                        <td class="ps-3" style="width:35%">
+                                            <div class="fw-semibold small">@field.FieldLabel</div>
+                                        </td>
+                                        <td class="score-cell py-3">
+                                            @if (field.MaxRating == 1)
+                                            {
+                                                <!-- Pass/Fail toggle -->
+                                                <div class="compliance-toggle btn-group" role="group" data-field-idx="@fieldIdx">
+                                                    <button type="button" class="btn btn-sm @(field.FinalScore == 1 ? "btn-success" : "btn-outline-success") pass-btn"
+                                                            onclick="setScore(@fieldIdx, 1, this)">
+                                                        <i class="bi bi-check-lg"></i> PASS
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm @(field.FinalScore == 0 ? "btn-danger" : "btn-outline-danger") fail-btn"
+                                                            onclick="setScore(@fieldIdx, 0, this)">
+                                                        <i class="bi bi-x-lg"></i> FAIL
+                                                    </button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <!-- Star rating -->
+                                                <div class="star-rating" data-field-idx="@fieldIdx" data-max="@field.MaxRating">
+                                                    @for (int s = field.MaxRating; s >= 1; s--)
+                                                    {
+                                                        var isChecked = (int)field.FinalScore == s;
+                                                        <input type="radio" id="star_@(fieldIdx)_@s"
+                                                               name="star_@fieldIdx" value="@s"
+                                                               @(isChecked ? "checked" : "")
+                                                               onchange="starChanged(@fieldIdx, @s)" />
+                                                        <label for="star_@(fieldIdx)_@s" title="@s / @field.MaxRating">&#9733;</label>
+                                                    }
+                                                </div>
+                                                <div class="text-muted small mt-1" id="scoreLabel_@fieldIdx">
+                                                    @GetRatingLabel((int)field.FinalScore)
+                                                </div>
+                                            }
+                                        </td>
+                                        <td class="pe-3">
+                                            @if (!string.IsNullOrEmpty(field.Reasoning))
+                                            {
+                                                <div class="reasoning-box">
+                                                    <span class="ai-badge me-1">AI</span>
+                                                    @field.Reasoning
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex gap-2 mb-4">
+                <button type="submit" class="btn btn-success btn-lg px-4" onclick="prepareSubmit()">
+                    <i class="bi bi-check-circle me-2"></i>Save Audit Record
+                </button>
+                <a href="/AutoAudit/Upload" class="btn btn-outline-secondary btn-lg">Re-analyze</a>
+                <a href="/Audit" class="btn btn-outline-secondary btn-lg">Discard</a>
+            </div>
+        </div>
+
+        <!-- Score preview panel -->
+        <div class="col-lg-4">
+            <div id="scorePreview" class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-info"></i>Score Summary</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="display-3 fw-bold @scoreClass" id="totalPct">@pct.ToString("F0")%</div>
+                    <div class="text-muted small mb-3" id="totalRaw">@Model.TotalScore.ToString("F0") / @Model.MaxPossibleScore.ToString("F0") points</div>
+                    <div class="progress mb-3" style="height:12px">
+                        <div class="progress-bar @(pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning" : "bg-danger")"
+                             id="progressBar" style="width:@pct%"></div>
+                    </div>
+                    <span class="badge @statusBadge fs-6 px-3 py-2" id="scoreStatus">@statusText</span>
+                </div>
+                <!-- Call metadata -->
+                <div class="card-body border-top pt-2">
+                    <dl class="row small mb-0">
+                        <dt class="col-5 text-muted">Agent</dt>
+                        <dd class="col-7 fw-semibold">@(Model.AgentName ?? "—")</dd>
+                        <dt class="col-5 text-muted">Evaluated By</dt>
+                        <dd class="col-7">@Model.EvaluatedBy</dd>
+                        <dt class="col-5 text-muted">Call Ref</dt>
+                        <dd class="col-7">@(Model.CallReference ?? "—")</dd>
+                        <dt class="col-5 text-muted">Call Date</dt>
+                        <dd class="col-7">@(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("MMM d, yyyy") : "—")</dd>
+                    </dl>
+                </div>
+                <!-- Per-section breakdown -->
+                <div class="card-body border-top pt-2">
+                    <div class="fw-semibold small text-muted mb-2">Section Breakdown</div>
+                    @foreach (var grp in sections)
+                    {
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span class="small">@grp.Key</span>
+                            <span class="small text-muted" id="sec_@(grp.Key.Replace(" ", "_"))">
+                                @grp.Sum(f => f.FinalScore).ToString("F0")/@grp.Sum(f => f.MaxRating)
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    // Current scores (mutable by user interactions)
+    const fields = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Fields));
+    const totalMax = @Model.MaxPossibleScore;
+
+    const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
+
+    function getScore(idx) { return fields[idx].finalScore; }
+
+    function setScore(idx, val, clickedBtn) {
+        fields[idx].finalScore = val;
+        // Update Pass/Fail button styling
+        const group = clickedBtn.closest('.compliance-toggle');
+        group.querySelectorAll('.pass-btn').forEach(b => b.className = b.className.replace('btn-success','btn-outline-success'));
+        group.querySelectorAll('.fail-btn').forEach(b => b.className = b.className.replace('btn-danger','btn-outline-danger'));
+        if (val === 1) clickedBtn.className = clickedBtn.className.replace('btn-outline-success','btn-success');
+        else clickedBtn.className = clickedBtn.className.replace('btn-outline-danger','btn-danger');
+        updatePreview();
+    }
+
+    function starChanged(idx, val) {
+        fields[idx].finalScore = val;
+        const lbl = document.getElementById('scoreLabel_' + idx);
+        if (lbl) lbl.textContent = ratingLabels[val] || '';
+        updatePreview();
+    }
+
+    function updatePreview() {
+        let total = 0;
+        const sectionScores = {};
+        fields.forEach(f => {
+            total += f.finalScore;
+            const key = (f.sectionTitle || '').replace(/ /g,'_');
+            sectionScores[key] = (sectionScores[key] || 0) + f.finalScore;
+        });
+        const pct = totalMax > 0 ? total / totalMax * 100 : 0;
+
+        document.getElementById('totalPct').textContent = pct.toFixed(0) + '%';
+        document.getElementById('totalRaw').textContent = total.toFixed(0) + ' / ' + totalMax + ' points';
+
+        const bar = document.getElementById('progressBar');
+        bar.style.width = pct + '%';
+        bar.className = 'progress-bar ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning' : 'bg-danger');
+
+        const status = document.getElementById('scoreStatus');
+        status.textContent = pct >= 80 ? 'PASS' : pct >= 60 ? 'NEEDS IMPROVEMENT' : 'FAIL';
+        status.className = 'badge fs-6 px-3 py-2 ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning text-dark' : 'bg-danger');
+
+        document.getElementById('totalPct').className = 'display-3 fw-bold ' + (pct >= 80 ? 'text-success' : pct >= 60 ? 'text-warning' : 'text-danger');
+
+        // Update section breakdown
+        Object.entries(sectionScores).forEach(([key, score]) => {
+            const el = document.getElementById('sec_' + key);
+            if (el) {
+                const max = fields.filter(f => (f.sectionTitle||'').replace(/ /g,'_') === key).reduce((a,f) => a+f.maxRating, 0);
+                el.textContent = score.toFixed(0) + '/' + max;
+            }
+        });
+    }
+
+    function prepareSubmit() {
+        // Serialize current state of fields (with possibly adjusted finalScores) to JSON
+        const reviewData = {
+            formId: @Model.FormId,
+            formName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormName)),
+            transcript: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Transcript)),
+            agentName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AgentName)),
+            evaluatedBy: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.EvaluatedBy)),
+            callReference: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CallReference)),
+            callDate: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("O") : null)),
+            overallReasoning: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OverallReasoning)),
+            isAiGenerated: @(Model.IsAiGenerated ? "true" : "false"),
+            fields: fields
+        };
+        document.getElementById('reviewJsonInput').value = JSON.stringify(reviewData);
+    }
+</script>
+}
+
+@functions {
+    static string GetRatingLabel(int score) => score switch
+    {
+        1 => "Unacceptable",
+        2 => "Needs Improvement",
+        3 => "Meets Standard",
+        4 => "Exceeds Standard",
+        5 => "Outstanding",
+        _ => score == 0 ? "Not rated" : score.ToString()
+    };
+}

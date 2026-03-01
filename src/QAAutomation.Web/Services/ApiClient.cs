@@ -244,4 +244,20 @@ public class ApiClient
         try { return await _http.GetFromJsonAsync<LegacyFormViewModel>($"api/evaluationforms/{id}", _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetLegacyForm failed"); return null; }
     }
+
+    // Auto Audit (LLM transcript analysis)
+    public async Task<AutoAuditReviewViewModel?> AutoAnalyze(object request)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync("api/autoaudit/analyze", request);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogError("AutoAnalyze failed: {Status}", resp.StatusCode);
+                return null;
+            }
+            return await resp.Content.ReadFromJsonAsync<AutoAuditReviewViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "AutoAnalyze failed"); return null; }
+    }
 }

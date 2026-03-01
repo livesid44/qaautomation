@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using QAAutomation.API.Data;
+using QAAutomation.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,13 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
+
+// Register auto-audit service: use Azure OpenAI when configured, otherwise mock
+var aoaiEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
+if (!string.IsNullOrWhiteSpace(aoaiEndpoint))
+    builder.Services.AddScoped<IAutoAuditService, AzureOpenAIAutoAuditService>();
+else
+    builder.Services.AddScoped<IAutoAuditService, MockAutoAuditService>();
 
 var app = builder.Build();
 
