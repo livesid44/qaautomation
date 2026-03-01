@@ -18,6 +18,10 @@ public class EvaluationResult
 
     public string? Notes { get; set; }
 
+    public string? AgentName { get; set; }      // The agent/employee being evaluated
+    public string? CallReference { get; set; }  // Call ID / interaction reference
+    public DateTime? CallDate { get; set; }     // Date of the evaluated call
+
     public ICollection<EvaluationScore> Scores { get; set; } = new List<EvaluationScore>();
 
     [NotMapped]

@@ -55,6 +55,8 @@ public class AppDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.EvaluatedBy).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.AgentName).HasMaxLength(200);
+            entity.Property(e => e.CallReference).HasMaxLength(100);
             entity.HasOne(e => e.Form)
                   .WithMany()
                   .HasForeignKey(e => e.FormId)
@@ -150,6 +152,201 @@ public class AppDbContext : DbContext
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             });
+            await SaveChangesAsync();
+        }
+
+        if (!await Parameters.AnyAsync())
+        {
+            // Rating Criteria
+            var qaScore = new RatingCriteria
+            {
+                Name = "QA Score (1-5)",
+                Description = "Standard quality score from 1 (Unacceptable) to 5 (Outstanding)",
+                MinScore = 1,
+                MaxScore = 5,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                Levels = new List<RatingLevel>
+                {
+                    new() { Score = 1, Label = "Unacceptable", Description = "Critical failure affecting customer or compliance", Color = "#dc3545" },
+                    new() { Score = 2, Label = "Needs Improvement", Description = "Below standard performance", Color = "#fd7e14" },
+                    new() { Score = 3, Label = "Meets Standard", Description = "Satisfactory performance meeting expectations", Color = "#ffc107" },
+                    new() { Score = 4, Label = "Exceeds Standard", Description = "Above average performance", Color = "#20c997" },
+                    new() { Score = 5, Label = "Outstanding", Description = "Exemplary performance, exceeded all expectations", Color = "#198754" }
+                }
+            };
+            var complianceCriteria = new RatingCriteria
+            {
+                Name = "Compliance (Pass/Fail)",
+                Description = "Binary compliance check - failure is auto-fail",
+                MinScore = 0,
+                MaxScore = 1,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                Levels = new List<RatingLevel>
+                {
+                    new() { Score = 0, Label = "FAIL", Description = "Non-compliant — requires immediate coaching", Color = "#dc3545" },
+                    new() { Score = 1, Label = "PASS", Description = "Compliant with policy and regulation", Color = "#198754" }
+                }
+            };
+            RatingCriteria.AddRange(qaScore, complianceCriteria);
+            await SaveChangesAsync();
+
+            // Parameters
+            var paramDefs = new[]
+            {
+                // Call Opening
+                ("Professional Greeting", "Agent uses approved greeting script with brand name, own name, and offer to help", "Call Opening", 1.0),
+                ("Customer Identity Verification", "Completes full CID verification per PCI/security policy before discussing account", "Call Opening", 2.0),
+                ("Brand Introduction", "Sets the right tone and properly introduces Capital One services", "Call Opening", 1.0),
+                // Issue Resolution
+                ("First Call Resolution", "Resolves customer issue completely without need for callback or transfer", "Issue Resolution", 3.0),
+                ("Product & Policy Knowledge", "Demonstrates accurate knowledge of Capital One credit card products, rates, and policies", "Issue Resolution", 2.0),
+                ("Information Accuracy", "All information provided to customer is accurate and up to date", "Issue Resolution", 2.5),
+                ("Problem-Solving Ability", "Effectively identifies root cause and provides appropriate resolution or alternatives", "Issue Resolution", 2.0),
+                // Communication Skills
+                ("Verbal Clarity & Articulation", "Speaks clearly, avoids jargon, adjusts language to customer's level", "Communication Skills", 1.5),
+                ("Active Listening", "Demonstrates understanding, does not interrupt, confirms understanding before proceeding", "Communication Skills", 1.5),
+                ("Empathy & Rapport Building", "Acknowledges customer emotions, personalizes the interaction, builds trust", "Communication Skills", 2.0),
+                ("Pace, Tone & Energy", "Maintains professional tone throughout, appropriate pace, positive energy", "Communication Skills", 1.0),
+                // Compliance & Procedures
+                ("CFPB Regulatory Compliance", "Adheres to all CFPB regulations including fair lending, UDAAP, and debt collection rules", "Compliance & Procedures", 5.0),
+                ("Required Disclosures", "Provides all mandatory disclosures (APR, fees, payment terms) as required by Reg Z", "Compliance & Procedures", 3.0),
+                ("PCI Data Security", "Does not capture, repeat, or store sensitive payment card data in violation of PCI DSS", "Compliance & Procedures", 5.0),
+                // Call Closing
+                ("Issue Summary & Confirmation", "Summarizes resolution and confirms customer satisfaction before closing", "Call Closing", 1.5),
+                ("Offer of Further Assistance", "Proactively asks if customer needs anything else before ending the call", "Call Closing", 1.0),
+                ("Professional Sign-Off", "Uses approved closing script, thanks customer, and ends call professionally", "Call Closing", 1.0),
+            };
+
+            foreach (var (name, desc, cat, weight) in paramDefs)
+            {
+                Parameters.Add(new Parameter { Name = name, Description = desc, Category = cat, DefaultWeight = weight, IsActive = true, CreatedAt = DateTime.UtcNow });
+            }
+            await SaveChangesAsync();
+
+            // Helper to look up saved IDs
+            var allParams = await Parameters.ToListAsync();
+            int Pid(string name) => allParams.First(p => p.Name == name).Id;
+            int qaScoreId = qaScore.Id;
+            int complianceId = complianceCriteria.Id;
+
+            // ParameterClubs
+            var clubDefs = new[]
+            {
+                ("Call Opening", "Initial call handling — greeting, verification, and brand introduction",
+                    new[] {
+                        ("Professional Greeting", qaScoreId),
+                        ("Customer Identity Verification", complianceId),
+                        ("Brand Introduction", qaScoreId)
+                    }),
+                ("Issue Resolution", "Effectiveness in understanding and resolving the customer's credit card issue",
+                    new[] {
+                        ("First Call Resolution", qaScoreId),
+                        ("Product & Policy Knowledge", qaScoreId),
+                        ("Information Accuracy", qaScoreId),
+                        ("Problem-Solving Ability", qaScoreId)
+                    }),
+                ("Communication Skills", "Quality of verbal communication and relationship building",
+                    new[] {
+                        ("Verbal Clarity & Articulation", qaScoreId),
+                        ("Active Listening", qaScoreId),
+                        ("Empathy & Rapport Building", qaScoreId),
+                        ("Pace, Tone & Energy", qaScoreId)
+                    }),
+                ("Compliance & Procedures", "Adherence to regulatory and internal compliance requirements — violations are auto-fail",
+                    new[] {
+                        ("CFPB Regulatory Compliance", complianceId),
+                        ("Required Disclosures", complianceId),
+                        ("PCI Data Security", complianceId)
+                    }),
+                ("Call Closing", "Professional and thorough call conclusion",
+                    new[] {
+                        ("Issue Summary & Confirmation", qaScoreId),
+                        ("Offer of Further Assistance", qaScoreId),
+                        ("Professional Sign-Off", qaScoreId)
+                    }),
+            };
+
+            foreach (var (clubName, clubDesc, items) in clubDefs)
+            {
+                var club = new ParameterClub
+                {
+                    Name = clubName,
+                    Description = clubDesc,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    Items = items.Select((item, idx) => new ParameterClubItem
+                    {
+                        ParameterId = Pid(item.Item1),
+                        RatingCriteriaId = item.Item2,
+                        Order = idx
+                    }).ToList()
+                };
+                ParameterClubs.Add(club);
+            }
+            await SaveChangesAsync();
+
+            // EvaluationForm (legacy)
+            var form = new EvaluationForm
+            {
+                Name = "Capital One — Credit Card Customer Support QA Form",
+                Description = "Quality evaluation form for Capital One credit card customer support interactions. Covers call handling, issue resolution, communication, compliance, and closing.",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Sections = new List<FormSection>
+                {
+                    new() {
+                        Title = "Call Opening", Order = 0,
+                        Fields = new List<FormField>
+                        {
+                            new() { Label = "Professional Greeting", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = true, Order = 0 },
+                            new() { Label = "Customer Identity Verification", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                            new() { Label = "Brand Introduction", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 2 },
+                        }
+                    },
+                    new() {
+                        Title = "Issue Resolution", Order = 1,
+                        Fields = new List<FormField>
+                        {
+                            new() { Label = "First Call Resolution", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = true, Order = 0 },
+                            new() { Label = "Product & Policy Knowledge", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 1 },
+                            new() { Label = "Information Accuracy", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = true, Order = 2 },
+                            new() { Label = "Problem-Solving Ability", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 3 },
+                        }
+                    },
+                    new() {
+                        Title = "Communication Skills", Order = 2,
+                        Fields = new List<FormField>
+                        {
+                            new() { Label = "Verbal Clarity & Articulation", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 0 },
+                            new() { Label = "Active Listening", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 1 },
+                            new() { Label = "Empathy & Rapport Building", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 2 },
+                            new() { Label = "Pace, Tone & Energy", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 3 },
+                        }
+                    },
+                    new() {
+                        Title = "Compliance & Procedures", Order = 3,
+                        Fields = new List<FormField>
+                        {
+                            new() { Label = "CFPB Regulatory Compliance", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                            new() { Label = "Required Disclosures", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                            new() { Label = "PCI Data Security", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                        }
+                    },
+                    new() {
+                        Title = "Call Closing", Order = 4,
+                        Fields = new List<FormField>
+                        {
+                            new() { Label = "Issue Summary & Confirmation", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 0 },
+                            new() { Label = "Offer of Further Assistance", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 1 },
+                            new() { Label = "Professional Sign-Off", FieldType = FieldType.Rating, MaxRating = 5, IsRequired = false, Order = 2 },
+                        }
+                    },
+                }
+            };
+            EvaluationForms.Add(form);
             await SaveChangesAsync();
         }
     }

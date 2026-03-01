@@ -30,6 +30,15 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    // Add new columns if they don't exist (for existing databases)
+    foreach (var sql in new[] {
+        "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",
+        "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",
+        "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL"
+    })
+    {
+        try { db.Database.ExecuteSqlRaw(sql); } catch { }
+    }
     await db.SeedAsync();
 }
 

@@ -200,4 +200,48 @@ public class ApiClient
         try { var r = await _http.DeleteAsync($"api/evaluationforms/{id}"); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "DeleteEvaluationForm failed"); return false; }
     }
+
+    // Audits (EvaluationResults)
+    public async Task<List<AuditViewModel>> GetAudits()
+    {
+        try { return await _http.GetFromJsonAsync<List<AuditViewModel>>("api/evaluationresults", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAudits failed"); return new(); }
+    }
+
+    public async Task<AuditViewModel?> GetAudit(int id)
+    {
+        try { return await _http.GetFromJsonAsync<AuditViewModel>($"api/evaluationresults/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAudit failed"); return null; }
+    }
+
+    public async Task<List<AuditViewModel>> GetAuditsByForm(int formId)
+    {
+        try { return await _http.GetFromJsonAsync<List<AuditViewModel>>($"api/evaluationresults/byform/{formId}", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAuditsByForm failed"); return new(); }
+    }
+
+    public async Task<bool> CreateAudit(object dto)
+    {
+        try { var r = await _http.PostAsJsonAsync("api/evaluationresults", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return false; }
+    }
+
+    public async Task<bool> DeleteAudit(int id)
+    {
+        try { var r = await _http.DeleteAsync($"api/evaluationresults/{id}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteAudit failed"); return false; }
+    }
+
+    // Legacy forms (EvaluationForms with sections and FormFields)
+    public async Task<List<LegacyFormViewModel>> GetLegacyForms()
+    {
+        try { return await _http.GetFromJsonAsync<List<LegacyFormViewModel>>("api/evaluationforms", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetLegacyForms failed"); return new(); }
+    }
+
+    public async Task<LegacyFormViewModel?> GetLegacyForm(int id)
+    {
+        try { return await _http.GetFromJsonAsync<LegacyFormViewModel>($"api/evaluationforms/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetLegacyForm failed"); return null; }
+    }
 }

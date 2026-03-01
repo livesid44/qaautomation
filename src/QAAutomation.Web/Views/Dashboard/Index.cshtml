@@ -63,6 +63,19 @@
             </div>
         </div>
     </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                    <i class="bi bi-clipboard2-check fs-4 text-warning"></i>
+                </div>
+                <div>
+                    <div class="fs-2 fw-bold">@Model.AuditCount</div>
+                    <div class="text-muted small">Audit Records</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -93,6 +106,12 @@
                 <a href="/FormDesigner" class="btn btn-outline-info w-100 py-3">
                     <i class="bi bi-layout-text-window d-block fs-4 mb-1"></i>
                     Form Designer
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/Audit" class="btn btn-outline-warning w-100 py-3">
+                    <i class="bi bi-clipboard2-check d-block fs-4 mb-1"></i>
+                    Audit Records
                 </a>
             </div>
         </div>

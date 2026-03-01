@@ -25,8 +25,10 @@ public class EvaluationResultsController : ControllerBase
     public async Task<ActionResult<IEnumerable<EvaluationResultDto>>> GetAll()
     {
         var results = await _db.EvaluationResults
+            .Include(r => r.Form)
             .Include(r => r.Scores)
                 .ThenInclude(s => s.Field)
+                    .ThenInclude(f => f.Section)
             .ToListAsync();
 
         return Ok(results.Select(MapToDto));
@@ -41,8 +43,10 @@ public class EvaluationResultsController : ControllerBase
     public async Task<ActionResult<EvaluationResultDto>> GetById(int id)
     {
         var result = await _db.EvaluationResults
+            .Include(r => r.Form)
             .Include(r => r.Scores)
                 .ThenInclude(s => s.Field)
+                    .ThenInclude(f => f.Section)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (result is null)
@@ -70,6 +74,9 @@ public class EvaluationResultsController : ControllerBase
             EvaluatedBy = dto.EvaluatedBy,
             EvaluatedAt = DateTime.UtcNow,
             Notes = dto.Notes,
+            AgentName = dto.AgentName,
+            CallReference = dto.CallReference,
+            CallDate = dto.CallDate,
             Scores = dto.Scores.Select(s => new EvaluationScore
             {
                 FieldId = s.FieldId,
@@ -82,8 +89,10 @@ public class EvaluationResultsController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Reload with navigation properties
+        await _db.Entry(result).Reference(r => r.Form).LoadAsync();
         await _db.Entry(result).Collection(r => r.Scores).Query()
             .Include(s => s.Field)
+                .ThenInclude(f => f.Section)
             .LoadAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, MapToDto(result));
@@ -98,20 +107,40 @@ public class EvaluationResultsController : ControllerBase
     {
         var results = await _db.EvaluationResults
             .Where(r => r.FormId == formId)
+            .Include(r => r.Form)
             .Include(r => r.Scores)
                 .ThenInclude(s => s.Field)
+                    .ThenInclude(f => f.Section)
             .ToListAsync();
 
         return Ok(results.Select(MapToDto));
+    }
+
+    /// <summary>Deletes an evaluation result by id.</summary>
+    /// <param name="id">The result id.</param>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _db.EvaluationResults.FindAsync(id);
+        if (result is null) return NotFound();
+        _db.EvaluationResults.Remove(result);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     private static EvaluationResultDto MapToDto(EvaluationResult result) => new()
     {
         Id = result.Id,
         FormId = result.FormId,
+        FormName = result.Form?.Name ?? string.Empty,
         EvaluatedBy = result.EvaluatedBy,
         EvaluatedAt = result.EvaluatedAt,
         Notes = result.Notes,
+        AgentName = result.AgentName,
+        CallReference = result.CallReference,
+        CallDate = result.CallDate,
         Scores = result.Scores.Select(s => new EvaluationScoreDto
         {
             Id = s.Id,
@@ -121,6 +150,22 @@ public class EvaluationResultsController : ControllerBase
             NumericValue = s.NumericValue
         }).ToList(),
         TotalScore = result.TotalScore,
-        MaxPossibleScore = result.MaxPossibleScore
+        MaxPossibleScore = result.MaxPossibleScore,
+        Sections = result.Scores
+            .Where(s => s.Field?.Section != null)
+            .GroupBy(s => new { s.Field.Section.Id, s.Field.Section.Title, s.Field.Section.Order })
+            .OrderBy(g => g.Key.Order)
+            .Select(g => new EvaluationResultSectionDto
+            {
+                Title = g.Key.Title,
+                Fields = g.OrderBy(s => s.Field.Order).Select(s => new EvaluationResultFieldScoreDto
+                {
+                    FieldId = s.FieldId,
+                    FieldLabel = s.Field.Label,
+                    MaxRating = s.Field.MaxRating,
+                    Value = s.Value,
+                    NumericValue = s.NumericValue
+                }).ToList()
+            }).ToList()
     };
 }

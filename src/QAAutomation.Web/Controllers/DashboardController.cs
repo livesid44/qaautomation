@@ -18,6 +18,7 @@ public class DashboardController : Controller
         var clubs = await _api.GetParameterClubs();
         var criteria = await _api.GetRatingCriteria();
         var forms = await _api.GetEvaluationForms();
+        var audits = await _api.GetAudits();
 
         var vm = new DashboardViewModel
         {
@@ -25,6 +26,7 @@ public class DashboardController : Controller
             ParameterClubCount = clubs.Count,
             RatingCriteriaCount = criteria.Count,
             EvaluationFormCount = forms.Count,
+            AuditCount = audits.Count,
             Username = User.Identity?.Name ?? "",
             Role = User.IsInRole("Admin") ? "Admin" : "User"
         };

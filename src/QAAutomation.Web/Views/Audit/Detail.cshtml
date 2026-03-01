@@ -1,0 +1,98 @@
+@model AuditViewModel
+@{
+    ViewData["Title"] = "Audit Detail — " + Model.AgentName;
+    var form = ViewBag.Form as LegacyFormViewModel;
+    var badgeClass = Model.ScorePercent >= 80 ? "text-success" : Model.ScorePercent >= 60 ? "text-warning" : "text-danger";
+    var statusText = Model.ScorePercent >= 80 ? "PASS" : Model.ScorePercent >= 60 ? "NEEDS IMPROVEMENT" : "FAIL";
+    var statusBadge = Model.ScorePercent >= 80 ? "bg-success" : Model.ScorePercent >= 60 ? "bg-warning text-dark" : "bg-danger";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-clipboard2-check me-2 text-warning"></i>Audit Detail
+        </h4>
+        <p class="text-muted mb-0">@Model.FormName</p>
+    </div>
+    <a href="/Audit" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Audits
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <!-- Score Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body text-center p-4">
+                <div class="display-3 fw-bold @badgeClass">@Model.ScorePercent.ToString("F0")%</div>
+                <div class="text-muted mb-3">@Model.TotalScore / @Model.MaxPossibleScore points</div>
+                <span class="badge @statusBadge fs-5 px-3 py-2">@statusText</span>
+            </div>
+        </div>
+        <!-- Metadata -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-5 text-muted">Agent</dt>
+                    <dd class="col-7 fw-semibold">@Model.AgentName</dd>
+                    <dt class="col-5 text-muted">Evaluated By</dt>
+                    <dd class="col-7">@Model.EvaluatedBy</dd>
+                    <dt class="col-5 text-muted">Call Ref</dt>
+                    <dd class="col-7">@(Model.CallReference ?? "—")</dd>
+                    <dt class="col-5 text-muted">Call Date</dt>
+                    <dd class="col-7">@(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("MMM d, yyyy") : "—")</dd>
+                    <dt class="col-5 text-muted">Evaluated At</dt>
+                    <dd class="col-7">@Model.EvaluatedAt.ToString("MMM d, yyyy HH:mm")</dd>
+                </dl>
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <hr/>
+                    <div class="small fw-semibold text-muted mb-1">Notes</div>
+                    <p class="small mb-0">@Model.Notes</p>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        @if (Model.Sections.Any())
+        {
+            @foreach (var sec in Model.Sections)
+            {
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-light border-0">
+                        <h6 class="fw-bold mb-0">@sec.Title</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                @foreach (var field in sec.Fields)
+                                {
+                                    <tr>
+                                        <td class="ps-3">@field.FieldLabel</td>
+                                        <td class="text-end pe-3">
+                                            @if (field.MaxRating == 1)
+                                            {
+                                                var passClass = field.NumericValue == 1 ? "bg-success" : "bg-danger";
+                                                var passText = field.NumericValue == 1 ? "PASS" : "FAIL";
+                                                <span class="badge @passClass">@passText</span>
+                                            }
+                                            else
+                                            {
+                                                var stars = (int)(field.NumericValue ?? 0);
+                                                <span>@string.Concat(Enumerable.Repeat("★", stars))@string.Concat(Enumerable.Repeat("☆", field.MaxRating - stars))</span>
+                                                <span class="badge bg-secondary ms-1">@field.NumericValue/@field.MaxRating</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info">No detailed scores available for this audit.</div>
+        }
+    </div>
+</div>

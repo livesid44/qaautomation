@@ -113,6 +113,12 @@
                 <i class="bi bi-layout-text-window"></i> Form Designer
             </a>
 
+            <div class="nav-section">Audits</div>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")"
+               href="/Audit">
+                <i class="bi bi-clipboard2-check"></i> Audit Records
+            </a>
+
             @if (User.IsInRole("Admin"))
             {
                 <div class="nav-section">Admin</div>

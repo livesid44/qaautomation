@@ -14,6 +14,7 @@ public class DashboardViewModel
     public int ParameterClubCount { get; set; }
     public int RatingCriteriaCount { get; set; }
     public int EvaluationFormCount { get; set; }
+    public int AuditCount { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
 }
@@ -147,4 +148,82 @@ public class FormDesignerViewModel
     public List<ParameterClubViewModel> AvailableClubs { get; set; } = new();
     public List<ParameterViewModel> AllParameters { get; set; } = new();
     public List<RatingCriteriaViewModel> AllCriteria { get; set; } = new();
+}
+
+// Legacy form models for Audit (maps to EvaluationFormDto with FormSection/FormField structure)
+public class LegacyFormFieldViewModel
+{
+    public int Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public bool IsRequired { get; set; }
+    public int FieldType { get; set; } // 2 = Rating
+    public int SectionId { get; set; }
+}
+
+public class LegacySectionViewModel
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int Order { get; set; }
+    public List<LegacyFormFieldViewModel> Fields { get; set; } = new();
+}
+
+public class LegacyFormViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; }
+    public List<LegacySectionViewModel> Sections { get; set; } = new();
+}
+
+// Audit view models
+public class AuditScoreViewModel
+{
+    public int FieldId { get; set; }
+    public string FieldLabel { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public bool IsRequired { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public double? NumericValue { get; set; }
+}
+
+public class AuditSectionViewModel
+{
+    public string Title { get; set; } = string.Empty;
+    public List<AuditScoreViewModel> Fields { get; set; } = new();
+}
+
+public class AuditViewModel
+{
+    public int Id { get; set; }
+    public int FormId { get; set; }
+    public string FormName { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+    public string EvaluatedBy { get; set; } = string.Empty;
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    public DateTime EvaluatedAt { get; set; }
+    public string? Notes { get; set; }
+    public double TotalScore { get; set; }
+    public double MaxPossibleScore { get; set; }
+    public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
+    public List<AuditSectionViewModel> Sections { get; set; } = new();
+}
+
+public class NewAuditViewModel
+{
+    [Required] public int FormId { get; set; }
+    [Required] public string AgentName { get; set; } = string.Empty;
+    [Required] public string EvaluatedBy { get; set; } = string.Empty;
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class NewAuditFormViewModel
+{
+    public List<EvaluationFormViewModel> Forms { get; set; } = new();
 }
