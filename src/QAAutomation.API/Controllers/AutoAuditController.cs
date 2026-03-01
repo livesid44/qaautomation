@@ -43,6 +43,12 @@ public class AutoAuditController : ControllerBase
         if (form == null)
             return NotFound($"Active evaluation form with id {request.FormId} not found.");
 
+        // Load parameter EvaluationType map (label → type) for RAG routing
+        var paramTypes = await _db.Parameters
+            .Where(p => p.IsActive)
+            .Select(p => new { p.Name, p.EvaluationType })
+            .ToDictionaryAsync(p => p.Name, p => p.EvaluationType);
+
         var fieldDefinitions = form.Sections
             .OrderBy(s => s.Order)
             .SelectMany(s => s.Fields
@@ -53,7 +59,8 @@ public class AutoAuditController : ControllerBase
                     Description: null,
                     MaxRating: f.MaxRating,
                     IsRequired: f.IsRequired,
-                    SectionTitle: s.Title)))
+                    SectionTitle: s.Title,
+                    EvaluationType: paramTypes.TryGetValue(f.Label, out var et) ? et : "LLM")))
             .ToList();
 
         if (fieldDefinitions.Count == 0)

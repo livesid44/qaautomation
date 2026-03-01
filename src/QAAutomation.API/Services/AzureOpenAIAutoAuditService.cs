@@ -4,21 +4,28 @@ using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Chat;
 using QAAutomation.API.DTOs;
+using QAAutomation.API.Models;
 
 namespace QAAutomation.API.Services;
 
 /// <summary>
 /// Analyzes call transcripts using Azure OpenAI (GPT) to score QA evaluation form fields.
-/// Requires AzureOpenAI:Endpoint, AzureOpenAI:ApiKey, and AzureOpenAI:DeploymentName configuration.
+/// Configuration is read from the database (AiConfig) rather than appsettings.
+/// KnowledgeBased fields are augmented with relevant KB context via RAG before scoring.
 /// </summary>
 public class AzureOpenAIAutoAuditService : IAutoAuditService
 {
-    private readonly IConfiguration _config;
+    private readonly IAiConfigService _aiConfig;
+    private readonly IKnowledgeBaseService _kb;
     private readonly ILogger<AzureOpenAIAutoAuditService> _logger;
 
-    public AzureOpenAIAutoAuditService(IConfiguration config, ILogger<AzureOpenAIAutoAuditService> logger)
+    public AzureOpenAIAutoAuditService(
+        IAiConfigService aiConfig,
+        IKnowledgeBaseService kb,
+        ILogger<AzureOpenAIAutoAuditService> logger)
     {
-        _config = config;
+        _aiConfig = aiConfig;
+        _kb = kb;
         _logger = logger;
     }
 
@@ -29,9 +36,10 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         CancellationToken cancellationToken = default)
     {
         var fieldList = fields.ToList();
-        var endpoint = _config["AzureOpenAI:Endpoint"] ?? "";
-        var apiKey = _config["AzureOpenAI:ApiKey"] ?? "";
-        var deployment = _config["AzureOpenAI:DeploymentName"] ?? "gpt-4o";
+        var cfg = await _aiConfig.GetAsync();
+        var endpoint = cfg.LlmEndpoint;
+        var apiKey = cfg.LlmApiKey;
+        var deployment = cfg.LlmDeployment;
 
         var response = new AutoAuditResponseDto
         {
@@ -50,40 +58,49 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
             var chatClient = client.GetChatClient(deployment);
 
-            var systemPrompt = BuildSystemPrompt(formName, fieldList);
-            var userPrompt = BuildUserPrompt(request.Transcript, fieldList);
-
-            var chatMessages = new List<ChatMessage>
+            // Retrieve KB context concurrently for all KnowledgeBased fields
+            var kbContextMap = new Dictionary<int, string>();
+            var kbFields = fieldList.Where(f => f.EvaluationType == "KnowledgeBased").ToList();
+            if (kbFields.Count > 0)
             {
-                new SystemChatMessage(systemPrompt),
-                new UserChatMessage(userPrompt)
-            };
+                var tasks = kbFields.Select(f =>
+                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK)
+                       .ContinueWith(t => (f.FieldId, chunks: t.Result)));
+                var results = await Task.WhenAll(tasks);
+                foreach (var (fieldId, chunks) in results)
+                    if (chunks.Count > 0)
+                        kbContextMap[fieldId] = string.Join("\n\n", chunks);
+            }
+
+            var systemPrompt = BuildSystemPrompt(formName, fieldList, kbContextMap);
+            var userPrompt = BuildUserPrompt(request.Transcript, fieldList);
 
             var options = new ChatCompletionOptions
             {
-                Temperature = 0.1f,
+                Temperature = cfg.LlmTemperature,
                 MaxOutputTokenCount = 4096,
                 ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
             };
 
-            var completion = await chatClient.CompleteChatAsync(chatMessages, options, cancellationToken);
-            var json = completion.Value.Content[0].Text;
+            var completion = await chatClient.CompleteChatAsync(
+                new List<ChatMessage> { new SystemChatMessage(systemPrompt), new UserChatMessage(userPrompt) },
+                options, cancellationToken);
 
-            ParseLlmResponse(json, fieldList, response);
+            ParseLlmResponse(completion.Value.Content[0].Text, fieldList, response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Azure OpenAI auto-audit analysis failed for form {FormId}", request.FormId);
             response.AnalysisError = $"Azure OpenAI analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
-            // Fall back to neutral scores
             FillNeutralScores(fieldList, response);
         }
 
         return response;
     }
 
-    private static string BuildSystemPrompt(string formName, List<AutoAuditFieldDefinition> fields)
+    private static string BuildSystemPrompt(string formName, List<AutoAuditFieldDefinition> fields,
+        Dictionary<int, string>? kbContextMap = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"You are an expert quality assurance evaluator for customer support calls.");
@@ -93,6 +110,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         sb.AppendLine("- For fields with MaxRating=5: score 1 (Unacceptable), 2 (Needs Improvement), 3 (Meets Standard), 4 (Exceeds Standard), 5 (Outstanding)");
         sb.AppendLine("- For fields with MaxRating=1: score 0 (FAIL) or 1 (PASS) — these are binary compliance checks");
         sb.AppendLine("- Be evidence-based: cite specific moments in the transcript for your reasoning");
+        sb.AppendLine("- Fields marked [KB] must be scored against the provided Knowledge Base excerpts as the ground truth");
         sb.AppendLine("- If evidence is insufficient to score a field, default to 3 (Meets Standard) for 1-5 fields or 1 (PASS) for compliance");
         sb.AppendLine();
         sb.AppendLine("FORM FIELDS TO SCORE:");
@@ -101,9 +119,26 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             sb.AppendLine($"[{g.Key}]");
             foreach (var f in g)
             {
-                sb.AppendLine($"  - FieldId={f.FieldId}, Label=\"{f.Label}\", MaxRating={f.MaxRating}{(string.IsNullOrEmpty(f.Description) ? "" : $", Description=\"{f.Description}\"")}");
+                var kbTag = f.EvaluationType == "KnowledgeBased" ? " [KB]" : "";
+                sb.AppendLine($"  - FieldId={f.FieldId}, Label=\"{f.Label}\"{kbTag}, MaxRating={f.MaxRating}{(string.IsNullOrEmpty(f.Description) ? "" : $", Description=\"{f.Description}\"")}");
             }
         }
+
+        // Inject KB context per field
+        if (kbContextMap != null && kbContextMap.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("KNOWLEDGE BASE CONTEXT (use for [KB] fields):");
+            foreach (var (fieldId, ctx) in kbContextMap)
+            {
+                var field = fields.FirstOrDefault(f => f.FieldId == fieldId);
+                if (field == null) continue;
+                sb.AppendLine($"--- KB for \"{field.Label}\" ---");
+                sb.AppendLine(ctx);
+                sb.AppendLine("---");
+            }
+        }
+
         sb.AppendLine();
         sb.AppendLine("RESPONSE FORMAT (JSON only, no other text):");
         sb.AppendLine("{");

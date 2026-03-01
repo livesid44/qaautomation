@@ -8,17 +8,17 @@ using QAAutomation.API.DTOs;
 namespace QAAutomation.API.Services;
 
 /// <summary>
-/// Analyzes call transcripts for sentiment, emotion and coaching recommendations
-/// using Azure OpenAI (GPT). Requires AzureOpenAI config in appsettings.
+/// Analyzes call transcripts for sentiment, emotion and recommendations using Azure OpenAI.
+/// Configuration is read from the database (AiConfig) rather than appsettings.
 /// </summary>
 public class AzureOpenAISentimentService : ISentimentService
 {
-    private readonly IConfiguration _config;
+    private readonly IAiConfigService _aiConfig;
     private readonly ILogger<AzureOpenAISentimentService> _logger;
 
-    public AzureOpenAISentimentService(IConfiguration config, ILogger<AzureOpenAISentimentService> logger)
+    public AzureOpenAISentimentService(IAiConfigService aiConfig, ILogger<AzureOpenAISentimentService> logger)
     {
-        _config = config;
+        _aiConfig = aiConfig;
         _logger = logger;
     }
 
@@ -26,9 +26,10 @@ public class AzureOpenAISentimentService : ISentimentService
         SentimentAnalysisRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        var endpoint = _config["AzureOpenAI:Endpoint"] ?? "";
-        var apiKey = _config["AzureOpenAI:ApiKey"] ?? "";
-        var deployment = _config["AzureOpenAI:DeploymentName"] ?? "gpt-4o";
+        var cfg = await _aiConfig.GetAsync();
+        var endpoint = cfg.LlmEndpoint;
+        var apiKey = cfg.LlmApiKey;
+        var deployment = cfg.LlmDeployment;
 
         var response = new SentimentAnalysisResponseDto { IsAiGenerated = true };
 
@@ -36,9 +37,6 @@ public class AzureOpenAISentimentService : ISentimentService
         {
             var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
             var chatClient = client.GetChatClient(deployment);
-
-            var systemPrompt = BuildSystemPrompt();
-            var userPrompt = BuildUserPrompt(request.Transcript);
 
             var options = new ChatCompletionOptions
             {
@@ -48,7 +46,7 @@ public class AzureOpenAISentimentService : ISentimentService
             };
 
             var completion = await chatClient.CompleteChatAsync(
-                new List<ChatMessage> { new SystemChatMessage(systemPrompt), new UserChatMessage(userPrompt) },
+                new List<ChatMessage> { new SystemChatMessage(BuildSystemPrompt()), new UserChatMessage(BuildUserPrompt(request.Transcript)) },
                 options, cancellationToken);
 
             ParseLlmResponse(completion.Value.Content[0].Text, response);

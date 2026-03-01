@@ -20,6 +20,9 @@ public class AppDbContext : DbContext
     public DbSet<ParameterClubItem> ParameterClubItems => Set<ParameterClubItem>();
     public DbSet<RatingCriteria> RatingCriteria => Set<RatingCriteria>();
     public DbSet<RatingLevel> RatingLevels => Set<RatingLevel>();
+    public DbSet<AiConfig> AiConfigs => Set<AiConfig>();
+    public DbSet<KnowledgeSource> KnowledgeSources => Set<KnowledgeSource>();
+    public DbSet<KnowledgeDocument> KnowledgeDocuments => Set<KnowledgeDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +133,30 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Label).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Color).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<AiConfig>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.LlmProvider).HasMaxLength(50);
+            entity.Property(e => e.SentimentProvider).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<KnowledgeSource>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ConnectorType).IsRequired().HasMaxLength(50);
+            entity.HasMany(e => e.Documents)
+                  .WithOne(d => d.Source)
+                  .HasForeignKey(d => d.SourceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KnowledgeDocument>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
         });
     }
 
@@ -347,6 +374,26 @@ public class AppDbContext : DbContext
                 }
             };
             EvaluationForms.Add(form);
+            await SaveChangesAsync();
+        }
+
+        // Seed default AI config if not present
+        if (!await AiConfigs.AnyAsync())
+        {
+            AiConfigs.Add(new AiConfig
+            {
+                Id = 1,
+                LlmProvider = "AzureOpenAI",
+                LlmEndpoint = "",
+                LlmApiKey = "",
+                LlmDeployment = "gpt-4o",
+                LlmTemperature = 0.1f,
+                SentimentProvider = "AzureOpenAI",
+                LanguageEndpoint = "",
+                LanguageApiKey = "",
+                RagTopK = 3,
+                UpdatedAt = DateTime.UtcNow
+            });
             await SaveChangesAsync();
         }
     }

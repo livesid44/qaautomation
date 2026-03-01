@@ -23,4 +23,5 @@ public record AutoAuditFieldDefinition(
     string? Description,
     int MaxRating,
     bool IsRequired,
-    string SectionTitle);
+    string SectionTitle,
+    string EvaluationType = "LLM");

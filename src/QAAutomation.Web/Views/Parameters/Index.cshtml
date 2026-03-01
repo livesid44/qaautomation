@@ -28,7 +28,8 @@
                         <tr>
                             <th>Name</th>
                             <th>Category</th>
-                            <th>Default Weight</th>
+                            <th>Evaluation Type</th>
+                            <th>Weight</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -50,6 +51,16 @@
                                         <span class="badge bg-light text-dark border">@p.Category</span>
                                     }
                                     else { <span class="text-muted">-</span> }
+                                </td>
+                                <td>
+                                    @if (p.EvaluationType == "KnowledgeBased")
+                                    {
+                                        <span class="badge bg-success" title="Scored using RAG context from Knowledge Base"><i class="bi bi-database me-1"></i>Knowledge Based</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary" title="Scored directly by LLM"><i class="bi bi-cpu me-1"></i>LLM / Soft Skill</span>
+                                    }
                                 </td>
                                 <td><span class="badge bg-info text-dark">@p.DefaultWeight.ToString("F1")</span></td>
                                 <td>

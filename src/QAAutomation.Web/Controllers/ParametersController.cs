@@ -28,7 +28,7 @@ public class ParametersController : Controller
         if (!ModelState.IsValid) return View(model);
         var success = await _api.CreateParameter(new
         {
-            model.Name, model.Description, model.Category, model.DefaultWeight
+            model.Name, model.Description, model.Category, model.DefaultWeight, model.EvaluationType
         });
         if (!success) { ModelState.AddModelError("", "Failed to create parameter."); return View(model); }
         return RedirectToAction(nameof(Index));
@@ -43,7 +43,7 @@ public class ParametersController : Controller
         {
             Name = item.Name, Description = item.Description,
             Category = item.Category, DefaultWeight = item.DefaultWeight,
-            IsActive = item.IsActive
+            IsActive = item.IsActive, EvaluationType = item.EvaluationType
         };
         return View(vm);
     }
@@ -56,7 +56,7 @@ public class ParametersController : Controller
         var success = await _api.UpdateParameter(id, new
         {
             model.Name, model.Description, model.Category,
-            model.DefaultWeight, model.IsActive
+            model.DefaultWeight, model.IsActive, model.EvaluationType
         });
         if (!success) { ModelState.AddModelError("", "Failed to update parameter."); return View(model); }
         return RedirectToAction(nameof(Index));

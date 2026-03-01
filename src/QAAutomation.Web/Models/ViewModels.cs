@@ -57,6 +57,7 @@ public class ParameterViewModel
     public double DefaultWeight { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string EvaluationType { get; set; } = "LLM";
 }
 
 public class CreateParameterViewModel
@@ -66,6 +67,7 @@ public class CreateParameterViewModel
     public string? Category { get; set; }
     public double DefaultWeight { get; set; } = 1.0;
     public bool IsActive { get; set; } = true;
+    public string EvaluationType { get; set; } = "LLM";
 }
 
 public class RatingLevelViewModel
@@ -316,4 +318,72 @@ public class SentimentViewModel
     public string OverallInsight { get; set; } = string.Empty;
     public bool IsAiGenerated { get; set; }
     public string? AnalysisError { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// AI Settings view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class AiSettingsViewModel
+{
+    public string LlmProvider { get; set; } = "AzureOpenAI";
+    public string LlmEndpoint { get; set; } = string.Empty;
+    public string LlmApiKey { get; set; } = string.Empty;
+    public string LlmDeployment { get; set; } = "gpt-4o";
+    public float LlmTemperature { get; set; } = 0.1f;
+    public string SentimentProvider { get; set; } = "AzureOpenAI";
+    public string LanguageEndpoint { get; set; } = string.Empty;
+    public string LanguageApiKey { get; set; } = string.Empty;
+    public int RagTopK { get; set; } = 3;
+    public DateTime UpdatedAt { get; set; }
+    /// <summary>True when the LLM endpoint is configured and real AI will be used.</summary>
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Knowledge Base view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class KnowledgeSourceViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string ConnectorType { get; set; } = "ManualUpload";
+    public string? Description { get; set; }
+    public string? BlobConnectionString { get; set; }
+    public string? BlobContainerName { get; set; }
+    public string? SftpHost { get; set; }
+    public int? SftpPort { get; set; }
+    public string? SftpUsername { get; set; }
+    public string? SftpPassword { get; set; }
+    public string? SftpPath { get; set; }
+    public string? SharePointSiteUrl { get; set; }
+    public string? SharePointClientId { get; set; }
+    public string? SharePointClientSecret { get; set; }
+    public string? SharePointLibraryName { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? LastSyncedAt { get; set; }
+    public int DocumentCount { get; set; }
+}
+
+public class KnowledgeDocumentViewModel
+{
+    public int Id { get; set; }
+    public int SourceId { get; set; }
+    public string SourceName { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? FileName { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public string? Tags { get; set; }
+    public long ContentSizeBytes { get; set; }
+    public DateTime UploadedAt { get; set; }
+}
+
+public class KnowledgeDocumentUploadViewModel
+{
+    [Required] public int SourceId { get; set; }
+    [Required] public string Title { get; set; } = string.Empty;
+    public string? Tags { get; set; }
+    public string? TextContent { get; set; }
 }

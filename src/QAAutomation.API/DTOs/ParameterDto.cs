@@ -9,6 +9,7 @@ public class ParameterDto
     public double DefaultWeight { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string EvaluationType { get; set; } = "LLM";
 }
 
 public class CreateParameterDto
@@ -17,6 +18,7 @@ public class CreateParameterDto
     public string? Description { get; set; }
     public string? Category { get; set; }
     public double DefaultWeight { get; set; } = 1.0;
+    public string EvaluationType { get; set; } = "LLM";
 }
 
 public class UpdateParameterDto
@@ -26,4 +28,5 @@ public class UpdateParameterDto
     public string? Category { get; set; }
     public double DefaultWeight { get; set; }
     public bool IsActive { get; set; }
+    public string EvaluationType { get; set; } = "LLM";
 }

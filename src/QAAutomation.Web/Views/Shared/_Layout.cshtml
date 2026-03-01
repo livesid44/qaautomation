@@ -126,6 +126,15 @@
             @if (User.IsInRole("Admin"))
             {
                 <div class="nav-section">Admin</div>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AiSettings" ? "active" : "")"
+                   href="/AiSettings">
+                    <i class="bi bi-gear-wide-connected"></i> AI Settings
+                    <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "KnowledgeBase" ? "active" : "")"
+                   href="/KnowledgeBase">
+                    <i class="bi bi-database"></i> Knowledge Base
+                </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Users" ? "active" : "")"
                    href="/Users">
                     <i class="bi bi-people"></i> Users

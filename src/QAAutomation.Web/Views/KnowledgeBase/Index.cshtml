@@ -1,0 +1,108 @@
+@model List<KnowledgeSourceViewModel>
+@{
+    ViewData["Title"] = "Knowledge Base";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-database me-2 text-success"></i>Knowledge Base</h4>
+        <p class="text-muted mb-0">Manage process documentation for Knowledge-Based QA evaluation. Documents are retrieved via RAG when scoring.</p>
+    </div>
+    <a href="/KnowledgeBase/Create" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Add Source
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-database-x fs-1 text-muted mb-3 d-block"></i>
+            <h6 class="fw-semibold">No knowledge sources yet</h6>
+            <p class="text-muted small mb-3">Add a source to upload process documentation for RAG-powered QA evaluation.</p>
+            <a href="/KnowledgeBase/Create" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add First Source</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var src in Model)
+        {
+            var connIcon = src.ConnectorType switch {
+                "AzureBlob" => "bi-cloud",
+                "SFTP" => "bi-hdd-network",
+                "SharePoint" => "bi-microsoft",
+                _ => "bi-upload"
+            };
+            var connBadge = src.ConnectorType switch {
+                "AzureBlob" => "bg-primary",
+                "SFTP" => "bg-secondary",
+                "SharePoint" => "bg-info text-dark",
+                _ => "bg-success"
+            };
+            <div class="col-md-6 col-xl-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start gap-3 mb-2">
+                            <div class="rounded-3 p-2 bg-success bg-opacity-10">
+                                <i class="bi @connIcon fs-4 text-success"></i>
+                            </div>
+                            <div class="flex-fill min-w-0">
+                                <h6 class="fw-bold mb-0 text-truncate">@src.Name</h6>
+                                <span class="badge @connBadge" style="font-size:.65rem">@src.ConnectorType</span>
+                                @if (!src.IsActive) { <span class="badge bg-secondary ms-1" style="font-size:.65rem">Inactive</span> }
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(src.Description))
+                        {
+                            <p class="text-muted small mb-2">@src.Description</p>
+                        }
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small text-muted"><i class="bi bi-file-text me-1"></i>@src.DocumentCount document@(src.DocumentCount != 1 ? "s" : "")</span>
+                            @if (src.LastSyncedAt.HasValue)
+                            {
+                                <span class="small text-muted">Last sync: @src.LastSyncedAt.Value.ToString("MMM d")</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0 d-flex gap-2">
+                        <a href="/KnowledgeBase/Source/@src.Id" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="bi bi-folder2-open me-1"></i>Manage
+                        </a>
+                        <form method="post" action="/KnowledgeBase/DeleteSource" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@src.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Delete this source and all its documents?')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="mt-4 p-3 rounded bg-light border small text-muted">
+    <i class="bi bi-lightbulb me-2 text-warning"></i>
+    <strong>RAG tip:</strong> Documents in active sources are automatically retrieved when scoring parameters
+    marked as <strong>KnowledgeBased</strong>. Go to <a href="/Parameters">Parameters</a> to set evaluation type per parameter,
+    and <a href="/AiSettings">AI Settings</a> to configure Top-K chunks.
+</div>

@@ -24,18 +24,19 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
-// Register auto-audit service: use Azure OpenAI when configured, otherwise mock
-var aoaiEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
-if (!string.IsNullOrWhiteSpace(aoaiEndpoint))
-{
-    builder.Services.AddScoped<IAutoAuditService, AzureOpenAIAutoAuditService>();
-    builder.Services.AddScoped<ISentimentService, AzureOpenAISentimentService>();
-}
-else
-{
-    builder.Services.AddScoped<IAutoAuditService, MockAutoAuditService>();
-    builder.Services.AddScoped<ISentimentService, MockSentimentService>();
-}
+// Core services — always registered
+builder.Services.AddScoped<IAiConfigService, DbAiConfigService>();
+builder.Services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
+
+// AI services: runtime selection based on DB config (AiConfig.LlmEndpoint non-empty → real LLM)
+// Both real and mock are registered; a factory wrapper picks at request time.
+builder.Services.AddScoped<AzureOpenAIAutoAuditService>();
+builder.Services.AddScoped<MockAutoAuditService>();
+builder.Services.AddScoped<AzureOpenAISentimentService>();
+builder.Services.AddScoped<MockSentimentService>();
+
+builder.Services.AddScoped<IAutoAuditService, RuntimeAutoAuditService>();
+builder.Services.AddScoped<ISentimentService, RuntimeSentimentService>();
 
 var app = builder.Build();
 
@@ -44,12 +45,12 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    // Add new columns if they don't exist (for existing databases — SQLite throws on duplicate column)
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     foreach (var sql in new[] {
         "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",
         "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",
-        "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL"
+        "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL",
+        "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'"
     })
     {
         try { db.Database.ExecuteSqlRaw(sql); }

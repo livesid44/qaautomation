@@ -29,6 +29,14 @@
                         <input asp-for="DefaultWeight" type="number" step="0.1" min="0" class="form-control" />
                         <div class="form-text">Weight used when not overridden in a parameter club.</div>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="EvaluationType" class="form-label fw-semibold">Evaluation Type</label>
+                        <select asp-for="EvaluationType" class="form-select">
+                            <option value="LLM">LLM / Soft Skill — scored directly by the LLM</option>
+                            <option value="KnowledgeBased">Knowledge Based — scored using RAG context from Knowledge Base</option>
+                        </select>
+                        <div class="form-text">KnowledgeBased parameters require documents in the <a href="/KnowledgeBase">Knowledge Base</a>.</div>
+                    </div>
                     @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Values.Any(v => v.Errors.Count > 0))
                     {
                         <div class="alert alert-danger py-2">

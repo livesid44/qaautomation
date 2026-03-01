@@ -1,0 +1,171 @@
+@model KnowledgeSourceViewModel
+@{
+    ViewData["Title"] = "Add Knowledge Source";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-database-add me-2 text-success"></i>Add Knowledge Source</h4>
+        <p class="text-muted mb-0">Configure a new knowledge source connector for RAG-powered evaluation.</p>
+    </div>
+    <a href="/KnowledgeBase" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post" action="/KnowledgeBase/Create">
+    @Html.AntiForgeryToken()
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0">Source Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Source Name *</label>
+                        <input type="text" name="Name" class="form-control" value="@Model.Name" required placeholder="e.g. Credit Card Process Docs" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Connector Type *</label>
+                        <select name="ConnectorType" class="form-select" id="connectorType" onchange="showConnectorFields()">
+                            @if (Model.ConnectorType == "AzureBlob") {
+                                <option value="ManualUpload">Manual Upload (paste or upload .txt)</option>
+                                <option value="AzureBlob" selected>Azure Blob Storage</option>
+                                <option value="SFTP">SFTP Server</option>
+                                <option value="SharePoint">SharePoint Online</option>
+                            } else if (Model.ConnectorType == "SFTP") {
+                                <option value="ManualUpload">Manual Upload (paste or upload .txt)</option>
+                                <option value="AzureBlob">Azure Blob Storage</option>
+                                <option value="SFTP" selected>SFTP Server</option>
+                                <option value="SharePoint">SharePoint Online</option>
+                            } else if (Model.ConnectorType == "SharePoint") {
+                                <option value="ManualUpload">Manual Upload (paste or upload .txt)</option>
+                                <option value="AzureBlob">Azure Blob Storage</option>
+                                <option value="SFTP">SFTP Server</option>
+                                <option value="SharePoint" selected>SharePoint Online</option>
+                            } else {
+                                <option value="ManualUpload" selected>Manual Upload (paste or upload .txt)</option>
+                                <option value="AzureBlob">Azure Blob Storage</option>
+                                <option value="SFTP">SFTP Server</option>
+                                <option value="SharePoint">SharePoint Online</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description</label>
+                        <textarea name="Description" class="form-control" rows="2" placeholder="What process documentation does this source contain?">@Model.Description</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Azure Blob fields -->
+            <div class="card border-0 shadow-sm mb-4 connector-fields" id="blobFields" style="display:none">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-cloud me-2 text-primary"></i>Azure Blob Storage</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Connection String</label>
+                        <input type="password" name="BlobConnectionString" class="form-control" value="@Model.BlobConnectionString" placeholder="DefaultEndpointsProtocol=https;..." autocomplete="off" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Container Name</label>
+                        <input type="text" name="BlobContainerName" class="form-control" value="@Model.BlobContainerName" placeholder="qa-documents" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- SFTP fields -->
+            <div class="card border-0 shadow-sm mb-4 connector-fields" id="sftpFields" style="display:none">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-hdd-network me-2 text-secondary"></i>SFTP Server</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-8">
+                            <label class="form-label fw-semibold small">Host</label>
+                            <input type="text" name="SftpHost" class="form-control" value="@Model.SftpHost" placeholder="sftp.example.com" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold small">Port</label>
+                            <input type="number" name="SftpPort" class="form-control" value="@(Model.SftpPort ?? 22)" placeholder="22" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Username</label>
+                            <input type="text" name="SftpUsername" class="form-control" value="@Model.SftpUsername" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Password</label>
+                            <input type="password" name="SftpPassword" class="form-control" value="@Model.SftpPassword" autocomplete="off" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Remote Path</label>
+                            <input type="text" name="SftpPath" class="form-control" value="@Model.SftpPath" placeholder="/qa-docs/" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SharePoint fields -->
+            <div class="card border-0 shadow-sm mb-4 connector-fields" id="spFields" style="display:none">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-microsoft me-2 text-info"></i>SharePoint Online</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Site URL</label>
+                            <input type="url" name="SharePointSiteUrl" class="form-control" value="@Model.SharePointSiteUrl" placeholder="https://yourorg.sharepoint.com/sites/qa" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Client ID</label>
+                            <input type="text" name="SharePointClientId" class="form-control" value="@Model.SharePointClientId" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Client Secret</label>
+                            <input type="password" name="SharePointClientSecret" class="form-control" value="@Model.SharePointClientSecret" autocomplete="off" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Document Library Name</label>
+                            <input type="text" name="SharePointLibraryName" class="form-control" value="@Model.SharePointLibraryName" placeholder="Documents" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success px-4"><i class="bi bi-plus-lg me-1"></i>Create Source</button>
+                <a href="/KnowledgeBase" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-info"></i>Connector Guide</h6>
+                    <div class="small">
+                        <div class="mb-2"><strong><i class="bi bi-upload me-1"></i>Manual Upload</strong><br/>
+                            Upload .txt files or paste text directly. Best for quick setup.</div>
+                        <div class="mb-2"><strong><i class="bi bi-cloud me-1"></i>Azure Blob Storage</strong><br/>
+                            Connect to an Azure Storage container. Documents are synced on demand via the Sync button.</div>
+                        <div class="mb-2"><strong><i class="bi bi-hdd-network me-1"></i>SFTP</strong><br/>
+                            Connects to an SFTP server. Text files (.txt, .md) are ingested from the specified path.</div>
+                        <div class="mb-2"><strong><i class="bi bi-microsoft me-1"></i>SharePoint</strong><br/>
+                            Uses Azure App Registration credentials to access a SharePoint document library.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    function showConnectorFields() {
+        const t = document.getElementById('connectorType').value;
+        document.getElementById('blobFields').style.display = t === 'AzureBlob' ? '' : 'none';
+        document.getElementById('sftpFields').style.display = t === 'SFTP' ? '' : 'none';
+        document.getElementById('spFields').style.display = t === 'SharePoint' ? '' : 'none';
+    }
+    showConnectorFields();
+</script>
+}

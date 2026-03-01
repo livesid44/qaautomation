@@ -38,6 +38,7 @@ public class ParametersController : ControllerBase
             Description = dto.Description,
             Category = dto.Category,
             DefaultWeight = dto.DefaultWeight,
+            EvaluationType = dto.EvaluationType,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -55,6 +56,7 @@ public class ParametersController : ControllerBase
         item.Description = dto.Description;
         item.Category = dto.Category;
         item.DefaultWeight = dto.DefaultWeight;
+        item.EvaluationType = dto.EvaluationType;
         item.IsActive = dto.IsActive;
         await _db.SaveChangesAsync();
         return NoContent();
@@ -78,6 +80,7 @@ public class ParametersController : ControllerBase
         Category = p.Category,
         DefaultWeight = p.DefaultWeight,
         IsActive = p.IsActive,
-        CreatedAt = p.CreatedAt
+        CreatedAt = p.CreatedAt,
+        EvaluationType = p.EvaluationType
     };
 }

@@ -276,4 +276,77 @@ public class ApiClient
         }
         catch (Exception ex) { _logger.LogError(ex, "AnalyzeSentiment failed"); return null; }
     }
+
+    // AI Settings (RAG configuration stored in DB)
+    public async Task<AiSettingsViewModel?> GetAiSettings()
+    {
+        try { return await _http.GetFromJsonAsync<AiSettingsViewModel>("api/aiconfig", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAiSettings failed"); return null; }
+    }
+
+    public async Task<bool> SaveAiSettings(AiSettingsViewModel model)
+    {
+        try
+        {
+            var resp = await _http.PutAsJsonAsync("api/aiconfig", model);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "SaveAiSettings failed"); return false; }
+    }
+
+    // Knowledge Base sources
+    public async Task<List<KnowledgeSourceViewModel>> GetKnowledgeSources()
+    {
+        try { return await _http.GetFromJsonAsync<List<KnowledgeSourceViewModel>>("api/knowledgebase/sources", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetKnowledgeSources failed"); return new(); }
+    }
+
+    public async Task<KnowledgeSourceViewModel?> GetKnowledgeSource(int id)
+    {
+        try { return await _http.GetFromJsonAsync<KnowledgeSourceViewModel>($"api/knowledgebase/sources/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetKnowledgeSource failed"); return null; }
+    }
+
+    public async Task<KnowledgeSourceViewModel?> CreateKnowledgeSource(KnowledgeSourceViewModel model)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync("api/knowledgebase/sources", model);
+            if (!resp.IsSuccessStatusCode) return null;
+            return await resp.Content.ReadFromJsonAsync<KnowledgeSourceViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateKnowledgeSource failed"); return null; }
+    }
+
+    public async Task<bool> UpdateKnowledgeSource(int id, KnowledgeSourceViewModel model)
+    {
+        try { var resp = await _http.PutAsJsonAsync($"api/knowledgebase/sources/{id}", model); return resp.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateKnowledgeSource failed"); return false; }
+    }
+
+    public async Task<bool> DeleteKnowledgeSource(int id)
+    {
+        try { var resp = await _http.DeleteAsync($"api/knowledgebase/sources/{id}"); return resp.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteKnowledgeSource failed"); return false; }
+    }
+
+    // Knowledge Base documents
+    public async Task<List<KnowledgeDocumentViewModel>> GetKnowledgeDocuments(int? sourceId = null)
+    {
+        var url = sourceId.HasValue ? $"api/knowledgebase/documents?sourceId={sourceId}" : "api/knowledgebase/documents";
+        try { return await _http.GetFromJsonAsync<List<KnowledgeDocumentViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetKnowledgeDocuments failed"); return new(); }
+    }
+
+    public async Task<bool> AddKnowledgeDocument(object dto)
+    {
+        try { var resp = await _http.PostAsJsonAsync("api/knowledgebase/documents", dto); return resp.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "AddKnowledgeDocument failed"); return false; }
+    }
+
+    public async Task<bool> DeleteKnowledgeDocument(int id)
+    {
+        try { var resp = await _http.DeleteAsync($"api/knowledgebase/documents/{id}"); return resp.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteKnowledgeDocument failed"); return false; }
+    }
 }

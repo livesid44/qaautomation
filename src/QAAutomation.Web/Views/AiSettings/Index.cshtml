@@ -1,0 +1,217 @@
+@model AiSettingsViewModel
+@{
+    ViewData["Title"] = "AI Settings";
+}
+@section Styles {
+<style>
+    .settings-section { border-left:4px solid #0d6efd; }
+    .provider-badge { font-size:.7rem; padding:2px 8px; border-radius:12px; }
+    .status-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-gear-wide-connected me-2 text-primary"></i>AI Settings</h4>
+        <p class="text-muted mb-0">Configure LLM, sentiment provider, and RAG settings. Values are stored in the database.</p>
+    </div>
+    <div>
+        @if (Model.IsConfigured)
+        {
+            <span class="badge bg-success"><span class="status-dot bg-white me-1"></span>LLM Connected</span>
+        }
+        else
+        {
+            <span class="badge bg-warning text-dark"><span class="status-dot bg-dark me-1" style="opacity:.5"></span>Using Mock / Simulated</span>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+
+            <!-- LLM Configuration -->
+            <div class="card border-0 shadow-sm mb-4 settings-section">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-cpu me-2 text-primary"></i>Quality Scoring LLM</h6>
+                    <div class="text-muted small">Used for auto-auditing QA parameters. LLM-type parameters are scored directly; KnowledgeBased parameters use RAG context.</div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Provider</label>
+                            <select name="LlmProvider" class="form-select" id="llmProvider">
+                                @if (Model.LlmProvider == "AzureOpenAI") {
+                                    <option value="AzureOpenAI" selected>Azure OpenAI</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                } else {
+                                    <option value="AzureOpenAI">Azure OpenAI</option>
+                                    <option value="OpenAI" selected>OpenAI (Direct)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small">Endpoint URL</label>
+                            <input type="url" name="LlmEndpoint" class="form-control" value="@Model.LlmEndpoint"
+                                   placeholder="https://your-resource.openai.azure.com/" />
+                            <div class="form-text">Leave blank to use simulated mock responses.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">API Key</label>
+                            <input type="password" name="LlmApiKey" class="form-control" value="@Model.LlmApiKey"
+                                   placeholder="Enter new key, or leave blank to keep the existing key" autocomplete="new-password" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Deployment / Model</label>
+                            <input type="text" name="LlmDeployment" class="form-control" value="@Model.LlmDeployment"
+                                   placeholder="gpt-4o" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold small">Temperature</label>
+                            <input type="number" name="LlmTemperature" class="form-control" value="@Model.LlmTemperature.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)"
+                                   min="0" max="2" step="0.1" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sentiment Provider -->
+            <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #fd7e14 !important; border-left-style:solid !important;">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-emoji-smile me-2 text-warning"></i>Sentiment &amp; Emotion Analysis</h6>
+                    <div class="text-muted small">Provider for sentiment scoring, emotion detection, and coaching recommendations.</div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Sentiment Provider</label>
+                            <select name="SentimentProvider" class="form-select" id="sentimentProvider" onchange="toggleLangFields()">
+                                @if (Model.SentimentProvider == "OpenAI") {
+                                    <option value="AzureOpenAI">Azure OpenAI (same as LLM)</option>
+                                    <option value="OpenAI" selected>OpenAI (Direct)</option>
+                                    <option value="AzureLanguage">Azure Language Service</option>
+                                } else if (Model.SentimentProvider == "AzureLanguage") {
+                                    <option value="AzureOpenAI">Azure OpenAI (same as LLM)</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                    <option value="AzureLanguage" selected>Azure Language Service</option>
+                                } else {
+                                    <option value="AzureOpenAI" selected>Azure OpenAI (same as LLM)</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                    <option value="AzureLanguage">Azure Language Service</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8 lang-fields" id="langFields" style="@(Model.SentimentProvider == "AzureLanguage" ? "" : "display:none")">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small">Language Endpoint</label>
+                                    <input type="url" name="LanguageEndpoint" class="form-control" value="@Model.LanguageEndpoint"
+                                           placeholder="https://your-lang.cognitiveservices.azure.com/" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold small">Language API Key</label>
+                                    <input type="password" name="LanguageApiKey" class="form-control" value="@Model.LanguageApiKey" placeholder="Enter new key, or leave blank to keep existing" autocomplete="new-password" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG Configuration -->
+            <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #198754 !important; border-left-style:solid !important;">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-database me-2 text-success"></i>RAG (Knowledge-Based Evaluation)</h6>
+                    <div class="text-muted small">Controls how many knowledge base chunks are injected per KnowledgeBased-type parameter when scoring.</div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Top-K Chunks</label>
+                            <input type="number" name="RagTopK" class="form-control" value="@Model.RagTopK" min="1" max="10" />
+                            <div class="form-text">How many KB excerpts to include in the LLM prompt per KnowledgeBased field.</div>
+                        </div>
+                        <div class="col-md-9 d-flex align-items-start gap-3 pt-3">
+                            <div class="alert alert-success mb-0 py-2 px-3 small flex-fill">
+                                <i class="bi bi-lightbulb me-1"></i>
+                                <strong>How RAG works:</strong> When scoring a parameter marked as <em>KnowledgeBased</em>,
+                                the system retrieves the most relevant documents from your Knowledge Base and includes them as
+                                context in the LLM prompt. This grounds the evaluation in your actual process documentation.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right panel -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-info"></i>Configuration Status</h6>
+                    <dl class="row small mb-0">
+                        <dt class="col-5 text-muted">LLM</dt>
+                        <dd class="col-7">
+                            @if (Model.IsConfigured)
+                            {
+                                <span class="badge bg-success">Connected</span>
+                                <div class="text-muted" style="font-size:.75rem">@Model.LlmProvider &middot; @Model.LlmDeployment</div>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Mock / Simulated</span>
+                            }
+                        </dd>
+                        <dt class="col-5 text-muted">Sentiment</dt>
+                        <dd class="col-7"><span class="text-muted small">@Model.SentimentProvider</span></dd>
+                        <dt class="col-5 text-muted">RAG Top-K</dt>
+                        <dd class="col-7"><span class="text-muted small">@Model.RagTopK chunks</span></dd>
+                        <dt class="col-5 text-muted">Last Updated</dt>
+                        <dd class="col-7 small text-muted">@(Model.UpdatedAt == default ? "Never" : Model.UpdatedAt.ToString("MMM d, yyyy HH:mm"))</dd>
+                    </dl>
+                </div>
+            </div>
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-2"><i class="bi bi-database me-2 text-success"></i>Knowledge Base</h6>
+                    <p class="text-muted small mb-2">Manage process documents and KB sources for KnowledgeBased parameter evaluation.</p>
+                    <a href="/KnowledgeBase" class="btn btn-outline-success btn-sm w-100">
+                        <i class="bi bi-folder2-open me-1"></i>Manage Knowledge Base
+                    </a>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 btn-lg">
+                <i class="bi bi-save me-2"></i>Save Settings
+            </button>
+            <div class="text-muted small text-center mt-2">Settings are saved to the database immediately.</div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    function toggleLangFields() {
+        const p = document.getElementById('sentimentProvider').value;
+        document.getElementById('langFields').style.display = p === 'AzureLanguage' ? '' : 'none';
+    }
+</script>
+}
