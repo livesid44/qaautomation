@@ -1,0 +1,100 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Welcome back, @Model.Username!</h4>
+        <p class="text-muted mb-0">Here's an overview of your QA Automation system.</p>
+    </div>
+    <span class="badge bg-primary py-2 px-3 fs-6">@Model.Role</span>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                    <i class="bi bi-sliders fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <div class="fs-2 fw-bold">@Model.ParameterCount</div>
+                    <div class="text-muted small">Parameters</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                    <i class="bi bi-collection fs-4 text-success"></i>
+                </div>
+                <div>
+                    <div class="fs-2 fw-bold">@Model.ParameterClubCount</div>
+                    <div class="text-muted small">Parameter Clubs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                    <i class="bi bi-star-half fs-4 text-warning"></i>
+                </div>
+                <div>
+                    <div class="fs-2 fw-bold">@Model.RatingCriteriaCount</div>
+                    <div class="text-muted small">Rating Criteria</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                    <i class="bi bi-layout-text-window fs-4 text-info"></i>
+                </div>
+                <div>
+                    <div class="fs-2 fw-bold">@Model.EvaluationFormCount</div>
+                    <div class="text-muted small">Evaluation Forms</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-4 pb-0">
+        <h6 class="fw-bold mb-0">Quick Navigation</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <a href="/Parameters" class="btn btn-outline-primary w-100 py-3">
+                    <i class="bi bi-sliders d-block fs-4 mb-1"></i>
+                    Manage Parameters
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/ParameterClubs" class="btn btn-outline-success w-100 py-3">
+                    <i class="bi bi-collection d-block fs-4 mb-1"></i>
+                    Parameter Clubs
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/RatingCriteria" class="btn btn-outline-warning w-100 py-3">
+                    <i class="bi bi-star-half d-block fs-4 mb-1"></i>
+                    Rating Criteria
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="/FormDesigner" class="btn btn-outline-info w-100 py-3">
+                    <i class="bi bi-layout-text-window d-block fs-4 mb-1"></i>
+                    Form Designer
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

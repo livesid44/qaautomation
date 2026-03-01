@@ -1,0 +1,366 @@
+@model FormDesignerViewModel
+@{
+    ViewData["Title"] = Model.Form.Id > 0 ? "Edit Form: " + Model.Form.Name : "New Evaluation Form";
+}
+@section Styles {
+<style>
+    .section-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+    .section-header {
+        background: #f8f9fa;
+        border-radius: 10px 10px 0 0;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .section-body { padding: 16px; }
+    .param-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .param-row:last-child { border-bottom: none; }
+    .preview-panel {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        position: sticky;
+        top: 80px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+    }
+    .preview-section { margin-bottom: 16px; }
+    .preview-field {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+    }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-layout-text-window me-2 text-info"></i>
+            @(Model.Form.Id > 0 ? "Edit Form" : "New Evaluation Form")
+        </h4>
+        <p class="text-muted mb-0">Build a 3-level evaluation form with sections, parameters, and rating criteria.</p>
+    </div>
+    <a href="/FormDesigner" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<form method="post" action="/FormDesigner/Designer" id="formDesigner">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="formJson" id="formJsonInput" />
+
+    <div class="row g-4">
+        <!-- Main editor column -->
+        <div class="col-lg-8">
+            <!-- Form Details -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold">Form Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Form Name <span class="text-danger">*</span></label>
+                            <input type="text" id="formName" class="form-control"
+                                   value="@Model.Form.Name" required placeholder="e.g., Code Review Evaluation"
+                                   oninput="updatePreview()" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" id="formDescription" class="form-control"
+                                   value="@Model.Form.Description" placeholder="Optional description"
+                                   oninput="updatePreview()" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sections -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Sections</h6>
+                    <div class="d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown">
+                                <i class="bi bi-collection me-1"></i>Add from Club
+                            </button>
+                            <ul class="dropdown-menu">
+                                @if (!Model.AvailableClubs.Any())
+                                {
+                                    <li><span class="dropdown-item text-muted">No clubs available</span></li>
+                                }
+                                @foreach (var club in Model.AvailableClubs.Where(c => c.IsActive))
+                                {
+                                    <li>
+                                        <button type="button" class="dropdown-item"
+                                                data-club-id="@club.Id"
+                                                data-club-name="@club.Name"
+                                                data-club-items="@Html.Raw(System.Text.Json.JsonSerializer.Serialize(club.Items.Select(i => new { parameterId = i.ParameterId, parameterName = i.ParameterName, ratingCriteriaId = i.RatingCriteriaId })))"
+                                                onclick="addSectionFromClubBtn(this)">
+                                            <i class="bi bi-collection me-1"></i>@club.Name
+                                            <span class="badge bg-secondary ms-1">@club.Items.Count</span>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCustomSection()">
+                            <i class="bi bi-plus-lg me-1"></i>Custom Section
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="sectionsContainer">
+                        <!-- Sections rendered by JS -->
+                    </div>
+                    <div id="noSections" class="text-center py-4 text-muted">
+                        <i class="bi bi-layout-text-window fs-2 d-block mb-2"></i>
+                        No sections yet. Add a section from a club or create a custom section.
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-info text-white px-4" onclick="collectForm()">
+                    <i class="bi bi-check-lg me-1"></i>Save Form
+                </button>
+                <a href="/FormDesigner" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </div>
+
+        <!-- Preview column -->
+        <div class="col-lg-4">
+            <div class="preview-panel shadow-sm">
+                <h6 class="fw-bold mb-3"><i class="bi bi-eye me-2 text-info"></i>Form Preview</h6>
+                <div id="previewContent">
+                    <p class="text-muted small text-center py-3">Add sections to see a preview.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    const allParameters = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllParameters.Select(p => new { id = p.Id, name = p.Name, category = p.Category })));
+    const allCriteria = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllCriteria.Select(c => new { id = c.Id, name = c.Name })));
+
+    let sections = [];
+    let sectionCounter = 0;
+
+    // Load existing sections if editing
+    @if (Model.Form.Sections.Any())
+    {
+        <text>
+        const existingSections = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Form.Sections.Select(s => new {
+            title = s.Title,
+            fields = s.Fields.Select(f => new { parameterId = f.ParameterId, parameterName = f.ParameterName, ratingCriteriaId = f.RatingCriteriaId })
+        })));
+        existingSections.forEach(s => {
+            addSectionWithFields(s.title, s.fields);
+        });
+        </text>
+    }
+
+    function addSectionFromClubBtn(btn) {
+        const clubName = btn.dataset.clubName;
+        const items = JSON.parse(btn.dataset.clubItems || '[]');
+        addSectionWithFields(clubName, items);
+    }
+
+    function addSectionFromClub(clubId, clubName, parameters) {
+        addSectionWithFields(clubName, parameters);
+    }
+
+    function addCustomSection() {
+        addSectionWithFields('New Section', []);
+    }
+
+    function addSectionWithFields(title, fields) {
+        const id = ++sectionCounter;
+        sections.push({ id, title, fields: fields.map(f => ({
+            parameterId: f.parameterId,
+            parameterName: f.parameterName || getParamName(f.parameterId),
+            ratingCriteriaId: f.ratingCriteriaId || null
+        }))});
+        renderSections();
+        updatePreview();
+    }
+
+    function getParamName(id) {
+        const p = allParameters.find(p => p.id === id);
+        return p ? p.name : 'Unknown';
+    }
+
+    function removeSection(id) {
+        sections = sections.filter(s => s.id !== id);
+        renderSections();
+        updatePreview();
+    }
+
+    function addParameterToSection(sectionId) {
+        // Handled by the dropdown in the section header UI
+    }
+
+    function removeField(sectionId, fieldIdx) {
+        const section = sections.find(s => s.id === sectionId);
+        if (!section) return;
+        section.fields.splice(fieldIdx, 1);
+        renderSections();
+        updatePreview();
+    }
+
+    function renderSections() {
+        const container = document.getElementById('sectionsContainer');
+        const noSections = document.getElementById('noSections');
+        noSections.style.display = sections.length === 0 ? '' : 'none';
+
+        container.innerHTML = sections.map(section => `
+            <div class="section-card" id="section-${section.id}">
+                <div class="section-header">
+                    <i class="bi bi-grip-vertical text-muted"></i>
+                    <input type="text" class="form-control form-control-sm fw-semibold"
+                           style="font-size:0.95rem;max-width:300px"
+                           value="${escHtml(section.title)}"
+                           onchange="updateSectionTitle(${section.id}, this.value)"
+                           placeholder="Section name" />
+                    <div class="ms-auto d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-plus-lg"></i> Add Parameter
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="max-height:300px;overflow-y:auto">
+                                ${allParameters.map(p => `<li><button type="button" class="dropdown-item small" onclick="addParamToSection(${section.id},${p.id},'${escJs(p.name)}')">${escHtml(p.name)}${p.category ? ` <span class='badge bg-light text-dark border ms-1'>${escHtml(p.category)}</span>` : ''}</button></li>`).join('')}
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSection(${section.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    ${section.fields.length === 0
+                        ? '<p class="text-muted small mb-0">No parameters in this section. Use "Add Parameter" above.</p>'
+                        : section.fields.map((f, fidx) => `
+                            <div class="param-row">
+                                <i class="bi bi-dash text-muted"></i>
+                                <span class="flex-grow-1 small fw-semibold">${escHtml(f.parameterName)}</span>
+                                <select class="form-select form-select-sm" style="width:160px"
+                                        onchange="updateFieldCriteria(${section.id},${fidx},this.value)"
+                                        title="Rating Criteria">
+                                    <option value="">No rating</option>
+                                    ${allCriteria.map(c => `<option value="${c.id}" ${f.ratingCriteriaId==c.id?'selected':''}>${escHtml(c.name)}</option>`).join('')}
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-danger p-1 lh-1" onclick="removeField(${section.id},${fidx})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateSectionTitle(id, title) {
+        const s = sections.find(s => s.id === id);
+        if (s) { s.title = title; updatePreview(); }
+    }
+
+    function addParamToSection(sectionId, paramId, paramName) {
+        const section = sections.find(s => s.id === sectionId);
+        if (!section) return;
+        if (section.fields.some(f => f.parameterId === paramId)) return; // no dup
+        section.fields.push({ parameterId: paramId, parameterName: paramName, ratingCriteriaId: null });
+        renderSections();
+        updatePreview();
+    }
+
+    function updateFieldCriteria(sectionId, fieldIdx, criteriaId) {
+        const section = sections.find(s => s.id === sectionId);
+        if (!section) return;
+        section.fields[fieldIdx].ratingCriteriaId = criteriaId ? parseInt(criteriaId) : null;
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const formName = document.getElementById('formName').value || 'Untitled Form';
+        const preview = document.getElementById('previewContent');
+        if (sections.length === 0) {
+            preview.innerHTML = '<p class="text-muted small text-center py-3">Add sections to see a preview.</p>';
+            return;
+        }
+        preview.innerHTML = `
+            <h6 class="fw-bold border-bottom pb-2 mb-3">${escHtml(formName)}</h6>
+            ${sections.map(s => `
+                <div class="preview-section">
+                    <div class="fw-semibold small text-uppercase text-muted mb-2">${escHtml(s.title)}</div>
+                    ${s.fields.map(f => {
+                        const criteria = f.ratingCriteriaId ? allCriteria.find(c => c.id == f.ratingCriteriaId) : null;
+                        return `<div class="preview-field">
+                            <span>${escHtml(f.parameterName)}</span>
+                            <span class="badge bg-secondary">${criteria ? escHtml(criteria.name) : 'No rating'}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `).join('')}
+        `;
+    }
+
+    function collectForm() {
+        // Collect current state from DOM inputs
+        sections.forEach(section => {
+            const el = document.querySelector(`#section-${section.id} input[type=text]`);
+            if (el) section.title = el.value;
+        });
+        const formData = {
+            name: document.getElementById('formName').value,
+            description: document.getElementById('formDescription').value,
+            sections: sections.map((s, idx) => ({
+                title: s.title,
+                order: idx,
+                fields: s.fields.map((f, fidx) => ({
+                    parameterId: f.parameterId,
+                    parameterName: f.parameterName,
+                    ratingCriteriaId: f.ratingCriteriaId,
+                    order: fidx
+                }))
+            }))
+        };
+        document.getElementById('formJsonInput').value = JSON.stringify(formData);
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escJs(s) {
+        if (!s) return '';
+        return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    }
+
+    renderSections();
+    updatePreview();
+</script>
+}

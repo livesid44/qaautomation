@@ -1,0 +1,248 @@
+@model ParameterClubViewModel
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Edit Club: " + Model.Name : "New Parameter Club";
+    var allParameters = ViewBag.AllParameters as List<ParameterViewModel> ?? new List<ParameterViewModel>();
+    var allCriteria = ViewBag.AllCriteria as List<RatingCriteriaViewModel> ?? new List<RatingCriteriaViewModel>();
+}
+@section Styles {
+<style>
+    .param-card {
+        cursor: grab;
+        transition: all 0.2s;
+        user-select: none;
+    }
+    .param-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .assigned-list { min-height: 80px; }
+    .assigned-item {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .drag-handle { cursor: grab; color: #adb5bd; }
+    .drag-over { border: 2px dashed #0d6efd !important; background: #f0f7ff !important; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-pencil-square me-2 text-success"></i>
+            @(Model.Id > 0 ? "Edit Club" : "New Parameter Club")
+        </h4>
+        <p class="text-muted mb-0">Drag parameters from the left panel to assign them to this club.</p>
+    </div>
+    <a href="/ParameterClubs" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<form method="post" action="/ParameterClubs/Designer/@(Model.Id > 0 ? Model.Id.ToString() : "")" id="designerForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@(Model.Id > 0 ? Model.Id.ToString() : "")" />
+    <input type="hidden" name="itemsJson" id="itemsJsonInput" />
+
+    <div class="row g-4">
+        <!-- Club Details -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-3 pb-0">
+                    <h6 class="fw-bold mb-0">Club Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Club Name <span class="text-danger">*</span></label>
+                            <input type="text" name="clubName" class="form-control" value="@Model.Name" required placeholder="e.g., Code Quality" />
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" name="clubDescription" class="form-control" value="@Model.Description" placeholder="Optional description" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left: Available Parameters -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-2">Available Parameters</h6>
+                    <input type="text" id="paramSearch" class="form-control form-control-sm"
+                           placeholder="&#xF52A; Search parameters..." />
+                </div>
+                <div class="card-body" style="max-height:500px;overflow-y:auto;">
+                    <div id="availableList">
+                        @foreach (var p in allParameters)
+                        {
+                            <div class="param-card card mb-2 border" draggable="true"
+                                 data-param-id="@p.Id" data-param-name="@p.Name"
+                                 data-param-weight="@p.DefaultWeight">
+                                <div class="card-body py-2 px-3">
+                                    <div class="fw-semibold small">@p.Name</div>
+                                    @if (!string.IsNullOrEmpty(p.Category))
+                                    {
+                                        <div class="text-muted" style="font-size:0.75rem">@p.Category</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        @if (!allParameters.Any())
+                        {
+                            <p class="text-muted text-center small py-3">No parameters available.<br /><a href="/Parameters/Create">Create one first.</a></p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Assigned Parameters -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Assigned Parameters</h6>
+                    <span class="badge bg-primary rounded-pill" id="assignedCount">0</span>
+                </div>
+                <div class="card-body">
+                    <div id="assignedList" class="assigned-list" style="min-height:200px;">
+                        <!-- populated by JS from existing items or drag/drop -->
+                    </div>
+                    <p id="dropHint" class="text-muted text-center py-4 mb-0 border-2 border-dashed rounded">
+                        <i class="bi bi-arrow-left-circle fs-3 d-block mb-2"></i>
+                        Drag parameters here to assign them
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-success px-4" onclick="collectItems()">
+            <i class="bi bi-check-lg me-1"></i>Save Club
+        </button>
+        <a href="/ParameterClubs" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    // Initial existing items from server
+    const existingItems = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.Select(i => new {
+        parameterId = i.ParameterId,
+        parameterName = i.ParameterName,
+        order = i.Order,
+        weightOverride = i.WeightOverride,
+        ratingCriteriaId = i.RatingCriteriaId
+    })));
+
+    const allCriteria = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allCriteria.Select(c => new { id = c.Id, name = c.Name })));
+
+    let assignedItems = [];
+
+    function renderAssigned() {
+        const list = document.getElementById('assignedList');
+        const hint = document.getElementById('dropHint');
+        document.getElementById('assignedCount').textContent = assignedItems.length;
+
+        if (assignedItems.length === 0) {
+            list.innerHTML = '';
+            hint.style.display = '';
+            return;
+        }
+        hint.style.display = 'none';
+
+        list.innerHTML = assignedItems.map((item, idx) => `
+            <div class="assigned-item" data-idx="${idx}">
+                <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold small">${item.parameterName}</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" step="0.1" min="0" placeholder="Weight"
+                           class="form-control form-control-sm" style="width:80px"
+                           value="${item.weightOverride ?? ''}"
+                           onchange="assignedItems[${idx}].weightOverride = this.value ? parseFloat(this.value) : null"
+                           title="Weight override" />
+                    <select class="form-select form-select-sm" style="width:150px"
+                            onchange="assignedItems[${idx}].ratingCriteriaId = this.value ? parseInt(this.value) : null"
+                            title="Rating criteria">
+                        <option value="">No rating</option>
+                        ${allCriteria.map(c => `<option value="${c.id}" ${item.ratingCriteriaId == c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function removeItem(idx) {
+        assignedItems.splice(idx, 1);
+        renderAssigned();
+    }
+
+    function addItem(id, name, weight) {
+        if (assignedItems.some(i => i.parameterId === id)) return; // no duplicates
+        assignedItems.push({ parameterId: id, parameterName: name, order: assignedItems.length, weightOverride: null, ratingCriteriaId: null });
+        renderAssigned();
+    }
+
+    function collectItems() {
+        assignedItems.forEach((item, idx) => item.order = idx);
+        document.getElementById('itemsJsonInput').value = JSON.stringify(assignedItems);
+    }
+
+    // Drag and drop from available list
+    document.getElementById('availableList').addEventListener('dragstart', function(e) {
+        const card = e.target.closest('.param-card');
+        if (!card) return;
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: parseInt(card.dataset.paramId),
+            name: card.dataset.paramName,
+            weight: parseFloat(card.dataset.paramWeight)
+        }));
+    });
+
+    const assignedList = document.getElementById('assignedList');
+    const dropHint = document.getElementById('dropHint');
+
+    [assignedList, dropHint].forEach(el => {
+        el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+        el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+        el.addEventListener('drop', e => {
+            e.preventDefault();
+            el.classList.remove('drag-over');
+            try {
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                addItem(data.id, data.name, data.weight);
+            } catch {}
+        });
+    });
+
+    // Search
+    document.getElementById('paramSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#availableList .param-card').forEach(card => {
+            card.style.display = card.dataset.paramName.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+
+    // Load existing items on page load
+    existingItems.forEach(item => {
+        assignedItems.push({
+            parameterId: item.parameterId,
+            parameterName: item.parameterName,
+            order: item.order,
+            weightOverride: item.weightOverride,
+            ratingCriteriaId: item.ratingCriteriaId
+        });
+    });
+    renderAssigned();
+</script>
+}
