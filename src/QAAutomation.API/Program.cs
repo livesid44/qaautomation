@@ -27,9 +27,15 @@ builder.Services.AddCors(options =>
 // Register auto-audit service: use Azure OpenAI when configured, otherwise mock
 var aoaiEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
 if (!string.IsNullOrWhiteSpace(aoaiEndpoint))
+{
     builder.Services.AddScoped<IAutoAuditService, AzureOpenAIAutoAuditService>();
+    builder.Services.AddScoped<ISentimentService, AzureOpenAISentimentService>();
+}
 else
+{
     builder.Services.AddScoped<IAutoAuditService, MockAutoAuditService>();
+    builder.Services.AddScoped<ISentimentService, MockSentimentService>();
+}
 
 var app = builder.Build();
 

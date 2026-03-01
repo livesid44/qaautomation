@@ -260,4 +260,20 @@ public class ApiClient
         }
         catch (Exception ex) { _logger.LogError(ex, "AutoAnalyze failed"); return null; }
     }
+
+    // Sentiment & Emotion analysis
+    public async Task<SentimentViewModel?> AnalyzeSentiment(object request)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync("api/sentiment/analyze", request);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogError("AnalyzeSentiment failed: {Status}", resp.StatusCode);
+                return null;
+            }
+            return await resp.Content.ReadFromJsonAsync<SentimentViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "AnalyzeSentiment failed"); return null; }
+    }
 }

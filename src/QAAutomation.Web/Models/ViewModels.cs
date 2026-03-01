@@ -271,4 +271,49 @@ public class AutoAuditReviewViewModel
     public double TotalScore => Fields.Sum(f => f.FinalScore);
     public double MaxPossibleScore => Fields.Sum(f => f.MaxRating);
     public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
+    /// <summary>Sentiment and emotion analysis results (populated in parallel with quality scoring).</summary>
+    public SentimentViewModel? Sentiment { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sentiment, Emotion & Recommendations view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class DetectedEmotionViewModel
+{
+    public string Emotion { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+    public string Speaker { get; set; } = string.Empty;
+}
+
+public class KeyMomentViewModel
+{
+    public string Title { get; set; } = string.Empty;
+    public string Sentiment { get; set; } = string.Empty;
+    public string Excerpt { get; set; } = string.Empty;
+}
+
+public class CoachingRecommendationViewModel
+{
+    public string Category { get; set; } = string.Empty;
+    public string Priority { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public string Evidence { get; set; } = string.Empty;
+}
+
+public class SentimentViewModel
+{
+    public string OverallSentiment { get; set; } = string.Empty;
+    public double OverallScore { get; set; }
+    public string AgentSentiment { get; set; } = string.Empty;
+    public double AgentScore { get; set; }
+    public string CustomerSentiment { get; set; } = string.Empty;
+    public double CustomerScore { get; set; }
+    public string SentimentTrend { get; set; } = string.Empty;
+    public List<DetectedEmotionViewModel> DominantEmotions { get; set; } = new();
+    public List<KeyMomentViewModel> KeyMoments { get; set; } = new();
+    public List<CoachingRecommendationViewModel> Recommendations { get; set; } = new();
+    public string OverallInsight { get; set; } = string.Empty;
+    public bool IsAiGenerated { get; set; }
+    public string? AnalysisError { get; set; }
 }

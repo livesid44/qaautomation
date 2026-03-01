@@ -70,7 +70,7 @@ public class AutoAuditController : Controller
         if (transcript.Length > 12000)
             transcript = transcript[..12000] + "\n[TRANSCRIPT TRUNCATED]";
 
-        var request = new
+        var auditRequest = new
         {
             formId = model.FormId,
             transcript,
@@ -80,7 +80,19 @@ public class AutoAuditController : Controller
             evaluatedBy = model.EvaluatedBy
         };
 
-        var review = await _api.AutoAnalyze(request);
+        var sentimentRequest = new
+        {
+            transcript,
+            agentName = model.AgentName,
+            evaluatedBy = model.EvaluatedBy
+        };
+
+        // Run quality audit and sentiment analysis in parallel
+        var reviewTask = _api.AutoAnalyze(auditRequest);
+        var sentimentTask = _api.AnalyzeSentiment(sentimentRequest);
+        await Task.WhenAll(reviewTask, sentimentTask);
+        var review = await reviewTask;
+        var sentiment = await sentimentTask;
 
         if (review == null)
         {
@@ -89,6 +101,9 @@ public class AutoAuditController : Controller
             ModelState.AddModelError("", "The analysis service returned an error. Please try again.");
             return View(model);
         }
+
+        // Attach sentiment results to the review model
+        review.Sentiment = sentiment;
 
         // Map API response to review view model and store in TempData for the Review step
         // (We store the json-serialized review so the Review page can edit scores)
@@ -143,6 +158,10 @@ public class AutoAuditController : Controller
             numericValue = f.FinalScore
         }).ToList();
 
+        var notes = $"[Auto-Audit] {review.OverallReasoning}";
+        if (review.Sentiment != null && !string.IsNullOrWhiteSpace(review.Sentiment.OverallInsight))
+            notes += $"\n[Sentiment] {review.Sentiment.OverallInsight}";
+
         var dto = new
         {
             formId = review.FormId,
@@ -150,7 +169,7 @@ public class AutoAuditController : Controller
             agentName = review.AgentName,
             callReference = review.CallReference,
             callDate = review.CallDate,
-            notes = $"[Auto-Audit] {review.OverallReasoning}",
+            notes,
             scores
         };
 

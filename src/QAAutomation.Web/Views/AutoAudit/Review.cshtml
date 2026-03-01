@@ -1,46 +1,52 @@
 @model AutoAuditReviewViewModel
 @{
-    ViewData["Title"] = "Auto Audit — Review AI Scores";
+    ViewData["Title"] = "Auto Audit — Review Results";
     var pct = Model.ScorePercent;
     var scoreClass = pct >= 80 ? "text-success" : pct >= 60 ? "text-warning" : "text-danger";
     var statusText = pct >= 80 ? "PASS" : pct >= 60 ? "NEEDS IMPROVEMENT" : "FAIL";
     var statusBadge = pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
-
-    // Group fields by section title
-    var sections = Model.Fields
-        .GroupBy(f => f.SectionTitle)
-        .ToList();
+    var sections = Model.Fields.GroupBy(f => f.SectionTitle).ToList();
+    var sent = Model.Sentiment;
+    var sentimentIcon = sent?.OverallSentiment switch { "Positive" => "bi-emoji-smile-fill text-success", "Negative" => "bi-emoji-frown-fill text-danger", _ => "bi-emoji-neutral-fill text-warning" };
+    var sentimentBg   = sent?.OverallSentiment switch { "Positive" => "bg-success", "Negative" => "bg-danger", _ => "bg-warning" };
+    var trendIcon = sent?.SentimentTrend switch { "Improving" => "bi-graph-up-arrow text-success", "Declining" => "bi-graph-down-arrow text-danger", _ => "bi-dash-lg text-secondary" };
 }
 @section Styles {
 <style>
     .badge-ai { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
-    .score-cell { min-width: 160px; }
+    .score-cell { min-width:160px; }
     .star-rating { display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:3px; }
     .star-rating input { display:none; }
     .star-rating label { font-size:1.5rem; color:#dee2e6; cursor:pointer; transition:color .15s; }
     .star-rating input:checked ~ label,
     .star-rating label:hover,
     .star-rating label:hover ~ label { color:#ffc107; }
-    .compliance-toggle .btn { min-width: 70px; }
-    .reasoning-box {
-        background: #f8f9fa;
-        border-left: 3px solid #6c757d;
-        padding: 8px 12px;
-        border-radius: 0 6px 6px 0;
-        font-size: .85rem;
-        color: #495057;
-    }
-    .ai-badge { background: #6f42c1; color: white; font-size: .7rem; padding: 2px 6px; border-radius: 4px; }
-    .section-card { border-left: 4px solid #0d6efd; }
-    .compliance-section { border-left-color: #dc3545 !important; }
-    #scorePreview { position: sticky; top: 80px; }
+    .compliance-toggle .btn { min-width:70px; }
+    .reasoning-box { background:#f8f9fa; border-left:3px solid #6c757d; padding:8px 12px; border-radius:0 6px 6px 0; font-size:.85rem; color:#495057; }
+    .ai-badge { background:#6f42c1; color:white; font-size:.7rem; padding:2px 6px; border-radius:4px; }
+    .section-card { border-left:4px solid #0d6efd; }
+    .compliance-section { border-left-color:#dc3545 !important; }
+    #scorePreview { position:sticky; top:80px; }
+    .sentiment-gauge { height:10px; border-radius:5px; }
+    .emotion-pill { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:.85rem; font-weight:500; margin:3px; border:1px solid rgba(0,0,0,.08); }
+    .emotion-pill.agent { background:#e8f4fd; color:#0d6efd; }
+    .emotion-pill.customer { background:#fef3e2; color:#e67e00; }
+    .timeline-item { border-left:3px solid #dee2e6; padding:0 0 16px 16px; position:relative; }
+    .timeline-item:last-child { border-left-color:transparent; }
+    .timeline-dot { width:12px; height:12px; border-radius:50%; position:absolute; left:-7px; top:3px; }
+    .rec-card { border-left:4px solid #dee2e6; }
+    .rec-card.priority-High { border-left-color:#dc3545; }
+    .rec-card.priority-Medium { border-left-color:#fd7e14; }
+    .rec-card.priority-Low { border-left-color:#6c757d; }
+    .nav-tabs .nav-link { color:#6c757d; font-weight:500; }
+    .nav-tabs .nav-link.active { color:#0d6efd; font-weight:600; }
 </style>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="fw-bold mb-1">
-            <i class="bi bi-robot me-2 text-primary"></i>Review AI Scores
+            <i class="bi bi-robot me-2 text-primary"></i>Analysis Results
             @if (Model.IsAiGenerated)
             {
                 <span class="badge badge-ai ms-2 fs-6"><i class="bi bi-stars me-1"></i>Azure OpenAI</span>
@@ -50,32 +56,32 @@
                 <span class="badge bg-secondary ms-2 fs-6">Simulated</span>
             }
         </h4>
-        <p class="text-muted mb-0">@Model.FormName · Agent: <strong>@(Model.AgentName ?? "Unknown")</strong></p>
+        <p class="text-muted mb-0">@Model.FormName &middot; Agent: <strong>@(string.IsNullOrEmpty(Model.AgentName) ? "Unknown" : Model.AgentName)</strong></p>
     </div>
-    <a href="/AutoAudit/Upload" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>New Analysis
-    </a>
+    <a href="/AutoAudit/Upload" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>New Analysis</a>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.AnalysisError))
 {
     <div class="alert alert-warning d-flex gap-2">
         <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
-        <div>
-            <strong>Analysis warning:</strong> @Model.AnalysisError<br/>
-            <small>Default scores have been applied — please review and adjust manually.</small>
-        </div>
+        <div><strong>Quality analysis warning:</strong> @Model.AnalysisError<br/><small>Default scores applied.</small></div>
     </div>
 }
-
+@if (sent?.AnalysisError != null)
+{
+    <div class="alert alert-warning d-flex gap-2">
+        <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+        <div><strong>Sentiment analysis warning:</strong> @sent.AnalysisError</div>
+    </div>
+}
 @if (!Model.IsAiGenerated)
 {
     <div class="alert alert-info d-flex gap-2">
         <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
         <div>
-            <strong>Using simulated scores</strong> — Azure OpenAI is not configured.
-            To enable real AI analysis, set <code>AzureOpenAI:Endpoint</code>, <code>AzureOpenAI:ApiKey</code>,
-            and <code>AzureOpenAI:DeploymentName</code> in the API's <code>appsettings.json</code>.
+            <strong>Using simulated results</strong> &mdash; Azure OpenAI is not configured.
+            Set <code>AzureOpenAI:Endpoint</code>, <code>AzureOpenAI:ApiKey</code>, and <code>AzureOpenAI:DeploymentName</code> in the API's <code>appsettings.json</code>.
         </div>
     </div>
 }
@@ -85,97 +91,280 @@
     <input type="hidden" id="reviewJsonInput" name="reviewJson" />
 
     <div class="row g-4">
+        <!-- LEFT: tabs -->
         <div class="col-lg-8">
-
-            <!-- Overall AI reasoning -->
-            @if (!string.IsNullOrEmpty(Model.OverallReasoning))
-            {
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body d-flex gap-3">
-                        <i class="bi bi-chat-quote-fill fs-4 text-primary mt-1"></i>
-                        <div>
-                            <div class="fw-semibold small text-muted mb-1">AI Overall Assessment</div>
-                            <p class="mb-0">@Model.OverallReasoning</p>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            <!-- Scored sections -->
-            @foreach (var grp in sections)
-            {
-                var isCompliance = grp.Key.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
-                <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
-                    <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
-                        <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
-                        <h6 class="fw-bold mb-0">@grp.Key</h6>
-                        @if (isCompliance)
+            <ul class="nav nav-tabs mb-3" id="reviewTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" id="quality-tab" data-bs-toggle="tab" data-bs-target="#quality" type="button">
+                        <i class="bi bi-clipboard2-check me-1"></i>Quality Scores
+                        <span class="badge @statusBadge ms-1">@pct.ToString("F0")%</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="sentiment-tab" data-bs-toggle="tab" data-bs-target="#sentiment" type="button">
+                        <i class="bi bi-emoji-smile me-1"></i>Sentiment &amp; Emotions
+                        @if (sent != null)
                         {
-                            <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
+                            var sBadge = sent.OverallSentiment == "Positive" ? "bg-success" : sent.OverallSentiment == "Negative" ? "bg-danger" : "bg-warning text-dark";
+                            <span class="badge @sBadge ms-1">@sent.OverallSentiment</span>
                         }
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-hover align-middle mb-0">
-                            <tbody>
-                                @foreach (var field in grp)
-                                {
-                                    var fieldIdx = Model.Fields.IndexOf(field);
-                                    <tr>
-                                        <td class="ps-3" style="width:35%">
-                                            <div class="fw-semibold small">@field.FieldLabel</div>
-                                        </td>
-                                        <td class="score-cell py-3">
-                                            @if (field.MaxRating == 1)
-                                            {
-                                                <!-- Pass/Fail toggle -->
-                                                <div class="compliance-toggle btn-group" role="group" data-field-idx="@fieldIdx">
-                                                    <button type="button" class="btn btn-sm @(field.FinalScore == 1 ? "btn-success" : "btn-outline-success") pass-btn"
-                                                            onclick="setScore(@fieldIdx, 1, this)">
-                                                        <i class="bi bi-check-lg"></i> PASS
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm @(field.FinalScore == 0 ? "btn-danger" : "btn-outline-danger") fail-btn"
-                                                            onclick="setScore(@fieldIdx, 0, this)">
-                                                        <i class="bi bi-x-lg"></i> FAIL
-                                                    </button>
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <!-- Star rating -->
-                                                <div class="star-rating" data-field-idx="@fieldIdx" data-max="@field.MaxRating">
-                                                    @for (int s = field.MaxRating; s >= 1; s--)
-                                                    {
-                                                        var isChecked = (int)field.FinalScore == s;
-                                                        <input type="radio" id="star_@(fieldIdx)_@s"
-                                                               name="star_@fieldIdx" value="@s"
-                                                               @(isChecked ? "checked" : "")
-                                                               onchange="starChanged(@fieldIdx, @s)" />
-                                                        <label for="star_@(fieldIdx)_@s" title="@s / @field.MaxRating">&#9733;</label>
-                                                    }
-                                                </div>
-                                                <div class="text-muted small mt-1" id="scoreLabel_@fieldIdx">
-                                                    @GetRatingLabel((int)field.FinalScore)
-                                                </div>
-                                            }
-                                        </td>
-                                        <td class="pe-3">
-                                            @if (!string.IsNullOrEmpty(field.Reasoning))
-                                            {
-                                                <div class="reasoning-box">
-                                                    <span class="ai-badge me-1">AI</span>
-                                                    @field.Reasoning
-                                                </div>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            }
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="recs-tab" data-bs-toggle="tab" data-bs-target="#recs" type="button">
+                        <i class="bi bi-lightbulb me-1"></i>Recommendations
+                        @if (sent?.Recommendations?.Count > 0)
+                        {
+                            <span class="badge bg-primary ms-1">@(sent?.Recommendations?.Count ?? 0)</span>
+                        }
+                    </button>
+                </li>
+            </ul>
 
-            <div class="d-flex gap-2 mb-4">
+            <div class="tab-content">
+
+                <!-- TAB 1: QUALITY SCORES -->
+                <div class="tab-pane fade show active" id="quality">
+                    @if (!string.IsNullOrEmpty(Model.OverallReasoning))
+                    {
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body d-flex gap-3">
+                                <i class="bi bi-chat-quote-fill fs-4 text-primary mt-1"></i>
+                                <div>
+                                    <div class="fw-semibold small text-muted mb-1">AI Quality Assessment</div>
+                                    <p class="mb-0">@Model.OverallReasoning</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @foreach (var grp in sections)
+                    {
+                        var isCompliance = grp.Key.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
+                        <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
+                            <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                                <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
+                                <h6 class="fw-bold mb-0">@grp.Key</h6>
+                                @if (isCompliance) { <span class="badge bg-danger ms-1">Auto-Fail Risk</span> }
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-hover align-middle mb-0">
+                                    <tbody>
+                                        @foreach (var field in grp)
+                                        {
+                                            var fieldIdx = Model.Fields.IndexOf(field);
+                                            <tr>
+                                                <td class="ps-3" style="width:35%"><div class="fw-semibold small">@field.FieldLabel</div></td>
+                                                <td class="score-cell py-3">
+                                                    @if (field.MaxRating == 1)
+                                                    {
+                                                        <div class="compliance-toggle btn-group">
+                                                            <button type="button" class="btn btn-sm @(field.FinalScore == 1 ? "btn-success" : "btn-outline-success") pass-btn"
+                                                                    onclick="setScore(@fieldIdx,1,this)"><i class="bi bi-check-lg"></i> PASS</button>
+                                                            <button type="button" class="btn btn-sm @(field.FinalScore == 0 ? "btn-danger" : "btn-outline-danger") fail-btn"
+                                                                    onclick="setScore(@fieldIdx,0,this)"><i class="bi bi-x-lg"></i> FAIL</button>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="star-rating">
+                                                            @for (int sv = field.MaxRating; sv >= 1; sv--)
+                                                            {
+                                                                <input type="radio" id="star_@(fieldIdx)_@sv" name="star_@fieldIdx" value="@sv"
+                                                                       @((int)field.FinalScore == sv ? "checked" : "")
+                                                                       onchange="starChanged(@fieldIdx,@sv)" />
+                                                                <label for="star_@(fieldIdx)_@sv" title="@sv/@field.MaxRating">&#9733;</label>
+                                                            }
+                                                        </div>
+                                                        <div class="text-muted small mt-1" id="scoreLabel_@fieldIdx">@GetRatingLabel((int)field.FinalScore)</div>
+                                                    }
+                                                </td>
+                                                <td class="pe-3">
+                                                    @if (!string.IsNullOrEmpty(field.Reasoning))
+                                                    {
+                                                        <div class="reasoning-box"><span class="ai-badge me-1">AI</span>@field.Reasoning</div>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- TAB 2: SENTIMENT & EMOTIONS -->
+                <div class="tab-pane fade" id="sentiment">
+                    @if (sent == null)
+                    {
+                        <div class="alert alert-secondary">Sentiment analysis data not available.</div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrEmpty(sent.OverallInsight))
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-body d-flex gap-3">
+                                    <i class="bi bi-chat-quote-fill fs-4 text-warning mt-1"></i>
+                                    <div>
+                                        <div class="fw-semibold small text-muted mb-1">AI Sentiment Insight</div>
+                                        <p class="mb-0">@sent.OverallInsight</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <!-- Sentiment gauges -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-4">
+                                <div class="card border-0 shadow-sm h-100 text-center">
+                                    <div class="card-body py-4">
+                                        <i class="bi @sentimentIcon fs-1 mb-2"></i>
+                                        <div class="fw-bold fs-5">@sent.OverallSentiment</div>
+                                        <div class="text-muted small mb-2">Overall</div>
+                                        <div class="progress sentiment-gauge mx-3"><div class="progress-bar @sentimentBg" style="width:@sent.OverallScore%"></div></div>
+                                        <div class="text-muted small mt-1">@sent.OverallScore.ToString("F0")/100</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card border-0 shadow-sm h-100 text-center">
+                                    <div class="card-body py-4">
+                                        <i class="bi bi-headset fs-1 mb-2 text-primary"></i>
+                                        <div class="fw-bold fs-5">@sent.AgentSentiment</div>
+                                        <div class="text-muted small mb-2">Agent</div>
+                                        <div class="progress sentiment-gauge mx-3"><div class="progress-bar bg-primary" style="width:@sent.AgentScore%"></div></div>
+                                        <div class="text-muted small mt-1">@sent.AgentScore.ToString("F0")/100</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card border-0 shadow-sm h-100 text-center">
+                                    <div class="card-body py-4">
+                                        <i class="bi bi-person fs-1 mb-2 text-warning"></i>
+                                        <div class="fw-bold fs-5">@sent.CustomerSentiment</div>
+                                        <div class="text-muted small mb-2">Customer</div>
+                                        <div class="progress sentiment-gauge mx-3"><div class="progress-bar bg-warning" style="width:@sent.CustomerScore%"></div></div>
+                                        <div class="text-muted small mt-1">@sent.CustomerScore.ToString("F0")/100</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Trend -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body d-flex align-items-center gap-3 py-3">
+                                <i class="bi @trendIcon fs-3"></i>
+                                <div>
+                                    <span class="fw-semibold">Sentiment Trend: </span>
+                                    @{
+                                        var trendBadge = sent.SentimentTrend switch { "Improving" => "bg-success", "Declining" => "bg-danger", _ => "bg-secondary" };
+                                    }
+                                    <span class="badge @trendBadge">@sent.SentimentTrend</span>
+                                    <div class="text-muted small">
+                                        @(sent.SentimentTrend == "Improving" ? "Customer's emotional state improved as the call progressed." :
+                                          sent.SentimentTrend == "Declining" ? "Customer's emotional state worsened during the call." :
+                                          "Customer's emotional state remained consistent throughout the call.")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Emotions -->
+                        @if (sent.DominantEmotions.Count > 0)
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-white border-0 pt-3">
+                                    <h6 class="fw-bold mb-0"><i class="bi bi-heart-pulse me-2 text-danger"></i>Detected Emotions</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <span class="fw-semibold small text-primary me-2"><i class="bi bi-headset"></i> Agent</span>
+                                        @foreach (var em in sent.DominantEmotions.Where(e => e.Speaker == "Agent"))
+                                        {
+                                            <span class="emotion-pill agent">
+                                                @em.Emotion
+                                                <span class="badge bg-primary bg-opacity-25 text-primary" style="font-size:.65rem">@em.Confidence.ToString("F0")%</span>
+                                            </span>
+                                        }
+                                    </div>
+                                    <div>
+                                        <span class="fw-semibold small text-warning me-2"><i class="bi bi-person"></i> Customer</span>
+                                        @foreach (var em in sent.DominantEmotions.Where(e => e.Speaker == "Customer"))
+                                        {
+                                            <span class="emotion-pill customer">
+                                                @em.Emotion
+                                                <span class="badge bg-warning bg-opacity-25 text-warning" style="font-size:.65rem">@em.Confidence.ToString("F0")%</span>
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <!-- Key Moments -->
+                        @if (sent.KeyMoments.Count > 0)
+                        {
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-white border-0 pt-3">
+                                    <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-info"></i>Key Call Moments</h6>
+                                </div>
+                                <div class="card-body ps-4">
+                                    @foreach (var moment in sent.KeyMoments)
+                                    {
+                                        var dotColor = moment.Sentiment == "Positive" ? "bg-success" : moment.Sentiment == "Negative" ? "bg-danger" : "bg-secondary";
+                                        var momentBadge = moment.Sentiment == "Positive" ? "text-bg-success" : moment.Sentiment == "Negative" ? "text-bg-danger" : "text-bg-secondary";
+                                        <div class="timeline-item">
+                                            <div class="timeline-dot @dotColor"></div>
+                                            <div class="d-flex align-items-start gap-2 mb-1">
+                                                <span class="fw-semibold small">@moment.Title</span>
+                                                <span class="badge @momentBadge" style="font-size:.65rem">@moment.Sentiment</span>
+                                            </div>
+                                            <p class="text-muted small mb-0">@moment.Excerpt</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- TAB 3: RECOMMENDATIONS -->
+                <div class="tab-pane fade" id="recs">
+                    @if (sent?.Recommendations == null || sent.Recommendations.Count == 0)
+                    {
+                        <div class="alert alert-secondary">No recommendations available.</div>
+                    }
+                    else
+                    {
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-body d-flex gap-3 py-3">
+                                <i class="bi bi-lightbulb-fill fs-4 text-warning mt-1"></i>
+                                <div>
+                                    <div class="fw-semibold mb-0">Coaching Recommendations</div>
+                                    <div class="text-muted small">AI-generated, evidence-based coaching actions for this agent.</div>
+                                </div>
+                            </div>
+                        </div>
+                        @foreach (var rec in sent.Recommendations)
+                        {
+                            var priBadge = rec.Priority == "High" ? "text-bg-danger" : rec.Priority == "Medium" ? "text-bg-warning" : "text-bg-secondary";
+                            <div class="card border-0 shadow-sm mb-3 rec-card priority-@rec.Priority">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="badge @priBadge">@rec.Priority Priority</span>
+                                        <span class="badge bg-light text-dark border"><i class="bi bi-tag me-1"></i>@rec.Category</span>
+                                    </div>
+                                    <p class="mb-2">@rec.Text</p>
+                                    @if (!string.IsNullOrEmpty(rec.Evidence))
+                                    {
+                                        <div class="reasoning-box"><span class="ai-badge me-1">Evidence</span>@rec.Evidence</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex gap-2 mt-3 mb-4">
                 <button type="submit" class="btn btn-success btn-lg px-4" onclick="prepareSubmit()">
                     <i class="bi bi-check-circle me-2"></i>Save Audit Record
                 </button>
@@ -184,47 +373,84 @@
             </div>
         </div>
 
-        <!-- Score preview panel -->
+        <!-- RIGHT: summary panels -->
         <div class="col-lg-4">
-            <div id="scorePreview" class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 pt-3">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-info"></i>Score Summary</h6>
-                </div>
-                <div class="card-body text-center">
-                    <div class="display-3 fw-bold @scoreClass" id="totalPct">@pct.ToString("F0")%</div>
-                    <div class="text-muted small mb-3" id="totalRaw">@Model.TotalScore.ToString("F0") / @Model.MaxPossibleScore.ToString("F0") points</div>
-                    <div class="progress mb-3" style="height:12px">
-                        <div class="progress-bar @(pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning" : "bg-danger")"
-                             id="progressBar" style="width:@pct%"></div>
+            <div id="scorePreview">
+                <!-- Quality score card -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-white border-0 pt-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-info"></i>Quality Score</h6>
                     </div>
-                    <span class="badge @statusBadge fs-6 px-3 py-2" id="scoreStatus">@statusText</span>
-                </div>
-                <!-- Call metadata -->
-                <div class="card-body border-top pt-2">
-                    <dl class="row small mb-0">
-                        <dt class="col-5 text-muted">Agent</dt>
-                        <dd class="col-7 fw-semibold">@(Model.AgentName ?? "—")</dd>
-                        <dt class="col-5 text-muted">Evaluated By</dt>
-                        <dd class="col-7">@Model.EvaluatedBy</dd>
-                        <dt class="col-5 text-muted">Call Ref</dt>
-                        <dd class="col-7">@(Model.CallReference ?? "—")</dd>
-                        <dt class="col-5 text-muted">Call Date</dt>
-                        <dd class="col-7">@(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("MMM d, yyyy") : "—")</dd>
-                    </dl>
-                </div>
-                <!-- Per-section breakdown -->
-                <div class="card-body border-top pt-2">
-                    <div class="fw-semibold small text-muted mb-2">Section Breakdown</div>
-                    @foreach (var grp in sections)
-                    {
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                            <span class="small">@grp.Key</span>
-                            <span class="small text-muted" id="sec_@(grp.Key.Replace(" ", "_"))">
-                                @grp.Sum(f => f.FinalScore).ToString("F0")/@grp.Sum(f => f.MaxRating)
-                            </span>
+                    <div class="card-body text-center">
+                        <div class="display-3 fw-bold @scoreClass" id="totalPct">@pct.ToString("F0")%</div>
+                        <div class="text-muted small mb-3" id="totalRaw">@Model.TotalScore.ToString("F0") / @Model.MaxPossibleScore.ToString("F0") pts</div>
+                        <div class="progress mb-3" style="height:10px">
+                            <div class="progress-bar @(pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning" : "bg-danger")" id="progressBar" style="width:@pct%"></div>
                         </div>
-                    }
+                        <span class="badge @statusBadge fs-6 px-3 py-2" id="scoreStatus">@statusText</span>
+                    </div>
+                    <div class="card-body border-top pt-2">
+                        <dl class="row small mb-0">
+                            <dt class="col-5 text-muted">Agent</dt>
+                            <dd class="col-7 fw-semibold">@(string.IsNullOrEmpty(Model.AgentName) ? "Unknown" : Model.AgentName)</dd>
+                            <dt class="col-5 text-muted">Evaluated By</dt>
+                            <dd class="col-7">@Model.EvaluatedBy</dd>
+                            <dt class="col-5 text-muted">Call Ref</dt>
+                            <dd class="col-7">@(Model.CallReference ?? "&#8212;")</dd>
+                            <dt class="col-5 text-muted">Call Date</dt>
+                            <dd class="col-7">@(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("MMM d, yyyy") : "&#8212;")</dd>
+                        </dl>
+                    </div>
+                    <div class="card-body border-top pt-2">
+                        <div class="fw-semibold small text-muted mb-2">Section Breakdown</div>
+                        @foreach (var grp in sections)
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom">
+                                <span class="small text-truncate me-2">@grp.Key</span>
+                                <span class="small text-muted text-nowrap" id="sec_@(grp.Key.Replace(" ","_"))">
+                                    @grp.Sum(f => f.FinalScore).ToString("F0")/@grp.Sum(f => f.MaxRating)
+                                </span>
+                            </div>
+                        }
+                    </div>
                 </div>
+
+                <!-- Sentiment snapshot card -->
+                @if (sent != null)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-emoji-smile me-2 text-warning"></i>Sentiment Snapshot</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="small fw-semibold">Overall</span>
+                                <span class="badge @sentimentBg">@sent.OverallSentiment @sent.OverallScore.ToString("F0")%</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="small text-muted"><i class="bi bi-headset me-1"></i>Agent</span>
+                                <span class="small">@sent.AgentSentiment &middot; @sent.AgentScore.ToString("F0")</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="small text-muted"><i class="bi bi-person me-1"></i>Customer</span>
+                                <span class="small">@sent.CustomerSentiment &middot; @sent.CustomerScore.ToString("F0")</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi @trendIcon"></i>
+                                <span class="small">Trend: <strong>@sent.SentimentTrend</strong></span>
+                            </div>
+                            @if (sent.Recommendations?.Count > 0)
+                            {
+                                <hr class="my-2" />
+                                <div class="small text-muted">
+                                    <i class="bi bi-lightbulb me-1 text-warning"></i>
+                                    <strong>@(sent.Recommendations?.Count ?? 0)</strong> coaching recommendation@((sent.Recommendations?.Count ?? 0) != 1 ? "s" : "") &mdash;
+                                    <a href="#" onclick="document.getElementById('recs-tab').click(); return false;">view</a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -232,22 +458,17 @@
 
 @section Scripts {
 <script>
-    // Current scores (mutable by user interactions)
     const fields = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Fields));
     const totalMax = @Model.MaxPossibleScore;
-
     const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
 
-    function getScore(idx) { return fields[idx].finalScore; }
-
-    function setScore(idx, val, clickedBtn) {
+    function setScore(idx, val, btn) {
         fields[idx].finalScore = val;
-        // Update Pass/Fail button styling
-        const group = clickedBtn.closest('.compliance-toggle');
-        group.querySelectorAll('.pass-btn').forEach(b => b.className = b.className.replace('btn-success','btn-outline-success'));
-        group.querySelectorAll('.fail-btn').forEach(b => b.className = b.className.replace('btn-danger','btn-outline-danger'));
-        if (val === 1) clickedBtn.className = clickedBtn.className.replace('btn-outline-success','btn-success');
-        else clickedBtn.className = clickedBtn.className.replace('btn-outline-danger','btn-danger');
+        const grp = btn.closest('.compliance-toggle');
+        grp.querySelectorAll('.pass-btn').forEach(b => b.className = b.className.replace('btn-success','btn-outline-success'));
+        grp.querySelectorAll('.fail-btn').forEach(b => b.className = b.className.replace('btn-danger','btn-outline-danger'));
+        if (val === 1) btn.className = btn.className.replace('btn-outline-success','btn-success');
+        else btn.className = btn.className.replace('btn-outline-danger','btn-danger');
         updatePreview();
     }
 
@@ -267,21 +488,15 @@
             sectionScores[key] = (sectionScores[key] || 0) + f.finalScore;
         });
         const pct = totalMax > 0 ? total / totalMax * 100 : 0;
-
         document.getElementById('totalPct').textContent = pct.toFixed(0) + '%';
-        document.getElementById('totalRaw').textContent = total.toFixed(0) + ' / ' + totalMax + ' points';
-
+        document.getElementById('totalRaw').textContent = total.toFixed(0) + ' / ' + totalMax + ' pts';
         const bar = document.getElementById('progressBar');
         bar.style.width = pct + '%';
         bar.className = 'progress-bar ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning' : 'bg-danger');
-
         const status = document.getElementById('scoreStatus');
         status.textContent = pct >= 80 ? 'PASS' : pct >= 60 ? 'NEEDS IMPROVEMENT' : 'FAIL';
         status.className = 'badge fs-6 px-3 py-2 ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning text-dark' : 'bg-danger');
-
         document.getElementById('totalPct').className = 'display-3 fw-bold ' + (pct >= 80 ? 'text-success' : pct >= 60 ? 'text-warning' : 'text-danger');
-
-        // Update section breakdown
         Object.entries(sectionScores).forEach(([key, score]) => {
             const el = document.getElementById('sec_' + key);
             if (el) {
@@ -292,7 +507,6 @@
     }
 
     function prepareSubmit() {
-        // Serialize current state of fields (with possibly adjusted finalScores) to JSON
         const reviewData = {
             formId: @Model.FormId,
             formName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.FormName)),
@@ -303,6 +517,7 @@
             callDate: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CallDate.HasValue ? Model.CallDate.Value.ToString("O") : null)),
             overallReasoning: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.OverallReasoning)),
             isAiGenerated: @(Model.IsAiGenerated ? "true" : "false"),
+            sentiment: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Sentiment)),
             fields: fields
         };
         document.getElementById('reviewJsonInput').value = JSON.stringify(reviewData);
@@ -311,13 +526,8 @@
 }
 
 @functions {
-    static string GetRatingLabel(int score) => score switch
-    {
-        1 => "Unacceptable",
-        2 => "Needs Improvement",
-        3 => "Meets Standard",
-        4 => "Exceeds Standard",
-        5 => "Outstanding",
-        _ => score == 0 ? "Not rated" : score.ToString()
+    static string GetRatingLabel(int score) => score switch {
+        1 => "Unacceptable", 2 => "Needs Improvement", 3 => "Meets Standard",
+        4 => "Exceeds Standard", 5 => "Outstanding", _ => score == 0 ? "Not rated" : score.ToString()
     };
 }
