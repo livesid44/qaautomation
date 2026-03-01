@@ -175,7 +175,14 @@
                     try {
                         using var doc = System.Text.Json.JsonDocument.Parse(projectsJson);
                         foreach (var el in doc.RootElement.EnumerateArray())
-                            allProjects.Add((el.GetProperty("id").GetInt32(), el.GetProperty("name").GetString() ?? ""));
+                        {
+                            // Support both camelCase ("id","name") and PascalCase ("Id","Name")
+                            int pId = el.TryGetProperty("id", out var idProp) ? idProp.GetInt32()
+                                    : el.TryGetProperty("Id", out var idPropPascal) ? idPropPascal.GetInt32() : 0;
+                            string pName = el.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? ""
+                                         : el.TryGetProperty("Name", out var namePropPascal) ? namePropPascal.GetString() ?? "" : "";
+                            if (pId > 0) allProjects.Add((pId, pName));
+                        }
                     } catch (System.Text.Json.JsonException) {
                         // claims could not be parsed — switcher will show empty list
                         allProjects = new();

@@ -37,7 +37,7 @@ public class AccountController : Controller
 
         // Sign in with auth cookie — project will be set below
         var projectsJson = System.Text.Json.JsonSerializer.Serialize(
-            projects.Select(p => new { p.Id, p.Name }));
+            projects.Select(p => new { id = p.Id, name = p.Name }));
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, model.Username),
@@ -136,7 +136,7 @@ public class AccountController : Controller
         if (!claims.Any(c => c.Type == "projects_list"))
         {
             var allProjects = await _api.GetProjects();
-            var json = System.Text.Json.JsonSerializer.Serialize(allProjects.Select(p => new { p.Id, p.Name }));
+            var json = System.Text.Json.JsonSerializer.Serialize(allProjects.Select(p => new { id = p.Id, name = p.Name }));
             claims.Add(new Claim("projects_list", json));
         }
 

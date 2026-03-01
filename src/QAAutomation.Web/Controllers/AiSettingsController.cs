@@ -21,8 +21,16 @@ public class AiSettingsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var settings = await _api.GetAiSettings() ?? new AiSettingsViewModel();
-        // Never display masked keys — show blank so admin knows a value is set
+        var settings = await _api.GetAiSettings();
+        if (settings == null)
+        {
+            TempData["Error"] = "Could not load AI settings from the API — please check the API connection.";
+            settings = new AiSettingsViewModel();
+        }
+        // Track whether keys are currently configured (before blanking them for display)
+        ViewData["LlmKeyIsSet"] = settings.LlmApiKey == "***";
+        ViewData["LangKeyIsSet"] = settings.LanguageApiKey == "***";
+        // Never display masked keys — show blank so admin knows they can enter a new value
         if (settings.LlmApiKey == "***") settings.LlmApiKey = "";
         if (settings.LanguageApiKey == "***") settings.LanguageApiKey = "";
         return View(settings);

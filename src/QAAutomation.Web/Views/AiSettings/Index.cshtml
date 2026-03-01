@@ -70,14 +70,23 @@
                         </div>
                         <div class="col-md-8">
                             <label class="form-label fw-semibold small">Endpoint URL</label>
-                            <input type="url" name="LlmEndpoint" class="form-control" value="@Model.LlmEndpoint"
+                            <input type="text" name="LlmEndpoint" class="form-control" value="@Model.LlmEndpoint"
                                    placeholder="https://your-resource.openai.azure.com/" />
                             <div class="form-text">Leave blank to use simulated mock responses.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small">API Key</label>
                             <input type="password" name="LlmApiKey" class="form-control" value="@Model.LlmApiKey"
-                                   placeholder="Enter new key, or leave blank to keep the existing key" autocomplete="new-password" />
+                                   placeholder="@(ViewData["LlmKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter API key")"
+                                   autocomplete="new-password" />
+                            @if (ViewData["LlmKeyIsSet"] as bool? == true)
+                            {
+                                <div class="form-text text-success"><i class="bi bi-check-circle-fill me-1"></i>API key is saved. Leave blank to keep the existing key.</div>
+                            }
+                            else
+                            {
+                                <div class="form-text text-muted">No API key configured yet.</div>
+                            }
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold small">Deployment / Model</label>
@@ -123,12 +132,18 @@
                             <div class="row g-2">
                                 <div class="col-6">
                                     <label class="form-label fw-semibold small">Language Endpoint</label>
-                                    <input type="url" name="LanguageEndpoint" class="form-control" value="@Model.LanguageEndpoint"
+                                    <input type="text" name="LanguageEndpoint" class="form-control" value="@Model.LanguageEndpoint"
                                            placeholder="https://your-lang.cognitiveservices.azure.com/" />
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label fw-semibold small">Language API Key</label>
-                                    <input type="password" name="LanguageApiKey" class="form-control" value="@Model.LanguageApiKey" placeholder="Enter new key, or leave blank to keep existing" autocomplete="new-password" />
+                                    <input type="password" name="LanguageApiKey" class="form-control" value="@Model.LanguageApiKey"
+                                           placeholder="@(ViewData["LangKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter API key")"
+                                           autocomplete="new-password" />
+                                    @if (ViewData["LangKeyIsSet"] as bool? == true)
+                                    {
+                                        <div class="form-text text-success"><i class="bi bi-check-circle-fill me-1"></i>Language key is saved.</div>
+                                    }
                                 </div>
                             </div>
                         </div>
