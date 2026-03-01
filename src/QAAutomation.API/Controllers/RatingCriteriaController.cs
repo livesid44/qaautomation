@@ -15,11 +15,11 @@ public class RatingCriteriaController : ControllerBase
     public RatingCriteriaController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RatingCriteriaDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<RatingCriteriaDto>>> GetAll([FromQuery] int? projectId = null)
     {
-        var items = await _db.RatingCriteria
-            .Include(c => c.Levels)
-            .ToListAsync();
+        var query = _db.RatingCriteria.Include(c => c.Levels).AsQueryable();
+        if (projectId.HasValue) query = query.Where(rc => rc.ProjectId == projectId.Value);
+        var items = await query.ToListAsync();
         return Ok(items.Select(MapToDto));
     }
 

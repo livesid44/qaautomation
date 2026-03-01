@@ -40,6 +40,7 @@ public class KnowledgeSource
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastSyncedAt { get; set; }
-
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
     public ICollection<KnowledgeDocument> Documents { get; set; } = new List<KnowledgeDocument>();
 }

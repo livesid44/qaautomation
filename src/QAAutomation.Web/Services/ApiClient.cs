@@ -16,30 +16,36 @@ public class ApiClient
         _logger = logger;
     }
 
-    // Auth
-    public async Task<(bool success, string role, string message)> Login(string username, string password)
+    // Auth - returns projects in addition to role/success
+    public async Task<(bool success, string role, string message, List<ProjectViewModel> projects)> Login(string username, string password)
     {
         try
         {
             var resp = await _http.PostAsJsonAsync("api/auth/login", new { username, password });
-            if (!resp.IsSuccessStatusCode) return (false, "", "Server error");
+            if (!resp.IsSuccessStatusCode) return (false, "", "Server error", new());
             var result = await resp.Content.ReadFromJsonAsync<JsonElement>();
             bool success = result.GetProperty("success").GetBoolean();
             string role = success ? result.GetProperty("role").GetString() ?? "" : "";
             string message = result.GetProperty("message").GetString() ?? "";
-            return (success, role, message);
+            var projects = new List<ProjectViewModel>();
+            if (success && result.TryGetProperty("projects", out var projProp))
+            {
+                projects = JsonSerializer.Deserialize<List<ProjectViewModel>>(projProp.GetRawText(), _jsonOptions) ?? new();
+            }
+            return (success, role, message, projects);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Login failed");
-            return (false, "", "Connection error");
+            return (false, "", "Connection error", new());
         }
     }
 
-    // Parameters
-    public async Task<List<ParameterViewModel>> GetParameters()
+    // Parameters — pass projectId when known
+    public async Task<List<ParameterViewModel>> GetParameters(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<ParameterViewModel>>("api/parameters", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/parameters?projectId={projectId}" : "api/parameters";
+        try { return await _http.GetFromJsonAsync<List<ParameterViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetParameters failed"); return new(); }
     }
 
@@ -68,9 +74,10 @@ public class ApiClient
     }
 
     // Parameter Clubs
-    public async Task<List<ParameterClubViewModel>> GetParameterClubs()
+    public async Task<List<ParameterClubViewModel>> GetParameterClubs(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<ParameterClubViewModel>>("api/parameterclubs", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/parameterclubs?projectId={projectId}" : "api/parameterclubs";
+        try { return await _http.GetFromJsonAsync<List<ParameterClubViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetParameterClubs failed"); return new(); }
     }
 
@@ -110,9 +117,10 @@ public class ApiClient
     }
 
     // Rating Criteria
-    public async Task<List<RatingCriteriaViewModel>> GetRatingCriteria()
+    public async Task<List<RatingCriteriaViewModel>> GetRatingCriteria(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<RatingCriteriaViewModel>>("api/ratingcriteria", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/ratingcriteria?projectId={projectId}" : "api/ratingcriteria";
+        try { return await _http.GetFromJsonAsync<List<RatingCriteriaViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetRatingCriteria failed"); return new(); }
     }
 
@@ -177,9 +185,10 @@ public class ApiClient
     }
 
     // Evaluation Forms
-    public async Task<List<EvaluationFormViewModel>> GetEvaluationForms()
+    public async Task<List<EvaluationFormViewModel>> GetEvaluationForms(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<EvaluationFormViewModel>>("api/evaluationforms", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/evaluationforms?projectId={projectId}" : "api/evaluationforms";
+        try { return await _http.GetFromJsonAsync<List<EvaluationFormViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetEvaluationForms failed"); return new(); }
     }
 
@@ -348,5 +357,96 @@ public class ApiClient
     {
         try { var resp = await _http.DeleteAsync($"api/knowledgebase/documents/{id}"); return resp.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "DeleteKnowledgeDocument failed"); return false; }
+    }
+
+    // ── Projects ──────────────────────────────────────────────────────────────
+    public async Task<List<ProjectViewModel>> GetProjects()
+    {
+        try { return await _http.GetFromJsonAsync<List<ProjectViewModel>>("api/projects", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetProjects failed"); return new(); }
+    }
+
+    public async Task<ProjectViewModel?> GetProject(int id)
+    {
+        try { return await _http.GetFromJsonAsync<ProjectViewModel>($"api/projects/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetProject failed"); return null; }
+    }
+
+    public async Task<ProjectViewModel?> CreateProject(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/projects", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<ProjectViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateProject failed"); return null; }
+    }
+
+    public async Task<bool> UpdateProject(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/projects/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateProject failed"); return false; }
+    }
+
+    public async Task<bool> DeleteProject(int id)
+    {
+        try { var r = await _http.DeleteAsync($"api/projects/{id}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteProject failed"); return false; }
+    }
+
+    public async Task<List<ProjectUserViewModel>> GetProjectUsers(int projectId)
+    {
+        try { return await _http.GetFromJsonAsync<List<ProjectUserViewModel>>($"api/projects/{projectId}/users", _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetProjectUsers failed"); return new(); }
+    }
+
+    public async Task<bool> GrantProjectAccess(int projectId, int userId)
+    {
+        try { var r = await _http.PostAsync($"api/projects/{projectId}/users/{userId}", null); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "GrantProjectAccess failed"); return false; }
+    }
+
+    public async Task<bool> RevokeProjectAccess(int projectId, int userId)
+    {
+        try { var r = await _http.DeleteAsync($"api/projects/{projectId}/users/{userId}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "RevokeProjectAccess failed"); return false; }
+    }
+
+    // ── LOBs ──────────────────────────────────────────────────────────────────
+    public async Task<List<LobViewModel>> GetLobs(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/lobs?projectId={projectId}" : "api/lobs";
+        try { return await _http.GetFromJsonAsync<List<LobViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetLobs failed"); return new(); }
+    }
+
+    public async Task<LobViewModel?> GetLob(int id)
+    {
+        try { return await _http.GetFromJsonAsync<LobViewModel>($"api/lobs/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetLob failed"); return null; }
+    }
+
+    public async Task<LobViewModel?> CreateLob(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/lobs", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<LobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateLob failed"); return null; }
+    }
+
+    public async Task<bool> UpdateLob(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/lobs/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateLob failed"); return false; }
+    }
+
+    public async Task<bool> DeleteLob(int id)
+    {
+        try { var r = await _http.DeleteAsync($"api/lobs/{id}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteLob failed"); return false; }
     }
 }

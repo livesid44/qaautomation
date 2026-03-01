@@ -15,9 +15,11 @@ public class ParametersController : ControllerBase
     public ParametersController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ParameterDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<ParameterDto>>> GetAll([FromQuery] int? projectId = null)
     {
-        var items = await _db.Parameters.ToListAsync();
+        var query = _db.Parameters.AsQueryable();
+        if (projectId.HasValue) query = query.Where(p => p.ProjectId == projectId.Value);
+        var items = await query.ToListAsync();
         return Ok(items.Select(MapToDto));
     }
 
@@ -39,6 +41,7 @@ public class ParametersController : ControllerBase
             Category = dto.Category,
             DefaultWeight = dto.DefaultWeight,
             EvaluationType = dto.EvaluationType,
+            ProjectId = dto.ProjectId,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -81,6 +84,7 @@ public class ParametersController : ControllerBase
         DefaultWeight = p.DefaultWeight,
         IsActive = p.IsActive,
         CreatedAt = p.CreatedAt,
-        EvaluationType = p.EvaluationType
+        EvaluationType = p.EvaluationType,
+        ProjectId = p.ProjectId
     };
 }

@@ -17,5 +17,9 @@ public class EvaluationForm
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>LOB this form belongs to. Null only for legacy data during migration.</summary>
+    public int? LobId { get; set; }
+    public Lob? Lob { get; set; }
+
     public ICollection<FormSection> Sections { get; set; } = new List<FormSection>();
 }

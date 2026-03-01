@@ -18,18 +18,19 @@ public class EvaluationFormsController : ControllerBase
         _db = db;
     }
 
-    /// <summary>Gets all active evaluation forms.</summary>
-    /// <returns>A list of active evaluation forms.</returns>
+    /// <summary>Gets all active evaluation forms. Filter by ?projectId=N or ?lobId=N.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EvaluationFormDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<EvaluationFormDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<EvaluationFormDto>>> GetAll([FromQuery] int? projectId = null, [FromQuery] int? lobId = null)
     {
-        var forms = await _db.EvaluationForms
+        var query = _db.EvaluationForms
             .Where(f => f.IsActive)
-            .Include(f => f.Sections)
-                .ThenInclude(s => s.Fields)
-            .ToListAsync();
-
+            .Include(f => f.Sections).ThenInclude(s => s.Fields)
+            .Include(f => f.Lob).ThenInclude(l => l.Project)
+            .AsQueryable();
+        if (lobId.HasValue) query = query.Where(f => f.LobId == lobId.Value);
+        else if (projectId.HasValue) query = query.Where(f => f.Lob != null && f.Lob.ProjectId == projectId.Value);
+        var forms = await query.ToListAsync();
         return Ok(forms.Select(MapToDto));
     }
 
@@ -64,6 +65,7 @@ public class EvaluationFormsController : ControllerBase
         {
             Name = dto.Name,
             Description = dto.Description,
+            LobId = dto.LobId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             IsActive = true,
@@ -90,22 +92,18 @@ public class EvaluationFormsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = form.Id }, MapToDto(form));
     }
 
-    /// <summary>Updates an existing evaluation form.</summary>
-    /// <param name="id">The form id.</param>
-    /// <param name="dto">The updated form data.</param>
-    /// <returns>No content on success.</returns>
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateEvaluationFormDto dto)
     {
         var form = await _db.EvaluationForms.FindAsync(id);
-        if (form is null)
-            return NotFound();
+        if (form is null) return NotFound();
 
         form.Name = dto.Name;
         form.Description = dto.Description;
         form.IsActive = dto.IsActive;
+        form.LobId = dto.LobId;
         form.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -139,6 +137,10 @@ public class EvaluationFormsController : ControllerBase
         CreatedAt = form.CreatedAt,
         UpdatedAt = form.UpdatedAt,
         IsActive = form.IsActive,
+        LobId = form.LobId,
+        LobName = form.Lob?.Name,
+        ProjectId = form.Lob?.ProjectId,
+        ProjectName = form.Lob?.Project?.Name,
         Sections = form.Sections.OrderBy(s => s.Order).Select(s => new FormSectionDto
         {
             Id = s.Id,

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using QAAutomation.API.Data;
+using QAAutomation.API.Models;
 using QAAutomation.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,7 +51,12 @@ using (var scope = app.Services.CreateScope())
         "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",
         "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",
         "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL",
-        "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'"
+        "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'",
+        "ALTER TABLE Parameters ADD COLUMN ProjectId INTEGER NULL",
+        "ALTER TABLE ParameterClubs ADD COLUMN ProjectId INTEGER NULL",
+        "ALTER TABLE RatingCriteria ADD COLUMN ProjectId INTEGER NULL",
+        "ALTER TABLE KnowledgeSources ADD COLUMN ProjectId INTEGER NULL",
+        "ALTER TABLE EvaluationForms ADD COLUMN LobId INTEGER NULL",
     })
     {
         try { db.Database.ExecuteSqlRaw(sql); }
@@ -64,6 +70,9 @@ using (var scope = app.Services.CreateScope())
         }
     }
     await db.SeedAsync();
+
+    // For existing databases: ensure all data is associated to default project/LOB
+    await MigrateExistingDataToDefaultProjectAsync(db, logger);
 }
 
 app.UseSwagger();
@@ -74,6 +83,56 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// ── Migration helper: bind existing un-scoped data to the default project ────
+static async Task MigrateExistingDataToDefaultProjectAsync(AppDbContext db, ILogger logger)
+{
+    try
+    {
+        // Find or create default project
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Name == "Capital One");
+        if (project == null) return; // seed hasn't run yet or already migrated
+
+        var lob = await db.Lobs.FirstOrDefaultAsync(l => l.ProjectId == project.Id && l.Name == "Customer Support Call");
+        if (lob == null) return;
+
+        bool changed = false;
+
+        // Bind orphaned parameters
+        var orphanParams = await db.Parameters.Where(p => p.ProjectId == null).ToListAsync();
+        foreach (var p in orphanParams) { p.ProjectId = project.Id; changed = true; }
+
+        // Bind orphaned parameter clubs
+        var orphanClubs = await db.ParameterClubs.Where(c => c.ProjectId == null).ToListAsync();
+        foreach (var c in orphanClubs) { c.ProjectId = project.Id; changed = true; }
+
+        // Bind orphaned rating criteria
+        var orphanCriteria = await db.RatingCriteria.Where(rc => rc.ProjectId == null).ToListAsync();
+        foreach (var rc in orphanCriteria) { rc.ProjectId = project.Id; changed = true; }
+
+        // Bind orphaned evaluation forms to the default LOB
+        var orphanForms = await db.EvaluationForms.Where(f => f.LobId == null).ToListAsync();
+        foreach (var f in orphanForms) { f.LobId = lob.Id; changed = true; }
+
+        // Bind orphaned knowledge sources
+        var orphanKb = await db.KnowledgeSources.Where(s => s.ProjectId == null).ToListAsync();
+        foreach (var s in orphanKb) { s.ProjectId = project.Id; changed = true; }
+
+        // Ensure admin user has access to this project
+        var admin = await db.AppUsers.FirstOrDefaultAsync(u => u.Username == "admin");
+        if (admin != null && !await db.UserProjectAccesses.AnyAsync(a => a.UserId == admin.Id && a.ProjectId == project.Id))
+        {
+            db.UserProjectAccesses.Add(new UserProjectAccess { UserId = admin.Id, ProjectId = project.Id, GrantedAt = DateTime.UtcNow });
+            changed = true;
+        }
+
+        if (changed) await db.SaveChangesAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Existing data migration to default project failed (non-fatal)");
+    }
+}
 
 // Make Program accessible to test project
 public partial class Program { }

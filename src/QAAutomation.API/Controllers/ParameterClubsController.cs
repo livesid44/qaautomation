@@ -15,14 +15,14 @@ public class ParameterClubsController : ControllerBase
     public ParameterClubsController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ParameterClubDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<ParameterClubDto>>> GetAll([FromQuery] int? projectId = null)
     {
-        var clubs = await _db.ParameterClubs
-            .Include(c => c.Items)
-                .ThenInclude(i => i.Parameter)
-            .Include(c => c.Items)
-                .ThenInclude(i => i.RatingCriteria)
-            .ToListAsync();
+        var query = _db.ParameterClubs
+            .Include(c => c.Items).ThenInclude(i => i.Parameter)
+            .Include(c => c.Items).ThenInclude(i => i.RatingCriteria)
+            .AsQueryable();
+        if (projectId.HasValue) query = query.Where(c => c.ProjectId == projectId.Value);
+        var clubs = await query.ToListAsync();
         return Ok(clubs.Select(MapToDto));
     }
 

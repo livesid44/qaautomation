@@ -135,6 +135,14 @@
                    href="/KnowledgeBase">
                     <i class="bi bi-database"></i> Knowledge Base
                 </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")"
+                   href="/Projects">
+                    <i class="bi bi-building"></i> Projects
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lobs" ? "active" : "")"
+                   href="/Lobs">
+                    <i class="bi bi-layers"></i> Lines of Business
+                </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Users" ? "active" : "")"
                    href="/Users">
                     <i class="bi bi-people"></i> Users
@@ -148,6 +156,59 @@
                 @ViewData["Title"]
             </span>
             <div class="d-flex align-items-center gap-3">
+                @{
+                    var projectId = int.TryParse(User.FindFirst("project_id")?.Value, out var pid) ? pid : 0;
+                    var projectName = User.FindFirst("project_name")?.Value ?? "";
+                    var projectCount = int.TryParse(User.FindFirst("project_count")?.Value, out var pc) ? pc : 1;
+                }
+                @if (projectId > 0)
+                {
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3"
+                          title="Current project">
+                        <i class="bi bi-building me-1"></i>@projectName
+                    </span>
+                }
+                @if (projectCount > 1 || User.IsInRole("Admin"))
+                {
+                    var projectsJson = User.FindFirst("projects_list")?.Value ?? "[]";
+                    List<(int Id, string Name)> allProjects = new();
+                    try {
+                        using var doc = System.Text.Json.JsonDocument.Parse(projectsJson);
+                        foreach (var el in doc.RootElement.EnumerateArray())
+                            allProjects.Add((el.GetProperty("id").GetInt32(), el.GetProperty("name").GetString() ?? ""));
+                    } catch (System.Text.Json.JsonException) {
+                        // claims could not be parsed — switcher will show empty list
+                        allProjects = new();
+                    }
+                    <!-- Project switcher dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                                title="Switch project">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px">
+                            <li><h6 class="dropdown-header">Switch Project</h6></li>
+                            @if (!allProjects.Any())
+                            {
+                                <li><span class="dropdown-item-text text-muted small">No projects available</span></li>
+                            }
+                            @foreach (var (pId, pName) in allProjects)
+                            {
+                                <li>
+                                    <form method="post" action="/Account/SwitchProject">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="projectId" value="@pId" />
+                                        <input type="hidden" name="projectName" value="@pName" />
+                                        <button type="submit"
+                                                class="dropdown-item @(pId == projectId ? "active fw-semibold" : "")">
+                                            <i class="bi bi-building me-2"></i>@pName
+                                        </button>
+                                    </form>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
                 <span class="text-muted small">
                     <i class="bi bi-person-circle me-1"></i>@User.Identity?.Name
                     <span class="badge bg-secondary ms-1">@(User.IsInRole("Admin") ? "Admin" : "User")</span>

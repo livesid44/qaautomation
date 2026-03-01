@@ -6,5 +6,7 @@ public class ParameterClub {
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
     public ICollection<ParameterClubItem> Items { get; set; } = new List<ParameterClubItem>();
 }

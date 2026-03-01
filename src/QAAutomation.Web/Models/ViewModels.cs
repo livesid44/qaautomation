@@ -17,6 +17,9 @@ public class DashboardViewModel
     public int AuditCount { get; set; }
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    public int CurrentProjectId { get; set; }
+    public string CurrentProjectName { get; set; } = string.Empty;
+    public string CurrentLobName { get; set; } = string.Empty;
 }
 
 public class UserViewModel
@@ -386,4 +389,45 @@ public class KnowledgeDocumentUploadViewModel
     [Required] public string Title { get; set; } = string.Empty;
     public string? Tags { get; set; }
     public string? TextContent { get; set; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Multi-tenancy: Project & LOB view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class ProjectViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int LobCount { get; set; }
+}
+
+public class LobViewModel
+{
+    public int Id { get; set; }
+    public int ProjectId { get; set; }
+    public string ProjectName { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int FormCount { get; set; }
+}
+
+public class SelectProjectViewModel
+{
+    public List<ProjectViewModel> Projects { get; set; } = new();
+    public string Username { get; set; } = string.Empty;
+}
+
+public class ProjectUserViewModel
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public DateTime GrantedAt { get; set; }
 }

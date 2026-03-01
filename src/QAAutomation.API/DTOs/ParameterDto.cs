@@ -10,6 +10,7 @@ public class ParameterDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public string EvaluationType { get; set; } = "LLM";
+    public int? ProjectId { get; set; }
 }
 
 public class CreateParameterDto
@@ -19,6 +20,7 @@ public class CreateParameterDto
     public string? Category { get; set; }
     public double DefaultWeight { get; set; } = 1.0;
     public string EvaluationType { get; set; } = "LLM";
+    public int? ProjectId { get; set; }
 }
 
 public class UpdateParameterDto

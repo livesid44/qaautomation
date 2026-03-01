@@ -1,12 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
 
 namespace QAAutomation.Web.Controllers;
 
-[Authorize]
-public class DashboardController : Controller
+public class DashboardController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -14,10 +12,12 @@ public class DashboardController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var parameters = await _api.GetParameters();
-        var clubs = await _api.GetParameterClubs();
-        var criteria = await _api.GetRatingCriteria();
-        var forms = await _api.GetEvaluationForms();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+
+        var parameters = await _api.GetParameters(pid);
+        var clubs = await _api.GetParameterClubs(pid);
+        var criteria = await _api.GetRatingCriteria(pid);
+        var forms = await _api.GetEvaluationForms(pid);
         var audits = await _api.GetAudits();
 
         var vm = new DashboardViewModel
@@ -28,7 +28,9 @@ public class DashboardController : Controller
             EvaluationFormCount = forms.Count,
             AuditCount = audits.Count,
             Username = User.Identity?.Name ?? "",
-            Role = User.IsInRole("Admin") ? "Admin" : "User"
+            Role = User.IsInRole("Admin") ? "Admin" : "User",
+            CurrentProjectId = CurrentProjectId,
+            CurrentProjectName = CurrentProjectName,
         };
         return View(vm);
     }

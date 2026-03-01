@@ -1,0 +1,25 @@
+@model ProjectViewModel
+@{
+    ViewData["Title"] = "New Project";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>New Project</h5>
+    <a href="/Projects" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+<div class="card border-0 shadow-sm" style="max-width:520px">
+    <div class="card-body">
+        <form method="post" action="/Projects/Create">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">Project Name *</label>
+                <input name="name" class="form-control" required maxlength="200" placeholder="e.g. Capital One" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">Description</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Optional description"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Create Project</button>
+            <a href="/Projects" class="btn btn-link text-muted ms-2">Cancel</a>
+        </form>
+    </div>
+</div>

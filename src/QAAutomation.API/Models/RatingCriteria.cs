@@ -8,5 +8,7 @@ public class RatingCriteria {
     public int MaxScore { get; set; } = 5;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
     public ICollection<RatingLevel> Levels { get; set; } = new List<RatingLevel>();
 }

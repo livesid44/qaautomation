@@ -8,6 +8,9 @@ public class Parameter {
     public double DefaultWeight { get; set; } = 1.0;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
-    /// <summary>"LLM" (soft-skill, scored directly by the LLM) or "KnowledgeBased" (process param scored with RAG context).</summary>
+    /// <summary>"LLM" (soft-skill) or "KnowledgeBased" (process param scored with RAG context).</summary>
     public string EvaluationType { get; set; } = "LLM";
+    /// <summary>Project this parameter belongs to. Null = shared/global.</summary>
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
 }

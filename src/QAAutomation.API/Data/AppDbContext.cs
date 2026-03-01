@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     public DbSet<AiConfig> AiConfigs => Set<AiConfig>();
     public DbSet<KnowledgeSource> KnowledgeSources => Set<KnowledgeSource>();
     public DbSet<KnowledgeDocument> KnowledgeDocuments => Set<KnowledgeDocument>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Lob> Lobs => Set<Lob>();
+    public DbSet<UserProjectAccess> UserProjectAccesses => Set<UserProjectAccess>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -158,6 +161,40 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(500);
         });
+
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.HasMany(e => e.Lobs)
+                  .WithOne(l => l.Project)
+                  .HasForeignKey(l => l.ProjectId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.UserAccess)
+                  .WithOne(a => a.Project)
+                  .HasForeignKey(a => a.ProjectId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Lob>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.HasMany(e => e.EvaluationForms)
+                  .WithOne(f => f.Lob)
+                  .HasForeignKey(f => f.LobId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserProjectAccess>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.ProjectId }).IsUnique();
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     public static string HashPassword(string password)
@@ -184,6 +221,36 @@ public class AppDbContext : DbContext
 
         if (!await Parameters.AnyAsync())
         {
+            // ── Default Project & LOB ─────────────────────────────────────────
+            var project = new Project
+            {
+                Name = "Capital One",
+                Description = "Capital One Financial Corporation",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            Projects.Add(project);
+            await SaveChangesAsync();
+
+            var lob = new Lob
+            {
+                ProjectId = project.Id,
+                Name = "Customer Support Call",
+                Description = "Customer support call centre quality evaluation",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            Lobs.Add(lob);
+            await SaveChangesAsync();
+
+            // Grant admin user access to default project
+            var admin = await AppUsers.FirstOrDefaultAsync(u => u.Username == "admin");
+            if (admin != null)
+            {
+                UserProjectAccesses.Add(new UserProjectAccess { UserId = admin.Id, ProjectId = project.Id, GrantedAt = DateTime.UtcNow });
+                await SaveChangesAsync();
+            }
+
             // Rating Criteria
             var qaScore = new RatingCriteria
             {
@@ -193,6 +260,7 @@ public class AppDbContext : DbContext
                 MaxScore = 5,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
+                ProjectId = project.Id,
                 Levels = new List<RatingLevel>
                 {
                     new() { Score = 1, Label = "Unacceptable", Description = "Critical failure affecting customer or compliance", Color = "#dc3545" },
@@ -210,6 +278,7 @@ public class AppDbContext : DbContext
                 MaxScore = 1,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
+                ProjectId = project.Id,
                 Levels = new List<RatingLevel>
                 {
                     new() { Score = 0, Label = "FAIL", Description = "Non-compliant — requires immediate coaching", Color = "#dc3545" },
@@ -248,7 +317,7 @@ public class AppDbContext : DbContext
 
             foreach (var (name, desc, cat, weight) in paramDefs)
             {
-                Parameters.Add(new Parameter { Name = name, Description = desc, Category = cat, DefaultWeight = weight, IsActive = true, CreatedAt = DateTime.UtcNow });
+                Parameters.Add(new Parameter { Name = name, Description = desc, Category = cat, DefaultWeight = weight, IsActive = true, CreatedAt = DateTime.UtcNow, ProjectId = project.Id });
             }
             await SaveChangesAsync();
 
@@ -303,6 +372,7 @@ public class AppDbContext : DbContext
                     Description = clubDesc,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
+                    ProjectId = project.Id,
                     Items = items.Select((item, idx) => new ParameterClubItem
                     {
                         ParameterId = Pid(item.Item1),
@@ -314,12 +384,13 @@ public class AppDbContext : DbContext
             }
             await SaveChangesAsync();
 
-            // EvaluationForm (legacy)
+            // EvaluationForm (linked to default LOB)
             var form = new EvaluationForm
             {
                 Name = "Capital One — Credit Card Customer Support QA Form",
                 Description = "Quality evaluation form for Capital One credit card customer support interactions. Covers call handling, issue resolution, communication, compliance, and closing.",
                 IsActive = true,
+                LobId = lob.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Sections = new List<FormSection>

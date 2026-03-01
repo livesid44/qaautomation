@@ -14,4 +14,6 @@ public class LoginResponseDto
     public string Username { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    /// <summary>Projects the user has access to. Admins always get all projects.</summary>
+    public List<ProjectDto> Projects { get; set; } = new();
 }
