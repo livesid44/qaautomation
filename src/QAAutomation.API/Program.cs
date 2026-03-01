@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using QAAutomation.API.Data;
 using QAAutomation.API.Models;
 using QAAutomation.API.Services;
+using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,29 +46,76 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    foreach (var sql in new[] {
-        "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",
-        "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",
-        "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL",
-        "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'",
-        "ALTER TABLE Parameters ADD COLUMN ProjectId INTEGER NULL",
-        "ALTER TABLE ParameterClubs ADD COLUMN ProjectId INTEGER NULL",
-        "ALTER TABLE RatingCriteria ADD COLUMN ProjectId INTEGER NULL",
-        "ALTER TABLE KnowledgeSources ADD COLUMN ProjectId INTEGER NULL",
-        "ALTER TABLE EvaluationForms ADD COLUMN LobId INTEGER NULL",
+
+    // Robust schema creation: EnsureCreated() bails out when any tables already exist,
+    // leaving partial/legacy databases with missing tables. Instead we generate the full
+    // schema DDL and apply each statement with IF NOT EXISTS so existing tables/indexes
+    // are preserved and any missing ones are created.
+    var createScript = db.Database.GenerateCreateScript();
+    foreach (var rawStmt in createScript.Split(";\n", StringSplitOptions.RemoveEmptyEntries))
+    {
+        var stmt = rawStmt.Trim();
+        if (string.IsNullOrWhiteSpace(stmt)) continue;
+        if (stmt.StartsWith("CREATE TABLE ", StringComparison.OrdinalIgnoreCase))
+            stmt = "CREATE TABLE IF NOT EXISTS " + stmt["CREATE TABLE ".Length..];
+        else if (stmt.StartsWith("CREATE UNIQUE INDEX ", StringComparison.OrdinalIgnoreCase))
+            stmt = "CREATE UNIQUE INDEX IF NOT EXISTS " + stmt["CREATE UNIQUE INDEX ".Length..];
+        else if (stmt.StartsWith("CREATE INDEX ", StringComparison.OrdinalIgnoreCase))
+            stmt = "CREATE INDEX IF NOT EXISTS " + stmt["CREATE INDEX ".Length..];
+        const int MaxLoggedStatementLength = 80;
+        try { db.Database.ExecuteSqlRaw(stmt); }
+        catch (Exception ex) { logger.LogDebug(ex, "Schema init skipped for: {Stmt}", stmt[..Math.Min(MaxLoggedStatementLength, stmt.Length)]); }
+    }
+
+    // Column-level migrations for tables that existed before new columns were added.
+    // We check existence first so EF Core never logs a "failed DbCommand" for expected skips.
+    // table/column names are compile-time constants — validated to be alphanumeric+underscore
+    // to prevent any possibility of SQL injection even if the list were ever changed.
+    static bool ColumnExists(AppDbContext ctx, string table, string column)
+    {
+        // Allowlist: only alphanumeric and underscore (all our table/column names qualify)
+        if (!System.Text.RegularExpressions.Regex.IsMatch(table, @"^\w+$") ||
+            !System.Text.RegularExpressions.Regex.IsMatch(column, @"^\w+$"))
+            return false; // refuse to run if name contains unexpected characters
+
+        var conn = ctx.Database.GetDbConnection();
+        bool openedByUs = conn.State == ConnectionState.Closed;
+        if (openedByUs) conn.Open();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            // SQLite PRAGMA doesn't support parameterized identifiers; names are allowlisted above.
+            cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name='{column}'";
+            return (long)(cmd.ExecuteScalar() ?? 0L) > 0;
+        }
+        finally { if (openedByUs) conn.Close(); }
+    }
+
+    foreach (var (table, column, sql) in new (string, string, string)[] {
+        ("EvaluationResults", "AgentName",          "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL"),
+        ("EvaluationResults", "CallReference",       "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL"),
+        ("EvaluationResults", "CallDate",            "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL"),
+        ("Parameters",        "EvaluationType",      "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'"),
+        ("Parameters",        "ProjectId",           "ALTER TABLE Parameters ADD COLUMN ProjectId INTEGER NULL"),
+        ("ParameterClubs",    "ProjectId",           "ALTER TABLE ParameterClubs ADD COLUMN ProjectId INTEGER NULL"),
+        ("RatingCriteria",    "ProjectId",           "ALTER TABLE RatingCriteria ADD COLUMN ProjectId INTEGER NULL"),
+        ("KnowledgeSources",  "ProjectId",           "ALTER TABLE KnowledgeSources ADD COLUMN ProjectId INTEGER NULL"),
+        ("EvaluationForms",   "LobId",               "ALTER TABLE EvaluationForms ADD COLUMN LobId INTEGER NULL"),
+        // AiConfigs columns added after initial release
+        ("AiConfigs",         "LlmDeployment",       "ALTER TABLE AiConfigs ADD COLUMN LlmDeployment TEXT NULL DEFAULT 'gpt-4o'"),
+        ("AiConfigs",         "LlmTemperature",      "ALTER TABLE AiConfigs ADD COLUMN LlmTemperature REAL NULL DEFAULT 0.1"),
+        ("AiConfigs",         "SentimentProvider",   "ALTER TABLE AiConfigs ADD COLUMN SentimentProvider TEXT NULL DEFAULT 'AzureOpenAI'"),
+        ("AiConfigs",         "LanguageEndpoint",    "ALTER TABLE AiConfigs ADD COLUMN LanguageEndpoint TEXT NULL"),
+        // API key columns use empty-string default (not NULL) because the C# model uses non-nullable
+        // string and the service guards against blank values before saving.
+        ("AiConfigs",         "LanguageApiKey",      "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''"),
+        ("AiConfigs",         "RagTopK",             "ALTER TABLE AiConfigs ADD COLUMN RagTopK INTEGER NULL DEFAULT 3"),
     })
     {
+        if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly
         try { db.Database.ExecuteSqlRaw(sql); }
-        catch (Exception ex) when (ex.Message.Contains("duplicate column"))
-        {
-            // Column already exists — expected on fresh DBs created by EnsureCreated
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Schema migration failed for: {Sql}", sql);
-        }
+        catch (Exception ex) { logger.LogWarning(ex, "Column migration failed: {Sql}", sql); }
     }
     await db.SeedAsync();
 
