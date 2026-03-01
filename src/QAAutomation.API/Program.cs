@@ -30,14 +30,23 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
-    // Add new columns if they don't exist (for existing databases)
+    // Add new columns if they don't exist (for existing databases — SQLite throws on duplicate column)
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     foreach (var sql in new[] {
         "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",
         "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",
         "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL"
     })
     {
-        try { db.Database.ExecuteSqlRaw(sql); } catch { }
+        try { db.Database.ExecuteSqlRaw(sql); }
+        catch (Exception ex) when (ex.Message.Contains("duplicate column"))
+        {
+            // Column already exists — expected on fresh DBs created by EnsureCreated
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Schema migration failed for: {Sql}", sql);
+        }
     }
     await db.SeedAsync();
 }

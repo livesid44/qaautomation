@@ -45,7 +45,14 @@
                 <option value="">— Select a form —</option>
                 @foreach (var f in forms)
                 {
-                    <option value="@f.Id" selected="@(selectedFormId == f.Id ? "selected" : null)">@f.Name</option>
+                    if (selectedFormId == f.Id)
+                    {
+                        <option value="@f.Id" selected>@f.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@f.Id">@f.Name</option>
+                    }
                 }
             </select>
         </form>

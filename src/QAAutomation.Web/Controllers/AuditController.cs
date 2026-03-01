@@ -53,7 +53,9 @@ public class AuditController : Controller
                 var parsed = JsonSerializer.Deserialize<List<JsonElement>>(scoresJson);
                 if (parsed != null)
                 {
-                    scores = parsed.Select(e =>
+                scores = parsed
+                    .Where(e => e.TryGetProperty("fieldId", out _))
+                    .Select(e =>
                     {
                         var fieldId = e.GetProperty("fieldId").GetInt32();
                         var val = e.TryGetProperty("value", out var v) ? v.GetString() ?? "0" : "0";
