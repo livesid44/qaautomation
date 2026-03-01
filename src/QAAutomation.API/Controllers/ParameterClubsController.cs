@@ -78,11 +78,11 @@ public class ParameterClubsController : ControllerBase
         _db.ParameterClubItems.RemoveRange(club.Items);
 
         // Add new items
-        var newItems = items.Select((item, idx) => new ParameterClubItem
+        var newItems = items.Select((item, itemIndex) => new ParameterClubItem
         {
             ClubId = id,
             ParameterId = item.ParameterId,
-            Order = item.Order == 0 ? idx : item.Order,
+            Order = item.Order == 0 ? itemIndex : item.Order,
             WeightOverride = item.WeightOverride,
             RatingCriteriaId = item.RatingCriteriaId
         }).ToList();
