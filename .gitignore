@@ -1,0 +1,29 @@
+## Build artifacts
+bin/
+obj/
+
+## Visual Studio files
+*.user
+.vs/
+*.suo
+*.userosscache
+*.sln.docstates
+
+## SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+## NuGet
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## OS artifacts
+.DS_Store
+Thumbs.db
+
+## IDE
+.idea/
+*.swp
