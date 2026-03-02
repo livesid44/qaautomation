@@ -475,3 +475,92 @@ public class CallTypeScoreViewModel
     public double AvgScorePercent { get; set; }
     public int AuditCount { get; set; }
 }
+
+// ── Call Pipeline ViewModels ────────────────────────────────────────────────
+
+public class CallPipelineJobViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string SourceType { get; set; } = string.Empty;
+    public int FormId { get; set; }
+    public string? FormName { get; set; }
+    public int? ProjectId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    public int TotalItems { get; set; }
+    public int CompletedItems { get; set; }
+    public int FailedItems { get; set; }
+    public List<CallPipelineItemViewModel> Items { get; set; } = new();
+}
+
+public class CallPipelineItemViewModel
+{
+    public int Id { get; set; }
+    public int JobId { get; set; }
+    public string? SourceReference { get; set; }
+    public string? AgentName { get; set; }
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ProcessedAt { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int? EvaluationResultId { get; set; }
+    public double? ScorePercent { get; set; }
+    public string? AiReasoning { get; set; }
+}
+
+/// <summary>Form model for submitting a batch of recording/transcript URLs.</summary>
+public class CallPipelineBatchUrlViewModel
+{
+    [Required] public string Name { get; set; } = string.Empty;
+    [Required] public int FormId { get; set; }
+    public int? ProjectId { get; set; }
+
+    /// <summary>
+    /// Newline-separated list of URLs.
+    /// Each line can optionally include metadata: URL|agentName|callReference|callDate (ISO 8601)
+    /// </summary>
+    [Required]
+    [Display(Name = "Recording / Transcript URLs (one per line)")]
+    public string UrlList { get; set; } = string.Empty;
+}
+
+/// <summary>Form model for creating a connector-based pipeline job.</summary>
+public class CallPipelineConnectorViewModel
+{
+    [Required] public string Name { get; set; } = string.Empty;
+
+    /// <summary>"SFTP" | "SharePoint" | "Verint" | "NICE" | "Ozonetel"</summary>
+    [Required] public string SourceType { get; set; } = "SFTP";
+
+    [Required] public int FormId { get; set; }
+    public int? ProjectId { get; set; }
+
+    // SFTP
+    public string? SftpHost { get; set; }
+    public int? SftpPort { get; set; }
+    public string? SftpUsername { get; set; }
+    public string? SftpPassword { get; set; }
+    public string? SftpPath { get; set; }
+
+    // SharePoint
+    public string? SharePointSiteUrl { get; set; }
+    public string? SharePointClientId { get; set; }
+    public string? SharePointClientSecret { get; set; }
+    public string? SharePointLibraryName { get; set; }
+
+    // Recording platforms
+    public string? RecordingPlatformUrl { get; set; }
+    public string? RecordingPlatformApiKey { get; set; }
+    public string? RecordingPlatformTenantId { get; set; }
+
+    // Date filter
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+}

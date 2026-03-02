@@ -44,6 +44,11 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IAiConfigService, DbAiConfigService>();
 builder.Services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
 
+// Pipeline service — fetches transcripts from URLs / SFTP / SharePoint / recording platforms
+builder.Services.AddHttpClient("pipeline")
+    .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(120));
+builder.Services.AddScoped<ICallPipelineService, CallPipelineService>();
+
 // AI services: runtime selection based on DB config (AiConfig.LlmEndpoint non-empty → real LLM)
 // Both real and mock are registered; a factory wrapper picks at request time.
 builder.Services.AddScoped<AzureOpenAIAutoAuditService>();

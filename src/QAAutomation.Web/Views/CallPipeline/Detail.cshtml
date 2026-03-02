@@ -1,0 +1,192 @@
+@model CallPipelineJobViewModel
+@{
+    ViewData["Title"] = $"Pipeline Job: {Model.Name}";
+    var completePct = Model.TotalItems > 0 ? (double)(Model.CompletedItems + Model.FailedItems) / Model.TotalItems * 100 : 0;
+    var avgScore = Model.Items.Any(i => i.ScorePercent.HasValue)
+        ? Model.Items.Where(i => i.ScorePercent.HasValue).Average(i => i.ScorePercent!.Value)
+        : (double?)null;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-diagram-3 me-2 text-primary"></i>@Model.Name
+            @{
+                var badgeClass = Model.Status switch
+                {
+                    "Completed" => "bg-success",
+                    "Running" => "bg-warning text-dark",
+                    "Failed" => "bg-danger",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass ms-2">@Model.Status</span>
+        </h4>
+        <p class="text-muted mb-0">
+            <span class="badge bg-light text-dark border me-2">@Model.SourceType</span>
+            Form: @(Model.FormName ?? $"#{Model.FormId}") &bull;
+            Created by @Model.CreatedBy on @Model.CreatedAt.ToLocalTime().ToString("MMM d, yyyy HH:mm")
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/CallPipeline" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>All Jobs
+        </a>
+        @if (Model.Status is "Pending" or "Failed")
+        {
+            <form method="post" action="/CallPipeline/Process">
+                <input type="hidden" name="id" value="@Model.Id" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-play-fill me-1"></i>Process Now
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>@Model.ErrorMessage
+    </div>
+}
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-primary">@Model.TotalItems</div>
+            <div class="text-muted small">Total Items</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-success">@Model.CompletedItems</div>
+            <div class="text-muted small">Completed</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-danger">@Model.FailedItems</div>
+            <div class="text-muted small">Failed</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold @(avgScore.HasValue ? "text-info" : "text-muted")">
+                @(avgScore.HasValue ? $"{avgScore.Value:F1}%" : "—")
+            </div>
+            <div class="text-muted small">Avg QA Score</div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress bar -->
+@if (Model.TotalItems > 0)
+{
+    <div class="card border-0 shadow-sm mb-4 p-3">
+        <div class="d-flex justify-content-between mb-1">
+            <span class="small text-muted">Processing Progress</span>
+            <span class="small fw-semibold">@completePct.ToString("F0")%</span>
+        </div>
+        <div class="progress" style="height:8px">
+            <div class="progress-bar bg-success" style="width:@((Model.TotalItems > 0 ? (double)Model.CompletedItems / Model.TotalItems * 100 : 0).ToString("F0"))%"></div>
+            <div class="progress-bar bg-danger" style="width:@((Model.TotalItems > 0 ? (double)Model.FailedItems / Model.TotalItems * 100 : 0).ToString("F0"))%"></div>
+        </div>
+    </div>
+}
+
+<!-- Items table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-list-task me-2"></i>Pipeline Items
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Items.Any())
+        {
+            <div class="text-center text-muted py-4">No items in this job yet.</div>
+        }
+        else
+        {
+            <table class="table table-hover mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Source / URL</th>
+                        <th>Agent</th>
+                        <th>Call Ref</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                        <th>Processed</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        var itemBadge = item.Status switch
+                        {
+                            "Completed" => "bg-success",
+                            "Processing" => "bg-warning text-dark",
+                            "Failed" => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                        <tr>
+                            <td class="align-middle text-muted">@item.Id</td>
+                            <td class="align-middle" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@item.SourceReference">
+                                @(item.SourceReference ?? "—")
+                            </td>
+                            <td class="align-middle">@(item.AgentName ?? "—")</td>
+                            <td class="align-middle text-muted">@(item.CallReference ?? "—")</td>
+                            <td class="align-middle">
+                                <span class="badge @itemBadge">@item.Status</span>
+                            </td>
+                            <td class="align-middle">
+                                @if (item.ScorePercent.HasValue)
+                                {
+                                    var scoreColor = item.ScorePercent.Value >= 80 ? "text-success" : item.ScorePercent.Value >= 60 ? "text-warning" : "text-danger";
+                                    <span class="fw-semibold @scoreColor">@item.ScorePercent.Value.ToString("F1")%</span>
+                                }
+                                else { <span class="text-muted">—</span> }
+                            </td>
+                            <td class="align-middle text-muted">
+                                @(item.ProcessedAt.HasValue ? item.ProcessedAt.Value.ToLocalTime().ToString("HH:mm:ss") : "—")
+                            </td>
+                            <td class="align-middle">
+                                @if (item.EvaluationResultId.HasValue)
+                                {
+                                    <a href="/Audit/Detail/@item.EvaluationResultId" class="btn btn-xs btn-outline-primary py-0 px-1">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                }
+                                @if (!string.IsNullOrEmpty(item.ErrorMessage))
+                                {
+                                    <span class="text-danger" title="@item.ErrorMessage">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                        @if (!string.IsNullOrEmpty(item.AiReasoning))
+                        {
+                            <tr class="table-light">
+                                <td colspan="8" class="small text-muted px-3 py-1">
+                                    <i class="bi bi-robot me-1"></i>@item.AiReasoning
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

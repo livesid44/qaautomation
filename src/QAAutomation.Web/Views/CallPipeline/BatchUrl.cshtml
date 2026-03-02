@@ -1,0 +1,103 @@
+@model CallPipelineBatchUrlViewModel
+@{
+    ViewData["Title"] = "Submit Batch URLs — Call Pipeline";
+    var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new List<LegacyFormViewModel>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-link-45deg me-2 text-primary"></i>Submit Batch Recording / Transcript URLs
+        </h4>
+        <p class="text-muted mb-0">
+            Paste one URL per line. The pipeline fetches each URL, extracts the transcript,
+            and runs fully automated QA scoring — no human review required.
+        </p>
+    </div>
+    <a href="/CallPipeline" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>All Jobs
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="row g-3">
+                <!-- Job name -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Job Name <span class="text-danger">*</span></label>
+                    <input name="Name" value="@Model.Name" class="form-control" placeholder="e.g. Daily batch – March 2025" required />
+                    <div class="text-danger small">@Html.ValidationMessage("Name")</div>
+                </div>
+
+                <!-- Evaluation form -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Evaluation Form <span class="text-danger">*</span></label>
+                    <select name="FormId" class="form-select" required>
+                        <option value="">— Select form —</option>
+                        @foreach (var f in forms)
+                        {
+                            if (f.Id == Model.FormId)
+                            {
+                                <option value="@f.Id" selected>@f.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@f.Id">@f.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <!-- URL list -->
+                <div class="col-12">
+                    <label class="form-label fw-semibold">
+                        Recording / Transcript URLs <span class="text-danger">*</span>
+                        <span class="text-muted fw-normal small ms-1">
+                            — one per line. Optional pipe-delimited metadata:
+                            <code>URL | AgentName | CallRef | CallDate</code>
+                        </span>
+                    </label>
+                    <textarea name="UrlList" class="form-control font-monospace" rows="8"
+                              placeholder="https://storage.example.com/calls/call-001.txt&#10;https://cdn.example.com/transcripts/t-002.txt | Jane Smith | REF-002 | 2025-03-01&#10;https://verint.example.com/api/calls/0042/transcript | | REF-0042">@Model.UrlList</textarea>
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Supported: plain-text (.txt), JSON transcripts, Verint / NICE / Ozonetel direct-download links.
+                    </div>
+                    <div class="text-danger small">@Html.ValidationMessage("UrlList")</div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-play-fill me-1"></i>Submit &amp; Process
+                </button>
+                <a href="/CallPipeline" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-transparent fw-semibold">
+        <i class="bi bi-lightbulb me-2 text-warning"></i>Supported Sources
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <h6 class="fw-semibold"><i class="bi bi-file-text me-1"></i>Plain-text / JSON</h6>
+                <p class="small text-muted">Any URL returning a plain-text call transcript or a JSON object containing a <code>text</code>, <code>transcript</code>, or <code>content</code> field.</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="fw-semibold"><i class="bi bi-cloud-download me-1"></i>Recording platforms</h6>
+                <p class="small text-muted">Verint, NICE CXOne, and Ozonetel direct-download transcript URLs are automatically parsed. Use the <strong>From Connector</strong> flow to configure API-based bulk retrieval.</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="fw-semibold"><i class="bi bi-cloud me-1"></i>Cloud storage</h6>
+                <p class="small text-muted">Azure Blob SAS URLs, public S3 presigned URLs, or any HTTPS-accessible file. The pipeline fetches the content with a 120-second timeout.</p>
+            </div>
+        </div>
+    </div>
+</div>

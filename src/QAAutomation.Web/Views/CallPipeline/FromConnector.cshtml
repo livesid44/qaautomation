@@ -1,0 +1,167 @@
+@model CallPipelineConnectorViewModel
+@{
+    ViewData["Title"] = "Configure Connector — Call Pipeline";
+    var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new List<LegacyFormViewModel>();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-plug me-2 text-primary"></i>Configure Connector — Call Pipeline
+        </h4>
+        <p class="text-muted mb-0">
+            Connect to an external source (SFTP, SharePoint, Verint, NICE, Ozonetel) to automatically
+            ingest and score calls without any human involvement.
+        </p>
+    </div>
+    <a href="/CallPipeline" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>All Jobs
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <form method="post" id="connectorForm">
+            @Html.AntiForgeryToken()
+
+            <div class="row g-3">
+                <!-- Job name -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Job Name <span class="text-danger">*</span></label>
+                    <input name="Name" value="@Model.Name" class="form-control" placeholder="e.g. Verint – March weekly batch" required />
+                </div>
+
+                <!-- Source type -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Source Type <span class="text-danger">*</span></label>
+                    <select name="SourceType" id="sourceType" class="form-select" onchange="showSection(this.value)" required>
+                        @if (Model.SourceType == "SFTP") { <option value="SFTP" selected>SFTP</option> } else { <option value="SFTP">SFTP</option> }
+                        @if (Model.SourceType == "SharePoint") { <option value="SharePoint" selected>SharePoint</option> } else { <option value="SharePoint">SharePoint</option> }
+                        @if (Model.SourceType == "Verint") { <option value="Verint" selected>Verint</option> } else { <option value="Verint">Verint</option> }
+                        @if (Model.SourceType == "NICE") { <option value="NICE" selected>NICE CXOne</option> } else { <option value="NICE">NICE CXOne</option> }
+                        @if (Model.SourceType == "Ozonetel") { <option value="Ozonetel" selected>Ozonetel</option> } else { <option value="Ozonetel">Ozonetel</option> }
+                    </select>
+                </div>
+
+                <!-- Evaluation form -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Evaluation Form <span class="text-danger">*</span></label>
+                    <select name="FormId" class="form-select" required>
+                        <option value="">— Select form —</option>
+                        @foreach (var f in forms)
+                        {
+                            if (f.Id == Model.FormId)
+                            {
+                                <option value="@f.Id" selected>@f.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@f.Id">@f.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <!-- Date range -->
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">From Date</label>
+                    <input type="date" name="FilterFromDate" value="@Model.FilterFromDate" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">To Date</label>
+                    <input type="date" name="FilterToDate" value="@Model.FilterToDate" class="form-control" />
+                </div>
+            </div>
+
+            <!-- ── SFTP section ───────────────────────────────────────────── -->
+            <div id="section-SFTP" class="connector-section mt-4">
+                <h6 class="fw-semibold text-muted text-uppercase small mb-3"><i class="bi bi-hdd-network me-1"></i>SFTP Settings</h6>
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label">Host</label>
+                        <input name="SftpHost" value="@Model.SftpHost" class="form-control" placeholder="sftp.example.com" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Port</label>
+                        <input type="number" name="SftpPort" value="@(Model.SftpPort?.ToString() ?? "22")" class="form-control" />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Remote Path</label>
+                        <input name="SftpPath" value="@Model.SftpPath" class="form-control" placeholder="/calls/transcripts" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Username</label>
+                        <input name="SftpUsername" value="@Model.SftpUsername" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="SftpPassword" value="@Model.SftpPassword" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SharePoint section ─────────────────────────────────────── -->
+            <div id="section-SharePoint" class="connector-section mt-4" style="display:none">
+                <h6 class="fw-semibold text-muted text-uppercase small mb-3"><i class="bi bi-microsoft me-1"></i>SharePoint Settings</h6>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Site URL</label>
+                        <input name="SharePointSiteUrl" value="@Model.SharePointSiteUrl" class="form-control" placeholder="https://contoso.sharepoint.com/sites/calls" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Library Name</label>
+                        <input name="SharePointLibraryName" value="@Model.SharePointLibraryName" class="form-control" placeholder="Shared Documents" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Client ID (App Registration)</label>
+                        <input name="SharePointClientId" value="@Model.SharePointClientId" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Client Secret</label>
+                        <input type="password" name="SharePointClientSecret" value="@Model.SharePointClientSecret" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Recording platform section ─────────────────────────────── -->
+            <div id="section-Recording" class="connector-section mt-4" style="display:none">
+                <h6 class="fw-semibold text-muted text-uppercase small mb-3"><i class="bi bi-mic me-1"></i>Recording Platform Settings</h6>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Platform Base URL</label>
+                        <input name="RecordingPlatformUrl" value="@Model.RecordingPlatformUrl" class="form-control"
+                               placeholder="https://api.verint.com  /  https://api.niceincontact.com  /  https://api.ozonetel.com" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tenant / Org ID</label>
+                        <input name="RecordingPlatformTenantId" value="@Model.RecordingPlatformTenantId" class="form-control" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">API Key / Bearer Token</label>
+                        <input type="password" name="RecordingPlatformApiKey" value="@Model.RecordingPlatformApiKey" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-play-fill me-1"></i>Discover &amp; Process
+                </button>
+                <a href="/CallPipeline" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function showSection(sourceType) {
+        document.querySelectorAll('.connector-section').forEach(s => s.style.display = 'none');
+        if (sourceType === 'SFTP') document.getElementById('section-SFTP').style.display = '';
+        else if (sourceType === 'SharePoint') document.getElementById('section-SharePoint').style.display = '';
+        else document.getElementById('section-Recording').style.display = '';
+    }
+    // Apply on page load
+    showSection(document.getElementById('sourceType').value);
+</script>
+}

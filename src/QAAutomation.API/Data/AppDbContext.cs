@@ -26,6 +26,8 @@ public class AppDbContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Lob> Lobs => Set<Lob>();
     public DbSet<UserProjectAccess> UserProjectAccesses => Set<UserProjectAccess>();
+    public DbSet<CallPipelineJob> CallPipelineJobs => Set<CallPipelineJob>();
+    public DbSet<CallPipelineItem> CallPipelineItems => Set<CallPipelineItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -194,6 +196,32 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CallPipelineJob>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.SourceType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.HasOne(e => e.Form)
+                  .WithMany()
+                  .HasForeignKey(e => e.FormId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(e => e.Items)
+                  .WithOne(i => i.Job)
+                  .HasForeignKey(i => i.JobId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CallPipelineItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.HasOne(e => e.EvaluationResult)
+                  .WithMany()
+                  .HasForeignKey(e => e.EvaluationResultId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 

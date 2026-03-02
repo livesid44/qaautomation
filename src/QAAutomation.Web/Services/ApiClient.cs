@@ -464,4 +464,52 @@ public class ApiClient
         try { return await _http.GetFromJsonAsync<AnalyticsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetAnalytics failed"); return null; }
     }
+
+    // ── Call Pipeline ─────────────────────────────────────────────────────────
+
+    public async Task<List<CallPipelineJobViewModel>> GetPipelineJobs(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/callpipeline?projectId={projectId.Value}" : "api/callpipeline";
+        try { return await _http.GetFromJsonAsync<List<CallPipelineJobViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetPipelineJobs failed"); return new(); }
+    }
+
+    public async Task<CallPipelineJobViewModel?> GetPipelineJob(int id)
+    {
+        try { return await _http.GetFromJsonAsync<CallPipelineJobViewModel>($"api/callpipeline/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetPipelineJob failed"); return null; }
+    }
+
+    public async Task<CallPipelineJobViewModel?> CreateBatchUrlPipelineJob(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/callpipeline/batch-urls", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateBatchUrlPipelineJob failed"); return null; }
+    }
+
+    public async Task<CallPipelineJobViewModel?> CreateConnectorPipelineJob(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/callpipeline/from-connector", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateConnectorPipelineJob failed"); return null; }
+    }
+
+    public async Task<CallPipelineJobViewModel?> TriggerPipelineProcess(int jobId)
+    {
+        try
+        {
+            var r = await _http.PostAsync($"api/callpipeline/{jobId}/process", null);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "TriggerPipelineProcess failed"); return null; }
+    }
 }
