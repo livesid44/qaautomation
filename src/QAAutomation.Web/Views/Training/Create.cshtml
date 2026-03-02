@@ -1,0 +1,210 @@
+@model CreateTrainingPlanViewModel
+@{
+    bool isEdit = ViewBag.PlanId != null;
+    ViewData["Title"] = isEdit ? "Edit Training Plan" : "New Training Plan";
+    var formAction = isEdit ? $"/Training/Edit/{ViewBag.PlanId}" : "/Training/Create";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-mortarboard me-2 text-primary"></i>
+            @(isEdit ? "Edit Training Plan" : "New Training Plan")
+        </h4>
+        <p class="text-muted mb-0">Define the improvement plan, assign the agent and trainer, then add observations and recommendations.</p>
+    </div>
+    <a href="/Training" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post" action="@formAction" id="planForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="EvaluationResultId" value="@Model.EvaluationResultId" />
+    <input type="hidden" name="HumanReviewItemId" value="@Model.HumanReviewItemId" />
+    <input type="hidden" name="ItemsJson" id="itemsJson" value="@Model.ItemsJson" />
+
+    <div class="row g-4">
+        <!-- Left: plan header -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Plan Title <span class="text-danger">*</span></label>
+                        <input type="text" name="Title" class="form-control" value="@Model.Title" required
+                               placeholder="e.g. Compliance Training — Sarah Mitchell (COF-2025-00142)" />
+                        @Html.ValidationMessage("Title", new { @class = "text-danger small" })
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description / Context</label>
+                        <textarea name="Description" class="form-control" rows="3"
+                                  placeholder="Root cause, audit context, background…">@Model.Description</textarea>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Agent Name <span class="text-danger">*</span></label>
+                            <input type="text" name="AgentName" class="form-control form-control-sm"
+                                   value="@Model.AgentName" required placeholder="Display name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Agent Username</label>
+                            <input type="text" name="AgentUsername" class="form-control form-control-sm"
+                                   value="@Model.AgentUsername" placeholder="Login username (for filtering)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Trainer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="TrainerName" class="form-control form-control-sm"
+                                   value="@Model.TrainerName" required placeholder="Display name" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Trainer Username</label>
+                            <input type="text" name="TrainerUsername" class="form-control form-control-sm"
+                                   value="@Model.TrainerUsername" placeholder="Login username (for filtering)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Due Date</label>
+                            <input type="date" name="DueDate" class="form-control form-control-sm"
+                                   value="@(Model.DueDate?.ToString("yyyy-MM-dd") ?? "")" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observations & Recommendations -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-list-check me-1 text-primary"></i>Observations &amp; Recommendations</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+                        <i class="bi bi-plus-circle me-1"></i>Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="itemsContainer"></div>
+                    @Html.ValidationMessage("ItemsJson", new { @class = "text-danger small" })
+                    <p class="text-muted small mb-0" id="noItemsMsg">No items yet. Click <strong>Add Item</strong> to add an observation or recommendation.</p>
+                </div>
+                <div class="card-footer bg-transparent border-0">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" onclick="syncItems()">
+                            <i class="bi bi-save me-1"></i>@(isEdit ? "Save Changes" : "Create Plan")
+                        </button>
+                        <a href="/Training" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: guidance -->
+        <div class="col-lg-5">
+            @if (Model.EvaluationResultId.HasValue || Model.HumanReviewItemId.HasValue)
+            {
+                <div class="card border-0 shadow-sm mb-4 border-start border-4 border-info">
+                    <div class="card-body small">
+                        <div class="fw-semibold mb-2"><i class="bi bi-link-45deg me-1 text-info"></i>Created from Audit Context</div>
+                        @if (Model.EvaluationResultId.HasValue)
+                        {
+                            <a href="/Audit/Details/@Model.EvaluationResultId" class="btn btn-sm btn-outline-secondary w-100 mb-1" target="_blank">
+                                <i class="bi bi-clipboard2-check me-1"></i>View Source Audit #@Model.EvaluationResultId
+                            </a>
+                        }
+                        @if (Model.HumanReviewItemId.HasValue)
+                        {
+                            <a href="/HumanReview/Review/@Model.HumanReviewItemId" class="btn btn-sm btn-outline-secondary w-100" target="_blank">
+                                <i class="bi bi-person-check me-1"></i>View Human Review #@Model.HumanReviewItemId
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold border-0 pt-3 small">
+                    <i class="bi bi-lightbulb me-1 text-warning"></i>TNI Plan Guide
+                </div>
+                <div class="card-body small text-muted">
+                    <p><strong>Observation</strong> — describes a specific gap or issue identified during the audit (e.g. "Agent failed to verify caller identity before providing account details").</p>
+                    <p><strong>Recommendation</strong> — a prescriptive action item the trainer should deliver (e.g. "Role-play CID verification procedures in the next coaching session").</p>
+                    <p><strong>Target Area</strong> — tag each item with the skill category (Compliance, Communication, Product Knowledge, etc.) for reporting and trend analysis.</p>
+                    <p class="mb-0">After saving, <strong>activate</strong> the plan to make it visible to the agent and trainer. Trainers mark items done as they deliver training. The quality manager closes the loop once all items are complete.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    // Load initial items from hidden field
+    let items = [];
+    try { items = JSON.parse(document.getElementById('itemsJson').value || '[]'); } catch { }
+
+    function render() {
+        const c = document.getElementById('itemsContainer');
+        const msg = document.getElementById('noItemsMsg');
+        c.innerHTML = '';
+        msg.style.display = items.length === 0 ? '' : 'none';
+        items.forEach(function (item, idx) {
+            const row = document.createElement('div');
+            row.className = 'border rounded p-3 mb-3 bg-light';
+            row.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold small text-muted">Item ${idx + 1}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Type</label>
+                        <select class="form-select form-select-sm" onchange="updateItem(${idx},'itemType',this.value)">
+                            <option value="Observation" ${item.itemType === 'Observation' ? 'selected' : ''}>Observation</option>
+                            <option value="Recommendation" ${item.itemType === 'Recommendation' ? 'selected' : ''}>Recommendation</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-semibold">Target Area</label>
+                        <input type="text" class="form-control form-control-sm"
+                               value="${escHtml(item.targetArea || '')}"
+                               placeholder="e.g. Compliance, Communication"
+                               onchange="updateItem(${idx},'targetArea',this.value)" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Content <span class="text-danger">*</span></label>
+                        <textarea class="form-control form-control-sm" rows="2"
+                                  placeholder="Describe the observation or recommendation…"
+                                  onchange="updateItem(${idx},'content',this.value)">${escHtml(item.content || '')}</textarea>
+                    </div>
+                </div>`;
+            c.appendChild(row);
+        });
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    window.removeItem = function(idx) { items.splice(idx,1); render(); };
+    window.updateItem = function(idx, key, val) { items[idx][key] = val; };
+    window.syncItems = function() {
+        // Pull latest textarea/input values before submit
+        const c = document.getElementById('itemsContainer');
+        const rows = c.querySelectorAll('.border.rounded');
+        rows.forEach(function(row, idx) {
+            const sel = row.querySelector('select');
+            const ta = row.querySelector('textarea');
+            const inp = row.querySelector('input[type=text]');
+            if (sel) items[idx].itemType = sel.value;
+            if (ta) items[idx].content = ta.value;
+            if (inp) items[idx].targetArea = inp.value;
+            items[idx].order = idx;
+        });
+        document.getElementById('itemsJson').value = JSON.stringify(items);
+    };
+
+    document.getElementById('addItemBtn').addEventListener('click', function () {
+        items.push({ itemType: 'Observation', targetArea: '', content: '', order: items.length });
+        render();
+    });
+
+    render();
+})();
+</script>

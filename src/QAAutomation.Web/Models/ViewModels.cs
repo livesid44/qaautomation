@@ -646,3 +646,98 @@ public class SubmitReviewViewModel
     [System.ComponentModel.DataAnnotations.Required]
     public string ReviewVerdict { get; set; } = "Agree";
 }
+
+// ── Training Need Identification (TNI) ViewModels ───────────────────────────
+
+public class TrainingPlanItemViewModel
+{
+    public int Id { get; set; }
+    public int TrainingPlanId { get; set; }
+    public string TargetArea { get; set; } = string.Empty;
+    public string ItemType { get; set; } = "Observation";
+    public string Content { get; set; } = string.Empty;
+    public string Status { get; set; } = "Pending";
+    public int Order { get; set; }
+    public string? CompletedBy { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? CompletionNotes { get; set; }
+}
+
+public class TrainingPlanViewModel
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string AgentName { get; set; } = string.Empty;
+    public string? AgentUsername { get; set; }
+    public string TrainerName { get; set; } = string.Empty;
+    public string? TrainerUsername { get; set; }
+    public string Status { get; set; } = "Draft";
+    public DateTime? DueDate { get; set; }
+    public int? ProjectId { get; set; }
+    public int? EvaluationResultId { get; set; }
+    public int? HumanReviewItemId { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public string? ClosedBy { get; set; }
+    public DateTime? ClosedAt { get; set; }
+    public string? ClosingNotes { get; set; }
+    public List<TrainingPlanItemViewModel> Items { get; set; } = new();
+    public int TotalItems { get; set; }
+    public int CompletedItems { get; set; }
+}
+
+public class CreateTrainingPlanItemViewModel
+{
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string TargetArea { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string ItemType { get; set; } = "Observation";
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Content { get; set; } = string.Empty;
+
+    public int Order { get; set; }
+}
+
+public class CreateTrainingPlanViewModel
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(300)]
+    public string Title { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string AgentName { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? AgentUsername { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string TrainerName { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? TrainerUsername { get; set; }
+
+    public DateTime? DueDate { get; set; }
+
+    public int? ProjectId { get; set; }
+
+    /// <summary>Pre-filled from audit context when creating from an audit/review page.</summary>
+    public int? EvaluationResultId { get; set; }
+    public int? HumanReviewItemId { get; set; }
+
+    /// <summary>JSON-encoded list of items submitted from the dynamic form rows.</summary>
+    public string ItemsJson { get; set; } = "[]";
+}
+
+public class CloseTrainingPlanViewModel
+{
+    public int PlanId { get; set; }
+    public string? ClosingNotes { get; set; }
+}

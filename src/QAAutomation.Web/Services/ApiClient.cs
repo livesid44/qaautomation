@@ -603,4 +603,75 @@ public class ApiClient
         try { var r = await _http.PostAsJsonAsync("api/humanreview/manual", dto); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "AddManualReview failed"); return false; }
     }
+
+    // ── Training Plans ────────────────────────────────────────────────────────
+
+    public async Task<List<TrainingPlanViewModel>> GetTrainingPlans(
+        string? status = null, string? agentUsername = null, string? trainerUsername = null, int? projectId = null)
+    {
+        var qs = new List<string>();
+        if (!string.IsNullOrEmpty(status)) qs.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrEmpty(agentUsername)) qs.Add($"agentUsername={Uri.EscapeDataString(agentUsername)}");
+        if (!string.IsNullOrEmpty(trainerUsername)) qs.Add($"trainerUsername={Uri.EscapeDataString(trainerUsername)}");
+        if (projectId.HasValue) qs.Add($"projectId={projectId}");
+        var url = "api/trainingplans" + (qs.Any() ? "?" + string.Join("&", qs) : "");
+        try { return await _http.GetFromJsonAsync<List<TrainingPlanViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetTrainingPlans failed"); return new(); }
+    }
+
+    public async Task<TrainingPlanViewModel?> GetTrainingPlan(int id)
+    {
+        try { return await _http.GetFromJsonAsync<TrainingPlanViewModel>($"api/trainingplans/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetTrainingPlan failed"); return null; }
+    }
+
+    public async Task<TrainingPlanViewModel?> CreateTrainingPlan(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/trainingplans", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<TrainingPlanViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateTrainingPlan failed"); return null; }
+    }
+
+    public async Task<bool> UpdateTrainingPlan(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/trainingplans/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateTrainingPlan failed"); return false; }
+    }
+
+    public async Task<bool> UpdateTrainingPlanStatus(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/trainingplans/{id}/status", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateTrainingPlanStatus failed"); return false; }
+    }
+
+    public async Task<TrainingPlanViewModel?> CloseTrainingPlan(int id, object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync($"api/trainingplans/{id}/close", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<TrainingPlanViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CloseTrainingPlan failed"); return null; }
+    }
+
+    public async Task<bool> CompleteTrainingPlanItem(int planId, int itemId, object dto)
+    {
+        try
+        {
+            var r = await _http.PutAsJsonAsync($"api/trainingplans/{planId}/items/{itemId}/complete", dto);
+            return r.IsSuccessStatusCode;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CompleteTrainingPlanItem failed"); return false; }
+    }
+
+    public async Task<bool> DeleteTrainingPlan(int id)
+    {
+        try { var r = await _http.DeleteAsync($"api/trainingplans/{id}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteTrainingPlan failed"); return false; }
+    }
 }

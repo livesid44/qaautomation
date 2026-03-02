@@ -130,6 +130,10 @@
                href="/HumanReview">
                 <i class="bi bi-person-check"></i> Human Review <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">HITL</span>
             </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
+               href="/Training">
+                <i class="bi bi-mortarboard"></i> Training Plans <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">TNI</span>
+            </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" ? "active" : "")"
                href="/Analytics">
                 <i class="bi bi-bar-chart-line"></i> Analytics

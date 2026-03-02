@@ -30,6 +30,8 @@ public class AppDbContext : DbContext
     public DbSet<CallPipelineItem> CallPipelineItems => Set<CallPipelineItem>();
     public DbSet<SamplingPolicy> SamplingPolicies => Set<SamplingPolicy>();
     public DbSet<HumanReviewItem> HumanReviewItems => Set<HumanReviewItem>();
+    public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
+    public DbSet<TrainingPlanItem> TrainingPlanItems => Set<TrainingPlanItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -250,6 +252,40 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.SamplingPolicyId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TrainingPlan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.AgentName).HasMaxLength(200);
+            entity.Property(e => e.AgentUsername).HasMaxLength(200);
+            entity.Property(e => e.TrainerName).HasMaxLength(200);
+            entity.Property(e => e.TrainerUsername).HasMaxLength(200);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.CreatedBy).HasMaxLength(200);
+            entity.Property(e => e.ClosedBy).HasMaxLength(200);
+            entity.HasOne(e => e.EvaluationResult)
+                  .WithMany()
+                  .HasForeignKey(e => e.EvaluationResultId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.HumanReviewItem)
+                  .WithMany()
+                  .HasForeignKey(e => e.HumanReviewItemId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(e => e.Items)
+                  .WithOne(i => i.TrainingPlan)
+                  .HasForeignKey(i => i.TrainingPlanId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TrainingPlanItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TargetArea).HasMaxLength(200);
+            entity.Property(e => e.ItemType).HasMaxLength(30);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.CompletedBy).HasMaxLength(200);
         });
     }
 

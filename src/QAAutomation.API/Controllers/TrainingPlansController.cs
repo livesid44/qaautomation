@@ -1,0 +1,323 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using QAAutomation.API.Data;
+using QAAutomation.API.DTOs;
+using QAAutomation.API.Models;
+
+namespace QAAutomation.API.Controllers;
+
+/// <summary>
+/// CRUD and lifecycle management for <see cref="TrainingPlan"/> records.
+///
+/// Lifecycle: Draft → Active → InProgress → Completed → Closed
+///
+/// Roles:
+///   Quality Manager: create, edit, activate, close
+///   Trainer:         update item status (InProgress / Done), mark plan Completed
+///   Agent:           read-only access to their own plans
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class TrainingPlansController : ControllerBase
+{
+    private readonly AppDbContext _db;
+
+    public TrainingPlansController(AppDbContext db) => _db = db;
+
+    // ── GET /api/trainingplans ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Lists training plans.
+    /// Optional filters: ?status=&amp;agentUsername=&amp;trainerUsername=&amp;projectId=
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<TrainingPlanDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<TrainingPlanDto>>> GetAll(
+        [FromQuery] string? status = null,
+        [FromQuery] string? agentUsername = null,
+        [FromQuery] string? trainerUsername = null,
+        [FromQuery] int? projectId = null)
+    {
+        var query = _db.TrainingPlans
+            .Include(p => p.Items)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(p => p.Status == status);
+
+        if (!string.IsNullOrWhiteSpace(agentUsername))
+            query = query.Where(p => p.AgentUsername == agentUsername);
+
+        if (!string.IsNullOrWhiteSpace(trainerUsername))
+            query = query.Where(p => p.TrainerUsername == trainerUsername);
+
+        if (projectId.HasValue)
+            query = query.Where(p => p.ProjectId == null || p.ProjectId == projectId.Value);
+
+        var plans = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
+        return Ok(plans.Select(ToDto));
+    }
+
+    // ── GET /api/trainingplans/{id} ───────────────────────────────────────────
+
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(TrainingPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanDto>> GetById(int id)
+    {
+        var plan = await _db.TrainingPlans
+            .Include(p => p.Items)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        return plan is null ? NotFound() : Ok(ToDto(plan));
+    }
+
+    // ── POST /api/trainingplans ────────────────────────────────────────────────
+
+    [HttpPost]
+    [ProducesResponseType(typeof(TrainingPlanDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TrainingPlanDto>> Create([FromBody] CreateTrainingPlanDto dto)
+    {
+        if (!dto.Items.Any())
+            return BadRequest("A training plan must contain at least one item.");
+
+        var plan = new TrainingPlan
+        {
+            Title = dto.Title,
+            Description = dto.Description,
+            AgentName = dto.AgentName,
+            AgentUsername = dto.AgentUsername,
+            TrainerName = dto.TrainerName,
+            TrainerUsername = dto.TrainerUsername,
+            Status = "Draft",
+            DueDate = dto.DueDate,
+            ProjectId = dto.ProjectId,
+            EvaluationResultId = dto.EvaluationResultId,
+            HumanReviewItemId = dto.HumanReviewItemId,
+            CreatedBy = dto.CreatedBy,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Items = dto.Items.Select(i => new TrainingPlanItem
+            {
+                TargetArea = i.TargetArea,
+                ItemType = i.ItemType,
+                Content = i.Content,
+                Order = i.Order,
+                Status = "Pending"
+            }).ToList()
+        };
+
+        _db.TrainingPlans.Add(plan);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = plan.Id }, ToDto(plan));
+    }
+
+    // ── PUT /api/trainingplans/{id} ────────────────────────────────────────────
+
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(TrainingPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanDto>> Update(int id, [FromBody] UpdateTrainingPlanDto dto)
+    {
+        var plan = await _db.TrainingPlans.Include(p => p.Items).FirstOrDefaultAsync(p => p.Id == id);
+        if (plan is null) return NotFound();
+        if (plan.Status is "Completed" or "Closed")
+            return BadRequest("Cannot edit a Completed or Closed training plan.");
+
+        plan.Title = dto.Title;
+        plan.Description = dto.Description;
+        plan.AgentName = dto.AgentName;
+        plan.AgentUsername = dto.AgentUsername;
+        plan.TrainerName = dto.TrainerName;
+        plan.TrainerUsername = dto.TrainerUsername;
+        plan.DueDate = dto.DueDate;
+        plan.ProjectId = dto.ProjectId;
+        plan.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(plan));
+    }
+
+    // ── PUT /api/trainingplans/{id}/status ────────────────────────────────────
+
+    /// <summary>Advances or changes the status of a training plan.</summary>
+    [HttpPut("{id}/status")]
+    [ProducesResponseType(typeof(TrainingPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanDto>> UpdateStatus(int id, [FromBody] UpdateTrainingPlanStatusDto dto)
+    {
+        if (!IsValidStatus(dto.Status))
+            return BadRequest("Status must be one of: Draft, Active, InProgress, Completed, Closed.");
+
+        var plan = await _db.TrainingPlans.Include(p => p.Items).FirstOrDefaultAsync(p => p.Id == id);
+        if (plan is null) return NotFound();
+
+        // Validate status transition
+        var (valid, reason) = ValidateTransition(plan.Status, dto.Status);
+        if (!valid) return BadRequest(reason);
+
+        plan.Status = dto.Status;
+        plan.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(plan));
+    }
+
+    // ── POST /api/trainingplans/{id}/close ────────────────────────────────────
+
+    /// <summary>Quality manager closes the loop on a Completed plan.</summary>
+    [HttpPost("{id}/close")]
+    [ProducesResponseType(typeof(TrainingPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanDto>> Close(int id, [FromBody] CloseTrainingPlanDto dto)
+    {
+        var plan = await _db.TrainingPlans.Include(p => p.Items).FirstOrDefaultAsync(p => p.Id == id);
+        if (plan is null) return NotFound();
+        if (plan.Status == "Closed")
+            return BadRequest("This plan is already closed.");
+        if (plan.Status is "Draft" or "Active")
+            return BadRequest("A plan must be at least InProgress before it can be closed.");
+
+        plan.Status = "Closed";
+        plan.ClosedBy = dto.ClosedBy;
+        plan.ClosedAt = DateTime.UtcNow;
+        plan.ClosingNotes = dto.ClosingNotes;
+        plan.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(plan));
+    }
+
+    // ── PUT /api/trainingplans/{planId}/items/{itemId}/complete ───────────────
+
+    /// <summary>Trainer marks an individual plan item as done.</summary>
+    [HttpPut("{planId}/items/{itemId}/complete")]
+    [ProducesResponseType(typeof(TrainingPlanItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanItemDto>> CompleteItem(
+        int planId, int itemId, [FromBody] CompleteTrainingPlanItemDto dto)
+    {
+        var item = await _db.TrainingPlanItems
+            .FirstOrDefaultAsync(i => i.Id == itemId && i.TrainingPlanId == planId);
+        if (item is null) return NotFound();
+
+        item.Status = "Done";
+        item.CompletedBy = dto.CompletedBy;
+        item.CompletedAt = DateTime.UtcNow;
+        item.CompletionNotes = dto.CompletionNotes;
+        await _db.SaveChangesAsync();
+
+        // Auto-advance plan to Completed if all items are done
+        var plan = await _db.TrainingPlans.Include(p => p.Items).FirstOrDefaultAsync(p => p.Id == planId);
+        if (plan != null && plan.Items.All(i => i.Status == "Done") && plan.Status == "InProgress")
+        {
+            plan.Status = "Completed";
+            plan.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(ItemToDto(item));
+    }
+
+    // ── PUT /api/trainingplans/{planId}/items/{itemId} ────────────────────────
+
+    /// <summary>Update the content of a plan item (QM only; plan must be Draft/Active).</summary>
+    [HttpPut("{planId}/items/{itemId}")]
+    [ProducesResponseType(typeof(TrainingPlanItemDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TrainingPlanItemDto>> UpdateItem(
+        int planId, int itemId, [FromBody] UpdateTrainingPlanItemDto dto)
+    {
+        var plan = await _db.TrainingPlans.FindAsync(planId);
+        if (plan is null) return NotFound("Plan not found.");
+        if (plan.Status is "Completed" or "Closed")
+            return BadRequest("Cannot edit items on a Completed or Closed plan.");
+
+        var item = await _db.TrainingPlanItems.FirstOrDefaultAsync(i => i.Id == itemId && i.TrainingPlanId == planId);
+        if (item is null) return NotFound("Item not found.");
+
+        item.TargetArea = dto.TargetArea;
+        item.ItemType = dto.ItemType;
+        item.Content = dto.Content;
+        item.Order = dto.Order;
+        await _db.SaveChangesAsync();
+        return Ok(ItemToDto(item));
+    }
+
+    // ── DELETE /api/trainingplans/{id} ────────────────────────────────────────
+
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var plan = await _db.TrainingPlans.FindAsync(id);
+        if (plan is null) return NotFound();
+        _db.TrainingPlans.Remove(plan);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static readonly HashSet<string> ValidStatuses = ["Draft", "Active", "InProgress", "Completed", "Closed"];
+    private static bool IsValidStatus(string? s) => ValidStatuses.Contains(s ?? "");
+
+    private static (bool valid, string reason) ValidateTransition(string current, string next)
+    {
+        if (current == next) return (true, string.Empty);
+        return (current, next) switch
+        {
+            ("Draft", "Active") => (true, string.Empty),
+            ("Draft", "Closed") => (false, "Cannot close a Draft plan."),
+            ("Active", "InProgress") => (true, string.Empty),
+            ("Active", "Draft") => (true, string.Empty),
+            ("InProgress", "Completed") => (true, string.Empty),
+            ("InProgress", "Active") => (true, string.Empty), // rollback allowed
+            ("Completed", "Closed") => (true, string.Empty),
+            ("Completed", "InProgress") => (true, string.Empty), // reopen allowed
+            ("Closed", _) => (false, "A closed plan cannot be re-opened."),
+            _ => (true, string.Empty) // allow admin to force any other transition
+        };
+    }
+
+    private static TrainingPlanDto ToDto(TrainingPlan p) => new()
+    {
+        Id = p.Id,
+        Title = p.Title,
+        Description = p.Description,
+        AgentName = p.AgentName,
+        AgentUsername = p.AgentUsername,
+        TrainerName = p.TrainerName,
+        TrainerUsername = p.TrainerUsername,
+        Status = p.Status,
+        DueDate = p.DueDate,
+        ProjectId = p.ProjectId,
+        EvaluationResultId = p.EvaluationResultId,
+        HumanReviewItemId = p.HumanReviewItemId,
+        CreatedBy = p.CreatedBy,
+        CreatedAt = p.CreatedAt,
+        UpdatedAt = p.UpdatedAt,
+        ClosedBy = p.ClosedBy,
+        ClosedAt = p.ClosedAt,
+        ClosingNotes = p.ClosingNotes,
+        Items = p.Items.OrderBy(i => i.Order).Select(ItemToDto).ToList(),
+        TotalItems = p.Items.Count,
+        CompletedItems = p.Items.Count(i => i.Status == "Done")
+    };
+
+    private static TrainingPlanItemDto ItemToDto(TrainingPlanItem i) => new()
+    {
+        Id = i.Id,
+        TrainingPlanId = i.TrainingPlanId,
+        TargetArea = i.TargetArea,
+        ItemType = i.ItemType,
+        Content = i.Content,
+        Status = i.Status,
+        Order = i.Order,
+        CompletedBy = i.CompletedBy,
+        CompletedAt = i.CompletedAt,
+        CompletionNotes = i.CompletionNotes
+    };
+}
