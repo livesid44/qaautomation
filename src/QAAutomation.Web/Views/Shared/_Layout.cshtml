@@ -3,74 +3,133 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - QA Automation</title>
+    <title>@ViewData["Title"] - AuraAI</title>
     <link rel="stylesheet" href="/css/bootstrap.min.css" />
     <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
     <style>
+        /* ── Brand Palette ─────────────────────────────────────────────────── */
+        :root {
+            --brand-red:    #CC1212;
+            --brand-red-dk: #a30e0e;
+            --brand-dark:   #1e2433;
+            --brand-darker: #151920;
+            --brand-amber:  #E87722;
+            --brand-text:   #c9cdd6;
+            --brand-muted:  #7b8294;
+        }
+
         body { background: #f0f2f5; }
+
+        /* ── Sidebar ──────────────────────────────────────────────────────── */
         .sidebar {
             min-height: 100vh;
-            background: #2c3e50;
+            background: var(--brand-dark);
             width: 250px;
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
             padding-top: 0;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
+
+        /* Brand / logo area */
         .sidebar-brand {
-            padding: 20px 16px;
-            background: #1a252f;
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 700;
+            padding: 14px 16px 12px;
+            background: var(--brand-darker);
             display: flex;
             align-items: center;
             gap: 10px;
             text-decoration: none;
+            border-bottom: 2px solid var(--brand-red);
         }
-        .sidebar-brand:hover { color: #3498db; }
+        .sidebar-brand img {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+        }
+        .sidebar-brand:hover { opacity: .9; }
+
+        /* Nav links */
         .sidebar .nav-link {
-            color: #bdc3c7;
-            padding: 10px 20px;
+            color: var(--brand-text);
+            padding: 9px 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             border-radius: 0;
-            transition: all 0.2s;
-            font-size: 0.92rem;
+            transition: all 0.18s;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
         }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+        .sidebar .nav-link:hover {
             color: #fff;
-            background: #34495e;
+            background: rgba(204,18,18,.12);
+            border-left-color: var(--brand-red);
         }
-        .sidebar .nav-section {
-            color: #7f8c8d;
-            font-size: 0.75rem;
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: rgba(204,18,18,.22);
+            border-left-color: var(--brand-red);
             font-weight: 600;
+        }
+        .sidebar .nav-link i { font-size: 1rem; }
+
+        /* Section headers */
+        .sidebar .nav-section {
+            color: var(--brand-amber);
+            font-size: 0.7rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             padding: 16px 20px 4px;
         }
+
+        /* Sidebar footer spacer */
+        .sidebar-spacer { flex: 1; }
+
+        /* ── Main content ─────────────────────────────────────────────────── */
         .main-content {
             margin-left: 250px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
+
+        /* Top bar */
         .topbar {
             background: #fff;
-            border-bottom: 1px solid #e9ecef;
-            padding: 10px 24px;
+            border-bottom: 3px solid var(--brand-red);
+            padding: 8px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 99;
-            box-shadow: 0 1px 3px rgba(0,0,0,.07);
+            box-shadow: 0 2px 6px rgba(0,0,0,.08);
         }
+        .topbar .page-title {
+            font-weight: 600;
+            color: var(--brand-dark);
+            font-size: 0.9rem;
+        }
+
         .page-content { padding: 24px; flex: 1; }
+
+        /* ── Footer ───────────────────────────────────────────────────────── */
+        .app-footer {
+            background: var(--brand-darker);
+            color: var(--brand-muted);
+            text-align: center;
+            font-size: 0.75rem;
+            padding: 10px 24px;
+            border-top: 1px solid rgba(204,18,18,.3);
+            letter-spacing: 0.02em;
+        }
+        .app-footer span { color: var(--brand-amber); font-weight: 600; }
+
         @@media (max-width: 768px) {
             .sidebar { width: 100%; min-height: auto; position: static; }
             .main-content { margin-left: 0; }
@@ -81,10 +140,9 @@
 <body>
 @if (User.Identity?.IsAuthenticated == true)
 {
-    <div class="sidebar d-flex flex-column">
+    <div class="sidebar">
         <a class="sidebar-brand" href="/Dashboard">
-            <i class="bi bi-shield-check fs-5"></i>
-            QA Automation
+            <img src="/logo.png" alt="AuraAI" />
         </a>
         <nav class="flex-column mt-2">
             <div class="nav-section">Main</div>
@@ -120,19 +178,19 @@
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AutoAudit" ? "active" : "")"
                href="/AutoAudit/Upload">
-                <i class="bi bi-robot"></i> Auto Audit <span class="badge bg-primary ms-1" style="font-size:.65rem">AI</span>
+                <i class="bi bi-robot"></i> Auto Audit <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">AI</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" ? "active" : "")"
                href="/CallPipeline">
-                <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.65rem">Auto</span>
+                <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
                href="/HumanReview">
-                <i class="bi bi-person-check"></i> Human Review <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">HITL</span>
+                <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
                href="/Training">
-                <i class="bi bi-mortarboard"></i> Training Plans <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">TNI</span>
+                <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" ? "active" : "")"
                href="/Analytics">
@@ -169,10 +227,11 @@
                 </a>
             }
         </nav>
+        <div class="sidebar-spacer"></div>
     </div>
     <div class="main-content">
         <div class="topbar">
-            <span class="fw-semibold text-secondary small">
+            <span class="page-title">
                 @ViewData["Title"]
             </span>
             <div class="d-flex align-items-center gap-3">
@@ -251,6 +310,10 @@
         <div class="page-content">
             @RenderBody()
         </div>
+        <footer class="app-footer">
+            &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> All rights reserved.
+            &nbsp;·&nbsp; AuraAI Intelligent Automation
+        </footer>
     </div>
 }
 else
