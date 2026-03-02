@@ -19,6 +19,10 @@ public class AiConfigDto
     // RAG
     public int RagTopK { get; set; } = 3;
 
+    // Speech-to-Text
+    public string SpeechEndpoint { get; set; } = string.Empty;
+    public string SpeechApiKey { get; set; } = string.Empty;
+
     public DateTime UpdatedAt { get; set; }
 }
 

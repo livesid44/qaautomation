@@ -338,9 +338,14 @@ public class AiSettingsViewModel
     public string LanguageEndpoint { get; set; } = string.Empty;
     public string LanguageApiKey { get; set; } = string.Empty;
     public int RagTopK { get; set; } = 3;
+    // Speech-to-Text
+    public string SpeechEndpoint { get; set; } = string.Empty;
+    public string SpeechApiKey { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
     /// <summary>True when the LLM endpoint is configured and real AI will be used.</summary>
     public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint);
+    /// <summary>True when Azure Speech-to-Text is configured.</summary>
+    public bool IsSpeechConfigured => !string.IsNullOrWhiteSpace(SpeechEndpoint);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

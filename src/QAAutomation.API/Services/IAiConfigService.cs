@@ -48,6 +48,9 @@ public class DbAiConfigService : IAiConfigService
         if (!string.IsNullOrEmpty(dto.LanguageApiKey) && dto.LanguageApiKey != "***")
             cfg.LanguageApiKey = dto.LanguageApiKey;
         cfg.RagTopK = dto.RagTopK;
+        cfg.SpeechEndpoint = dto.SpeechEndpoint ?? string.Empty;
+        if (!string.IsNullOrEmpty(dto.SpeechApiKey) && dto.SpeechApiKey != "***")
+            cfg.SpeechApiKey = dto.SpeechApiKey;
         cfg.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return cfg;

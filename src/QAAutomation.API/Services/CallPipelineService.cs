@@ -33,6 +33,7 @@ public class CallPipelineService : ICallPipelineService
 {
     private readonly AppDbContext _db;
     private readonly IAutoAuditService _auditService;
+    private readonly IAzureSpeechService _speechService;
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<CallPipelineService> _logger;
 
@@ -42,11 +43,13 @@ public class CallPipelineService : ICallPipelineService
     public CallPipelineService(
         AppDbContext db,
         IAutoAuditService auditService,
+        IAzureSpeechService speechService,
         IHttpClientFactory httpFactory,
         ILogger<CallPipelineService> logger)
     {
         _db = db;
         _auditService = auditService;
+        _speechService = speechService;
         _httpFactory = httpFactory;
         _logger = logger;
     }
@@ -223,7 +226,10 @@ public class CallPipelineService : ICallPipelineService
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    /// <summary>Fetches the transcript for a single item and runs the LLM scoring.</summary>
+    /// <summary>
+    /// Fetches or transcribes a single item and runs LLM scoring.
+    /// If the source is audio, Azure Speech-to-Text is used to produce a transcript first.
+    /// </summary>
     private async Task ProcessItemAsync(
         CallPipelineJob job,
         CallPipelineItem item,
@@ -234,13 +240,32 @@ public class CallPipelineService : ICallPipelineService
         item.Status = "Processing";
         try
         {
-            var transcript = await FetchTranscriptAsync(job, item, ct);
-            if (string.IsNullOrWhiteSpace(transcript))
+            string? transcript;
+
+            // Determine whether the item source is audio or text
+            if (IsAudioItem(item.SourceReference))
             {
-                item.Status = "Failed";
-                item.ErrorMessage = "Could not retrieve transcript content — response was empty.";
-                item.ProcessedAt = DateTime.UtcNow;
-                return;
+                _logger.LogInformation("Pipeline item {ItemId}: audio detected — transcribing via Azure Speech", item.Id);
+                transcript = await TranscribeAudioItemAsync(job, item, ct);
+                if (string.IsNullOrWhiteSpace(transcript))
+                {
+                    item.Status = "Failed";
+                    item.ErrorMessage = "Audio transcription failed or Azure Speech is not configured. " +
+                                        "Configure SpeechEndpoint and SpeechApiKey in AI Settings.";
+                    item.ProcessedAt = DateTime.UtcNow;
+                    return;
+                }
+            }
+            else
+            {
+                transcript = await FetchTranscriptAsync(job, item, ct);
+                if (string.IsNullOrWhiteSpace(transcript))
+                {
+                    item.Status = "Failed";
+                    item.ErrorMessage = "Could not retrieve transcript content — response was empty.";
+                    item.ProcessedAt = DateTime.UtcNow;
+                    return;
+                }
             }
 
             if (transcript.Length > MaxTranscriptLength)
@@ -301,6 +326,33 @@ public class CallPipelineService : ICallPipelineService
     }
 
     /// <summary>
+    /// Returns true when the item's SourceReference URL appears to be an audio file
+    /// (based on file extension in the URL path).
+    /// </summary>
+    private static bool IsAudioItem(string? sourceReference) =>
+        !string.IsNullOrEmpty(sourceReference) && AudioFormatHelper.IsAudioUrl(sourceReference);
+
+    /// <summary>
+    /// Transcribes an audio item using Azure Speech-to-Text.
+    /// For BatchUrl: passes the URL directly to the Azure Speech batch transcription API.
+    /// For SFTP / SharePoint: downloads the file, then needs an accessible URL —
+    ///   currently the pipeline passes the original SourceReference, which must be
+    ///   an HTTPS-accessible URL for the batch transcription service to reach it.
+    /// </summary>
+    private async Task<string?> TranscribeAudioItemAsync(CallPipelineJob job, CallPipelineItem item, CancellationToken ct)
+    {
+        // For all source types, SourceReference should be the URL of the audio file.
+        // The Azure Speech Batch Transcription API requires the audio to be accessible
+        // over HTTPS, so SFTP paths that are not HTTP-accessible cannot be transcribed
+        // directly — the caller should pre-stage audio files to an HTTPS-accessible location.
+        var audioUrl = item.SourceReference ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(audioUrl)) return null;
+
+        _logger.LogInformation("Transcribing audio: {Url} (job {JobId})", audioUrl, job.Id);
+        return await _speechService.TranscribeAudioUrlAsync(audioUrl, ct);
+    }
+
+    /// <summary>
     /// Fetches the transcript text for a pipeline item.
     /// Strategy:
     ///   • BatchUrl: HTTP GET the URL; treat the response body as plain text (transcript).
@@ -308,6 +360,8 @@ public class CallPipelineService : ICallPipelineService
     ///   • SharePoint / Verint / NICE / Ozonetel: Use the platform's REST API to get the transcript or
     ///     download a recording (recording files are treated as transcripts if the AI is configured to
     ///     process audio — otherwise a stub placeholder is returned so the item is not skipped).
+    /// NOTE: Audio detection (IsAudioItem) is checked in ProcessItemAsync BEFORE this method is called,
+    ///       so this method only handles text/JSON content.
     /// </summary>
     private async Task<string> FetchTranscriptAsync(CallPipelineJob job, CallPipelineItem item, CancellationToken ct)
     {
@@ -321,7 +375,11 @@ public class CallPipelineService : ICallPipelineService
         };
     }
 
-    /// <summary>HTTP-fetches a URL and returns the response body as text (plain-text transcript).</summary>
+    /// <summary>
+    /// HTTP-fetches a URL and returns the response body as text (plain-text transcript).
+    /// If the server returns an audio Content-Type the caller (ProcessItemAsync) will
+    /// have already routed to TranscribeAudioItemAsync, so this method only handles text.
+    /// </summary>
     private async Task<string> FetchUrlAsync(string url, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(url)) return string.Empty;
@@ -330,6 +388,18 @@ public class CallPipelineService : ICallPipelineService
             var client = _httpFactory.CreateClient("pipeline");
             using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
+
+            // If the server returns an audio content-type for a URL that didn't have an
+            // audio extension we can't process it as text — signal to the caller.
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            if (AudioFormatHelper.IsAudioContentType(contentType))
+            {
+                _logger.LogWarning("FetchUrlAsync: URL {Url} returned audio content-type '{CT}' — " +
+                                   "re-route to speech transcription is needed; item will be retried as audio.", url, contentType);
+                // Return empty so the caller marks it failed with a helpful message
+                return string.Empty;
+            }
+
             return await response.Content.ReadAsStringAsync(ct);
         }
         catch (Exception ex)

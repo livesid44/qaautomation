@@ -49,6 +49,13 @@ builder.Services.AddHttpClient("pipeline")
     .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(120));
 builder.Services.AddScoped<ICallPipelineService, CallPipelineService>();
 
+// Azure Speech-to-Text — transcribes audio recordings before QA scoring
+builder.Services.AddHttpClient("speech")
+    .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromMinutes(12)); // batch jobs can take a while
+builder.Services.AddScoped<AzureSpeechService>();
+builder.Services.AddScoped<MockAzureSpeechService>();
+builder.Services.AddScoped<IAzureSpeechService, RuntimeSpeechTranscriptionService>();
+
 // AI services: runtime selection based on DB config (AiConfig.LlmEndpoint non-empty → real LLM)
 // Both real and mock are registered; a factory wrapper picks at request time.
 builder.Services.AddScoped<AzureOpenAIAutoAuditService>();

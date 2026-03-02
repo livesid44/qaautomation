@@ -46,6 +46,8 @@ public class AiConfigController : ControllerBase
         LanguageEndpoint = cfg.LanguageEndpoint,
         LanguageApiKey = string.IsNullOrEmpty(cfg.LanguageApiKey) ? "" : "***",
         RagTopK = cfg.RagTopK,
+        SpeechEndpoint = cfg.SpeechEndpoint,
+        SpeechApiKey = string.IsNullOrEmpty(cfg.SpeechApiKey) ? "" : "***",
         UpdatedAt = cfg.UpdatedAt
     };
 }

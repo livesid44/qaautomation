@@ -30,9 +30,11 @@ public class AiSettingsController : Controller
         // Track whether keys are currently configured (before blanking them for display)
         ViewData["LlmKeyIsSet"] = settings.LlmApiKey == "***";
         ViewData["LangKeyIsSet"] = settings.LanguageApiKey == "***";
+        ViewData["SpeechKeyIsSet"] = settings.SpeechApiKey == "***";
         // Never display masked keys — show blank so admin knows they can enter a new value
         if (settings.LlmApiKey == "***") settings.LlmApiKey = "";
         if (settings.LanguageApiKey == "***") settings.LanguageApiKey = "";
+        if (settings.SpeechApiKey == "***") settings.SpeechApiKey = "";
         return View(settings);
     }
 

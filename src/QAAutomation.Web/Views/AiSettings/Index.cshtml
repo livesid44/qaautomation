@@ -176,6 +176,52 @@
                 </div>
             </div>
 
+            <!-- Speech-to-Text Configuration -->
+            <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #6f42c1 !important; border-left-style:solid !important;">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-mic me-2 text-purple" style="color:#6f42c1"></i>Azure Speech-to-Text
+                        @if (Model.IsSpeechConfigured)
+                        {
+                            <span class="badge bg-success ms-2" style="font-size:.65rem">Configured</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-2" style="font-size:.65rem">Not configured</span>
+                        }
+                    </h6>
+                    <div class="text-muted small">
+                        Used by the Call Pipeline to automatically transcribe audio recordings (.mp3, .wav, .ogg, .flac, .m4a, etc.)
+                        before QA scoring. Text transcripts bypass this step entirely.
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Azure Region or Endpoint</label>
+                            <input type="text" name="SpeechEndpoint" class="form-control" value="@Model.SpeechEndpoint"
+                                   placeholder="e.g. eastus  or  https://eastus.api.cognitive.microsoft.com" />
+                            <div class="form-text">
+                                Azure Speech Service region code (e.g. <code>eastus</code>) or a full custom endpoint URL.
+                                Leave blank to disable audio transcription.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Speech API Key</label>
+                            <input type="password" name="SpeechApiKey" class="form-control" value="@Model.SpeechApiKey"
+                                   placeholder="@(ViewData["SpeechKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter Azure Speech subscription key")" />
+                        </div>
+                    </div>
+                    <div class="alert alert-light border mt-3 mb-0 py-2 px-3 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>How it works:</strong> When the Call Pipeline encounters an audio URL (.mp3, .wav, .ogg, .flac, .m4a, .aac, .opus),
+                        it submits a <em>Batch Transcription</em> job to Azure Cognitive Services, polls until the transcript is ready,
+                        then feeds the text transcript to the LLM for QA scoring — fully automated, no human in the loop.
+                        Requires an Azure AI Speech resource with the <strong>Batch Transcription</strong> API enabled.
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Right panel -->
@@ -200,6 +246,17 @@
                         <dd class="col-7"><span class="text-muted small">@Model.SentimentProvider</span></dd>
                         <dt class="col-5 text-muted">RAG Top-K</dt>
                         <dd class="col-7"><span class="text-muted small">@Model.RagTopK chunks</span></dd>
+                        <dt class="col-5 text-muted">Speech STT</dt>
+                        <dd class="col-7">
+                            @if (Model.IsSpeechConfigured)
+                            {
+                                <span class="badge bg-success">Configured</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Not configured</span>
+                            }
+                        </dd>
                         <dt class="col-5 text-muted">Last Updated</dt>
                         <dd class="col-7 small text-muted">@(Model.UpdatedAt == default ? "Never" : Model.UpdatedAt.ToString("MMM d, yyyy HH:mm"))</dd>
                     </dl>

@@ -28,5 +28,15 @@ public class AiConfig
     /// <summary>Number of top KB chunks to inject per field.</summary>
     public int RagTopK { get; set; } = 3;
 
+    // ── Azure Speech-to-Text ─────────────────────────────────────────────────
+    /// <summary>
+    /// Azure Speech Service region (e.g. "eastus") or full custom endpoint URL.
+    /// Used by the call pipeline to transcribe audio recordings before QA scoring.
+    /// Leave empty to skip audio transcription (audio items will fail gracefully).
+    /// </summary>
+    public string SpeechEndpoint { get; set; } = string.Empty;
+    /// <summary>Azure Speech Service subscription key (Ocp-Apim-Subscription-Key).</summary>
+    public string SpeechApiKey { get; set; } = string.Empty;
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

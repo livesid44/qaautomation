@@ -86,15 +86,23 @@
     </div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <h6 class="fw-semibold"><i class="bi bi-file-text me-1"></i>Plain-text / JSON</h6>
                 <p class="small text-muted">Any URL returning a plain-text call transcript or a JSON object containing a <code>text</code>, <code>transcript</code>, or <code>content</code> field.</p>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <h6 class="fw-semibold"><i class="bi bi-mic me-1 text-purple" style="color:#6f42c1"></i>Audio recordings</h6>
+                <p class="small text-muted">
+                    URLs ending in <code>.mp3</code>, <code>.wav</code>, <code>.ogg</code>, <code>.flac</code>, <code>.m4a</code>, <code>.aac</code>, <code>.opus</code> are automatically
+                    transcribed via <strong>Azure Speech-to-Text</strong> before QA scoring.
+                    Configure your Speech endpoint &amp; key in <a href="/AiSettings">AI Settings</a>.
+                </p>
+            </div>
+            <div class="col-md-3">
                 <h6 class="fw-semibold"><i class="bi bi-cloud-download me-1"></i>Recording platforms</h6>
                 <p class="small text-muted">Verint, NICE CXOne, and Ozonetel direct-download transcript URLs are automatically parsed. Use the <strong>From Connector</strong> flow to configure API-based bulk retrieval.</p>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <h6 class="fw-semibold"><i class="bi bi-cloud me-1"></i>Cloud storage</h6>
                 <p class="small text-muted">Azure Blob SAS URLs, public S3 presigned URLs, or any HTTPS-accessible file. The pipeline fetches the content with a 120-second timeout.</p>
             </div>
