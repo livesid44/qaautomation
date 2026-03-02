@@ -431,3 +431,46 @@ public class ProjectUserViewModel
     public string Role { get; set; } = string.Empty;
     public DateTime GrantedAt { get; set; }
 }
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Analytics view models
+// ──────────────────────────────────────────────────────────────────────────────
+
+public class AnalyticsViewModel
+{
+    public int TotalAudits { get; set; }
+    public List<DailyScoreViewModel> DailyScores { get; set; } = new();
+    public List<AgentScoreViewModel> AgentScores { get; set; } = new();
+    public List<ParameterTrendViewModel> ParameterTrends { get; set; } = new();
+    public List<CallTypeScoreViewModel> CallTypeScores { get; set; } = new();
+}
+
+public class DailyScoreViewModel
+{
+    public string Date { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+public class AgentScoreViewModel
+{
+    public string AgentName { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+public class ParameterTrendViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int ScoredCount { get; set; }
+}
+
+public class CallTypeScoreViewModel
+{
+    public string FormName { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}

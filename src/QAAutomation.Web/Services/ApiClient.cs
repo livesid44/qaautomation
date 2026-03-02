@@ -454,4 +454,11 @@ public class ApiClient
         try { var r = await _http.DeleteAsync($"api/lobs/{id}"); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "DeleteLob failed"); return false; }
     }
+
+    // Analytics
+    public async Task<AnalyticsViewModel?> GetAnalytics()
+    {
+        try { return await _http.GetFromJsonAsync<AnalyticsViewModel>("api/analytics", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAnalytics failed"); return null; }
+    }
 }
