@@ -19,6 +19,41 @@ public class ApiClient
     /// <summary>The base URL of the backend API this client is configured to call.</summary>
     public string BaseUrl => _http.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
 
+    /// <summary>
+    /// Attempts a lightweight connectivity check against the backend API.
+    /// Returns a diagnostic object that is safe to serialise as JSON for the browser.
+    /// </summary>
+    public async Task<ApiPingResult> PingAsync()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Head, "api/parameters");
+            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            sw.Stop();
+            return new ApiPingResult
+            {
+                Ok = resp.IsSuccessStatusCode || (int)resp.StatusCode == 401 || (int)resp.StatusCode == 403,
+                StatusCode = (int)resp.StatusCode,
+                LatencyMs = sw.ElapsedMilliseconds,
+                ApiUrl = BaseUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            _logger.LogError(ex, "API ping failed");
+            return new ApiPingResult
+            {
+                Ok = false,
+                StatusCode = 0,
+                LatencyMs = sw.ElapsedMilliseconds,
+                ApiUrl = BaseUrl,
+                Error = ex.GetType().Name + ": " + ex.Message
+            };
+        }
+    }
+
     // Auth - returns projects in addition to role/success
     public async Task<(bool success, string role, string message, List<ProjectViewModel> projects)> Login(string username, string password)
     {
@@ -677,4 +712,14 @@ public class ApiClient
         try { var r = await _http.DeleteAsync($"api/trainingplans/{id}"); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "DeleteTrainingPlan failed"); return false; }
     }
+}
+
+/// <summary>Result of a lightweight API connectivity check.</summary>
+public class ApiPingResult
+{
+    public bool Ok { get; set; }
+    public int StatusCode { get; set; }
+    public long LatencyMs { get; set; }
+    public string ApiUrl { get; set; } = string.Empty;
+    public string? Error { get; set; }
 }
