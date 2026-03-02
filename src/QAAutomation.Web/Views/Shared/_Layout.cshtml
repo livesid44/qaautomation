@@ -150,13 +150,13 @@
 @if (User.Identity?.IsAuthenticated == true)
 {
     <div class="sidebar">
-        <a class="sidebar-brand" href="/Dashboard">
+        <a class="sidebar-brand" href="/Analytics">
             <img src="/logo.png" alt="AuraAI" />
         </a>
         <nav class="flex-column mt-2">
             <div class="nav-section">Main</div>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")"
-               href="/Dashboard">
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" || ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")"
+               href="/Analytics">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
 
@@ -200,10 +200,6 @@
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
                href="/Training">
                 <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" ? "active" : "")"
-               href="/Analytics">
-                <i class="bi bi-bar-chart-line"></i> Analytics
             </a>
 
             @if (User.IsInRole("Admin"))
