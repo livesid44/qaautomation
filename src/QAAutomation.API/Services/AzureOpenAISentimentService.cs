@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Azure;
-using Azure.AI.OpenAI;
 using OpenAI.Chat;
 using QAAutomation.API.DTOs;
 
@@ -27,16 +25,14 @@ public class AzureOpenAISentimentService : ISentimentService
         CancellationToken cancellationToken = default)
     {
         var cfg = await _aiConfig.GetAsync();
-        var endpoint = cfg.LlmEndpoint;
         var apiKey = cfg.LlmApiKey;
-        var deployment = cfg.LlmDeployment;
+        var (endpoint, deployment) = AzureOpenAIHelper.NormalizeEndpoint(cfg.LlmEndpoint, cfg.LlmDeployment);
 
         var response = new SentimentAnalysisResponseDto { IsAiGenerated = true };
 
         try
         {
-            var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-            var chatClient = client.GetChatClient(deployment);
+            var chatClient = AzureOpenAIHelper.CreateClient(endpoint, apiKey, deployment);
 
             var options = new ChatCompletionOptions
             {

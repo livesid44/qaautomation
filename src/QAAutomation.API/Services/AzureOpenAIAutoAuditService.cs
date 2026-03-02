@@ -1,7 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Azure;
-using Azure.AI.OpenAI;
 using OpenAI.Chat;
 using QAAutomation.API.DTOs;
 using QAAutomation.API.Models;
@@ -37,9 +35,8 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
     {
         var fieldList = fields.ToList();
         var cfg = await _aiConfig.GetAsync();
-        var endpoint = cfg.LlmEndpoint;
         var apiKey = cfg.LlmApiKey;
-        var deployment = cfg.LlmDeployment;
+        var (endpoint, deployment) = AzureOpenAIHelper.NormalizeEndpoint(cfg.LlmEndpoint, cfg.LlmDeployment);
 
         var response = new AutoAuditResponseDto
         {
@@ -55,8 +52,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
 
         try
         {
-            var client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-            var chatClient = client.GetChatClient(deployment);
+            var chatClient = AzureOpenAIHelper.CreateClient(endpoint, apiKey, deployment);
 
             // Retrieve KB context concurrently for all KnowledgeBased fields
             var kbContextMap = new Dictionary<int, string>();

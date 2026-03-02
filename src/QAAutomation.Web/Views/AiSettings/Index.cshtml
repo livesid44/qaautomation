@@ -71,13 +71,13 @@
                         <div class="col-md-8">
                             <label class="form-label fw-semibold small">Endpoint URL</label>
                             <input type="text" name="LlmEndpoint" class="form-control" value="@Model.LlmEndpoint"
-                                   placeholder="https://your-resource.openai.azure.com/" />
-                            <div class="form-text">Leave blank to use simulated mock responses.</div>
+                                   placeholder="https://your-resource.cognitiveservices.azure.com/openai/v1/" />
+                            <div class="form-text">Azure AI Foundry endpoint, base resource URL, or full deployment URL — all are accepted. Leave blank to use simulated mock responses.</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold small">API Key</label>
+                            <label class="form-label fw-semibold small">API Key or Bearer Token</label>
                             <input type="password" name="LlmApiKey" class="form-control" value="@Model.LlmApiKey"
-                                   placeholder="@(ViewData["LlmKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter API key")"
+                                   placeholder="@(ViewData["LlmKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter API key or Bearer token")"
                                    autocomplete="new-password" />
                             @if (ViewData["LlmKeyIsSet"] as bool? == true)
                             {
@@ -85,7 +85,7 @@
                             }
                             else
                             {
-                                <div class="form-text text-muted">No API key configured yet.</div>
+                                <div class="form-text text-muted">Paste your Azure OpenAI API key, or an Entra ID bearer token obtained via <code>az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv</code>.</div>
                             }
                         </div>
                         <div class="col-md-4">
