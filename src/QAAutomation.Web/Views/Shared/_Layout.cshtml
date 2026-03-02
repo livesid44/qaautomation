@@ -14,8 +14,8 @@
             --brand-dark:   #1e2433;
             --brand-darker: #151920;
             --brand-amber:  #E87722;
-            --brand-text:   #c9cdd6;
-            --brand-muted:  #7b8294;
+            --brand-text:   #3d4354;
+            --brand-muted:  #6c757d;
         }
 
         body { background: #f0f2f5; }
@@ -23,7 +23,8 @@
         /* ── Sidebar ──────────────────────────────────────────────────────── */
         .sidebar {
             height: 100vh;
-            background: var(--brand-dark);
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
             width: 250px;
             position: fixed;
             top: 0; left: 0;
@@ -38,21 +39,21 @@
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,.15) transparent;
+            scrollbar-color: rgba(0,0,0,.12) transparent;
         }
-        /* Thin scrollbar styled to match the dark sidebar */
+        /* Thin scrollbar styled to match the light sidebar */
         .sidebar nav::-webkit-scrollbar { width: 4px; }
         .sidebar nav::-webkit-scrollbar-track { background: transparent; }
         .sidebar nav::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,.15);
+            background: rgba(0,0,0,.12);
             border-radius: 2px;
         }
-        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.3); }
+        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
 
         /* Brand / logo area */
         .sidebar-brand {
             padding: 14px 16px 12px;
-            background: var(--brand-darker);
+            background: #f8f9fa;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -64,7 +65,7 @@
             width: auto;
             object-fit: contain;
         }
-        .sidebar-brand:hover { opacity: .9; }
+        .sidebar-brand:hover { opacity: .85; }
 
         /* Nav links */
         .sidebar .nav-link {
@@ -79,13 +80,13 @@
             border-left: 3px solid transparent;
         }
         .sidebar .nav-link:hover {
-            color: #fff;
-            background: rgba(204,18,18,.12);
+            color: var(--brand-red);
+            background: rgba(204,18,18,.06);
             border-left-color: var(--brand-red);
         }
         .sidebar .nav-link.active {
-            color: #fff;
-            background: rgba(204,18,18,.22);
+            color: var(--brand-red);
+            background: rgba(204,18,18,.1);
             border-left-color: var(--brand-red);
             font-weight: 600;
         }
@@ -93,16 +94,13 @@
 
         /* Section headers */
         .sidebar .nav-section {
-            color: var(--brand-amber);
+            color: #9ca3af;
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             padding: 16px 20px 4px;
         }
-
-        /* Sidebar footer spacer */
-        .sidebar-spacer { flex: 1; }
 
         /* ── Main content ─────────────────────────────────────────────────── */
         .main-content {
@@ -135,12 +133,12 @@
 
         /* ── Footer ───────────────────────────────────────────────────────── */
         .app-footer {
-            background: var(--brand-darker);
+            background: #f8f9fa;
             color: var(--brand-muted);
             text-align: center;
             font-size: 0.75rem;
             padding: 10px 24px;
-            border-top: 1px solid rgba(204,18,18,.3);
+            border-top: 1px solid rgba(204,18,18,.2);
             letter-spacing: 0.02em;
             position: fixed;
             bottom: 0;
@@ -148,7 +146,7 @@
             left: 250px;
             z-index: 98;
         }
-        .app-footer span { color: var(--brand-amber); font-weight: 600; }
+        .app-footer span { color: var(--brand-red); font-weight: 600; }
 
         /* extra bottom padding so page content isn't hidden behind fixed footer */
         .page-content { padding-bottom: 50px; }
@@ -247,7 +245,6 @@
                 </a>
             }
         </nav>
-        <div class="sidebar-spacer"></div>
     </div>
     <div class="main-content">
         <div class="topbar">
