@@ -346,10 +346,15 @@ else
 (function () {
     var pingUrl = '@Url.Action("Ping", "Diagnostics")';
     console.groupCollapsed('%c[AuraAI] API connectivity check', 'color:#0d6efd;font-weight:bold');
-    console.log('Calling:', pingUrl);
+    console.log('%cArchitecture note', 'font-weight:bold',
+        '— The browser never calls the backend API directly.',
+        'All API requests are proxied server-side:',
+        'Browser → Web Server → Backend API');
+    console.log('Calling diagnostics endpoint:', pingUrl);
     fetch(pingUrl, { credentials: 'same-origin', cache: 'no-store' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
+            console.log('%cCall flow:', 'font-weight:bold', d.callFlow);
             if (d.ok) {
                 console.log('%c✔ API reachable', 'color:green;font-weight:bold',
                     '| URL:', d.apiUrl,
@@ -368,6 +373,8 @@ else
             console.error('%c✘ API ping request failed', 'color:red;font-weight:bold',
                 '— could not reach the diagnostics endpoint.', err);
             console.log('Hint: ensure the web server is running and you are logged in.');
+            console.log('Remember: the browser calls /diagnostics/ping on the Web Server,',
+                'which then forwards the check to the Backend API. Neither hop is direct from the browser.');
         });
     console.groupEnd();
 }());

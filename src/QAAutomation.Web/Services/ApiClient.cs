@@ -722,4 +722,10 @@ public class ApiPingResult
     public long LatencyMs { get; set; }
     public string ApiUrl { get; set; } = string.Empty;
     public string? Error { get; set; }
+    /// <summary>
+    /// Describes how the browser reaches the backend API.
+    /// The browser never contacts the API directly — all requests are proxied
+    /// server-side: Browser → Web Server → Backend API.
+    /// </summary>
+    public string CallFlow { get; set; } = "Browser → Web Server (proxy) → Backend API";
 }

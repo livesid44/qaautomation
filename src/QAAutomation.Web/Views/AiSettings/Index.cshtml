@@ -241,6 +241,30 @@
                             <code>ApiBaseUrl</code>) and restart the web application.
                         </div>
                     </div>
+
+                    <!-- Architecture call-flow diagram -->
+                    <div class="alert alert-light border mt-2 mb-0 py-2 px-3 small">
+                        <div class="fw-semibold mb-1"><i class="bi bi-diagram-3 me-1"></i>How API calls work</div>
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                                <i class="bi bi-browser-chrome me-1"></i>Browser
+                            </span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                <i class="bi bi-hdd-rack me-1"></i>Web Server <span class="text-muted fw-normal">(this app)</span>
+                            </span>
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">
+                                <i class="bi bi-server me-1"></i>Backend API
+                            </span>
+                        </div>
+                        <div class="text-muted mt-1">
+                            The browser <strong>never calls the API directly</strong>. Every API request originates from the Web Server (server-side
+                            <code>HttpClient</code> in <code>ApiClient</code>), so no backend calls appear in the browser's Network tab.
+                            Use <strong>AI Settings → Live Connectivity Test</strong> below or open the browser Console to see the
+                            server-side ping result.
+                        </div>
+                    </div>
                 </div>
             </div>
 
