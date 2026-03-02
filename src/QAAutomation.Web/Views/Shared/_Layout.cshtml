@@ -127,12 +127,21 @@
             padding: 10px 24px;
             border-top: 1px solid rgba(204,18,18,.3);
             letter-spacing: 0.02em;
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 250px;
+            z-index: 98;
         }
         .app-footer span { color: var(--brand-amber); font-weight: 600; }
+
+        /* extra bottom padding so page content isn't hidden behind fixed footer */
+        .page-content { padding-bottom: 50px; }
 
         @@media (max-width: 768px) {
             .sidebar { width: 100%; min-height: auto; position: static; }
             .main-content { margin-left: 0; }
+            .app-footer { left: 0; }
         }
     </style>
     @RenderSection("Styles", required: false)

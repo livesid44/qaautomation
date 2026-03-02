@@ -616,5 +616,255 @@ public class AppDbContext : DbContext
             });
             await SaveChangesAsync();
         }
+
+        // Seed Sampling Policies
+        if (!await SamplingPolicies.AnyAsync())
+        {
+            var project = await Projects.FirstOrDefaultAsync();
+            SamplingPolicies.AddRange(
+                new SamplingPolicy
+                {
+                    Name = "10% Random Sampling",
+                    Description = "Sample 10% of all completed evaluations for human review",
+                    ProjectId = project?.Id,
+                    SamplingMethod = "Percentage",
+                    SampleValue = 10f,
+                    IsActive = true,
+                    CreatedBy = "admin",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new SamplingPolicy
+                {
+                    Name = "Compliance Risk — All Failing Calls",
+                    Description = "100% review for calls with compliance-related failures",
+                    ProjectId = project?.Id,
+                    CallTypeFilter = "Compliance",
+                    SamplingMethod = "Percentage",
+                    SampleValue = 100f,
+                    IsActive = true,
+                    CreatedBy = "admin",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new SamplingPolicy
+                {
+                    Name = "New Agents — 5 Calls per Week",
+                    Description = "Review the first 5 calls per week for newly onboarded agents",
+                    ProjectId = project?.Id,
+                    SamplingMethod = "Count",
+                    SampleValue = 5f,
+                    IsActive = true,
+                    CreatedBy = "admin",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            );
+            await SaveChangesAsync();
+        }
+
+        // Seed Human Review Items (linked to seeded evaluation results)
+        if (!await HumanReviewItems.AnyAsync())
+        {
+            var results = await EvaluationResults.ToListAsync();
+            var policy = await SamplingPolicies.FirstOrDefaultAsync();
+            if (results.Count >= 4 && policy != null)
+            {
+                HumanReviewItems.AddRange(
+                    new HumanReviewItem
+                    {
+                        EvaluationResultId = results[0].Id,
+                        SamplingPolicyId = policy.Id,
+                        SampledAt = results[0].EvaluatedAt.AddHours(1),
+                        SampledBy = "system",
+                        AssignedTo = "admin",
+                        Status = "Reviewed",
+                        ReviewerComment = "Agree with the AI scoring. Agent demonstrated excellent product knowledge and compliance.",
+                        ReviewVerdict = "Agree",
+                        ReviewedBy = "admin",
+                        ReviewedAt = results[0].EvaluatedAt.AddDays(1)
+                    },
+                    new HumanReviewItem
+                    {
+                        EvaluationResultId = results[1].Id,
+                        SamplingPolicyId = policy.Id,
+                        SampledAt = results[1].EvaluatedAt.AddHours(1),
+                        SampledBy = "system",
+                        AssignedTo = "admin",
+                        Status = "Reviewed",
+                        ReviewerComment = "Partially agree — the Required Disclosures failure was borderline; agent did mention APR but not in the required format.",
+                        ReviewVerdict = "Partial",
+                        ReviewedBy = "admin",
+                        ReviewedAt = results[1].EvaluatedAt.AddDays(1)
+                    },
+                    new HumanReviewItem
+                    {
+                        EvaluationResultId = results[3].Id,
+                        SamplingPolicyId = policy.Id,
+                        SampledAt = results[3].EvaluatedAt.AddHours(2),
+                        SampledBy = "system",
+                        AssignedTo = "admin",
+                        Status = "Pending",
+                        ReviewerComment = null,
+                        ReviewVerdict = null,
+                        ReviewedBy = null,
+                        ReviewedAt = null
+                    }
+                );
+                await SaveChangesAsync();
+            }
+        }
+
+        // Seed Training Plans
+        if (!await TrainingPlans.AnyAsync())
+        {
+            var project = await Projects.FirstOrDefaultAsync();
+            var humanReviewItems = await HumanReviewItems.ToListAsync();
+            var evalResults = await EvaluationResults.ToListAsync();
+
+            // Plan 1 — PCI Violation for Derek Thompson
+            var plan1 = new TrainingPlan
+            {
+                Title = "PCI DSS Compliance Remediation — Derek Thompson",
+                Description = "Immediate coaching required following PCI DSS violation (COF-2025-00401). Agent asked customer to repeat card number verbally and failed full CID verification.",
+                AgentName = "Derek Thompson",
+                TrainerName = "admin",
+                Status = "Active",
+                DueDate = new DateTime(2025, 3, 10),
+                ProjectId = project?.Id,
+                EvaluationResultId = evalResults.Count > 3 ? evalResults[3].Id : null,
+                CreatedBy = "admin",
+                CreatedAt = new DateTime(2025, 2, 12),
+                UpdatedAt = new DateTime(2025, 2, 12),
+                Items = new List<TrainingPlanItem>
+                {
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Observation", Content = "Agent asked the customer to repeat their full card number aloud, violating PCI DSS data security requirements.", Status = "Pending", Order = 0 },
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Observation", Content = "Customer Identity Verification (CID) process was not completed before account details were discussed.", Status = "Pending", Order = 1 },
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Recommendation", Content = "Complete the PCI DSS e-learning module (30 min) and pass the assessment with a minimum score of 80%.", Status = "Pending", Order = 2 },
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Recommendation", Content = "Complete a live role-play session with the trainer covering CID verification and sensitive data handling.", Status = "Pending", Order = 3 },
+                    new() { TargetArea = "Call Opening", ItemType = "Recommendation", Content = "Review the CID verification checklist and practise the verification script until it becomes second nature.", Status = "Pending", Order = 4 },
+                }
+            };
+
+            // Plan 2 — Disclosure gap for James Kowalski
+            var plan2 = new TrainingPlan
+            {
+                Title = "Required Disclosures Coaching — James Kowalski",
+                Description = "APR and fee disclosure was not provided in the required format on call COF-2025-00215. Coaching to reinforce Reg Z disclosure requirements.",
+                AgentName = "James Kowalski",
+                TrainerName = "admin",
+                Status = "InProgress",
+                DueDate = new DateTime(2025, 3, 5),
+                ProjectId = project?.Id,
+                EvaluationResultId = evalResults.Count > 1 ? evalResults[1].Id : null,
+                CreatedBy = "admin",
+                CreatedAt = new DateTime(2025, 1, 22),
+                UpdatedAt = new DateTime(2025, 2, 1),
+                Items = new List<TrainingPlanItem>
+                {
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Observation", Content = "Required APR and fee disclosures were mentioned but not delivered in the mandatory scripted format as required by Reg Z.", Status = "Done", Order = 0, CompletedBy = "admin", CompletedAt = new DateTime(2025, 2, 1), CompletionNotes = "Agent reviewed the Reg Z disclosure script and confirmed understanding." },
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Recommendation", Content = "Review the Reg Z required disclosure scripts for all Capital One credit card product categories.", Status = "InProgress", Order = 1 },
+                    new() { TargetArea = "Compliance & Procedures", ItemType = "Recommendation", Content = "Conduct two supervised calls where the trainer monitors disclosure delivery in real time.", Status = "Pending", Order = 2 },
+                }
+            };
+
+            TrainingPlans.AddRange(plan1, plan2);
+            await SaveChangesAsync();
+        }
+
+        // Seed Call Pipeline Jobs
+        if (!await CallPipelineJobs.AnyAsync())
+        {
+            var project = await Projects.FirstOrDefaultAsync();
+            var form = await EvaluationForms.FirstOrDefaultAsync();
+            if (project != null && form != null)
+            {
+                var job1 = new CallPipelineJob
+                {
+                    Name = "Capital One — Weekly Batch Jan W3 2025",
+                    SourceType = "BatchUrl",
+                    FormId = form.Id,
+                    ProjectId = project.Id,
+                    Status = "Completed",
+                    CreatedAt = new DateTime(2025, 1, 20),
+                    StartedAt = new DateTime(2025, 1, 20, 9, 0, 0),
+                    CompletedAt = new DateTime(2025, 1, 20, 9, 18, 0),
+                    CreatedBy = "admin",
+                    Items = new List<CallPipelineItem>
+                    {
+                        new() { SourceReference = "https://recordings.capitalone.internal/calls/COF-2025-00142.mp3", AgentName = "Sarah Mitchell", CallReference = "COF-2025-00142", CallDate = new DateTime(2025, 1, 14), Status = "Completed", CreatedAt = new DateTime(2025, 1, 20), ProcessedAt = new DateTime(2025, 1, 20, 9, 5, 0), ScorePercent = 91.2, AiReasoning = "Excellent performance across all evaluation areas. Strong compliance adherence and outstanding customer rapport." },
+                        new() { SourceReference = "https://recordings.capitalone.internal/calls/COF-2025-00215.mp3", AgentName = "James Kowalski", CallReference = "COF-2025-00215", CallDate = new DateTime(2025, 1, 21), Status = "Completed", CreatedAt = new DateTime(2025, 1, 20), ProcessedAt = new DateTime(2025, 1, 20, 9, 10, 0), ScorePercent = 73.5, AiReasoning = "Good overall performance. Missed required APR disclosure on the first attempt — corrected after customer prompt." },
+                        new() { SourceReference = "https://recordings.capitalone.internal/calls/COF-2025-00155.mp3", AgentName = "Maria Gonzalez", CallReference = "COF-2025-00155", CallDate = new DateTime(2025, 1, 16), Status = "Failed", CreatedAt = new DateTime(2025, 1, 20), ProcessedAt = new DateTime(2025, 1, 20, 9, 15, 0), ErrorMessage = "Audio quality too poor to transcribe reliably (SNR < 10 dB)." },
+                    }
+                };
+                var job2 = new CallPipelineJob
+                {
+                    Name = "Capital One — Weekly Batch Feb W1 2025",
+                    SourceType = "BatchUrl",
+                    FormId = form.Id,
+                    ProjectId = project.Id,
+                    Status = "Completed",
+                    CreatedAt = new DateTime(2025, 2, 3),
+                    StartedAt = new DateTime(2025, 2, 3, 9, 0, 0),
+                    CompletedAt = new DateTime(2025, 2, 3, 9, 22, 0),
+                    CreatedBy = "admin",
+                    Items = new List<CallPipelineItem>
+                    {
+                        new() { SourceReference = "https://recordings.capitalone.internal/calls/COF-2025-00318.mp3", AgentName = "Priya Nair", CallReference = "COF-2025-00318", CallDate = new DateTime(2025, 2, 4), Status = "Completed", CreatedAt = new DateTime(2025, 2, 3), ProcessedAt = new DateTime(2025, 2, 3, 9, 8, 0), ScorePercent = 98.5, AiReasoning = "Outstanding call. Customer escalation handled with exceptional empathy. Full compliance adherence throughout." },
+                        new() { SourceReference = "https://recordings.capitalone.internal/calls/COF-2025-00401.mp3", AgentName = "Derek Thompson", CallReference = "COF-2025-00401", CallDate = new DateTime(2025, 2, 11), Status = "Completed", CreatedAt = new DateTime(2025, 2, 3), ProcessedAt = new DateTime(2025, 2, 3, 9, 16, 0), ScorePercent = 38.2, AiReasoning = "Below standard. Failed CID verification and PCI DSS violation detected. Immediate coaching required." },
+                    }
+                };
+                CallPipelineJobs.AddRange(job1, job2);
+                await SaveChangesAsync();
+            }
+        }
+
+        // Seed Knowledge Base
+        if (!await KnowledgeSources.AnyAsync())
+        {
+            var project = await Projects.FirstOrDefaultAsync();
+            var source = new KnowledgeSource
+            {
+                Name = "Capital One QA Policy Documents",
+                ConnectorType = "ManualUpload",
+                Description = "Internal QA policies, compliance guidelines, and evaluation rubrics for Capital One customer support",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                LastSyncedAt = DateTime.UtcNow,
+                ProjectId = project?.Id,
+                Documents = new List<KnowledgeDocument>
+                {
+                    new()
+                    {
+                        Title = "PCI DSS Agent Guidelines v4.0",
+                        FileName = "PCI_DSS_Agent_Guidelines_v4.pdf",
+                        Content = "PCI DSS Scope for Call Centre Agents\n\nAgents MUST NOT:\n- Ask customers to read aloud full card numbers\n- Write down, store, or repeat Primary Account Numbers (PAN) in any form\n- Record sensitive authentication data after authorisation\n\nAgents MUST:\n- Complete CID verification before accessing any account information\n- Use masked card numbers (last 4 digits only) when confirming identity\n- Immediately terminate calls where customers attempt to provide full card numbers verbally and request they use the secure IVR channel\n\nViolations are classified as Critical and result in immediate remediation and mandatory retraining.",
+                        Tags = "PCI,Compliance,Security,CID",
+                        ContentSizeBytes = 1240,
+                        UploadedAt = new DateTime(2025, 1, 1)
+                    },
+                    new()
+                    {
+                        Title = "Reg Z Required Disclosures Script",
+                        FileName = "RegZ_Disclosure_Script_2025.pdf",
+                        Content = "Regulation Z — Required Verbal Disclosures for Credit Card Calls\n\nWhen discussing APR or fees, agents must deliver the following scripted disclosure:\n\n\"Just to let you know, [Product Name] has a variable APR of [X]% for purchases, [Y]% for cash advances, and a minimum interest charge of $[Z]. Late fees are up to $[amount]. Please refer to your Cardmember Agreement for full terms.\"\n\nThis disclosure is mandatory whenever:\n- Opening a new account\n- Discussing promotional rates\n- Responding to balance transfer enquiries\n- Any conversation involving credit terms or fees\n\nFailure to deliver this disclosure in full is a Reg Z compliance violation.",
+                        Tags = "Compliance,RegZ,Disclosures,Fees",
+                        ContentSizeBytes = 980,
+                        UploadedAt = new DateTime(2025, 1, 1)
+                    },
+                    new()
+                    {
+                        Title = "QA Evaluation Rubric — Communication Skills",
+                        FileName = "QA_Rubric_Communication_2025.pdf",
+                        Content = "Communication Skills Evaluation Rubric\n\nScore 5 (Outstanding): Agent communicates with exceptional clarity, warmth, and professionalism. Uses the customer's name naturally, matches their communication style, and uses precise, jargon-free language throughout.\n\nScore 4 (Exceeds Standard): Clear and professional communication with minor inconsistencies. Customer-centric language used. Active listening demonstrated.\n\nScore 3 (Meets Standard): Acceptable communication. Occasional lapses in clarity or empathy but no significant impact on customer experience.\n\nScore 2 (Needs Improvement): Unclear communication, interrupts customer, or uses inappropriate tone. Customer experience negatively impacted.\n\nScore 1 (Unacceptable): Rude, dismissive, or seriously unclear communication. Immediate coaching required.",
+                        Tags = "Communication,Rubric,Scoring,Training",
+                        ContentSizeBytes = 870,
+                        UploadedAt = new DateTime(2025, 1, 15)
+                    }
+                }
+            };
+            KnowledgeSources.Add(source);
+            await SaveChangesAsync();
+        }
     }
 }

@@ -17,7 +17,7 @@ public class AccountController : Controller
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true)
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToAction("Index", "Analytics");
         ViewData["ReturnUrl"] = returnUrl;
         return View();
     }
@@ -68,7 +68,7 @@ public class AccountController : Controller
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return Redirect(returnUrl);
 
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToAction("Index", "Analytics");
     }
 
     [HttpGet]
@@ -79,7 +79,7 @@ public class AccountController : Controller
         // Get projects from session (set during login) or from claims
         var json = HttpContext.Session.GetString("pending_projects");
         if (string.IsNullOrEmpty(json))
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToAction("Index", "Analytics");
 
         var projects = System.Text.Json.JsonSerializer.Deserialize<List<ProjectViewModel>>(json) ?? new();
         return View(new SelectProjectViewModel
@@ -97,7 +97,7 @@ public class AccountController : Controller
 
         HttpContext.Session.Remove("pending_projects");
         await SetProjectAsync(projectId, projectName);
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToAction("Index", "Analytics");
     }
 
     /// <summary>Switch the active project for the current session.</summary>
@@ -109,7 +109,7 @@ public class AccountController : Controller
         await SetProjectAsync(projectId, projectName);
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return Redirect(returnUrl);
-        return RedirectToAction("Index", "Dashboard");
+        return RedirectToAction("Index", "Analytics");
     }
 
     [HttpPost]
