@@ -5,6 +5,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5018";
 
+// Port 7083 is the API's HTTPS-only Kestrel endpoint (see API launchSettings "https" profile).
+// If ApiBaseUrl was configured with a plain-HTTP scheme pointing at that port – e.g. via a
+// machine-level environment variable or a VS launch configuration that strips the scheme –
+// the TLS handshake never starts and Kestrel drops the connection with
+// "The response ended prematurely".  Upgrade the scheme here so the fix is code-level
+// and works regardless of how ApiBaseUrl was set.
+if (Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out var parsedApiUrl)
+    && parsedApiUrl.Scheme == Uri.UriSchemeHttp
+    && parsedApiUrl.Port == 7083)
+{
+    apiBaseUrl = new UriBuilder(parsedApiUrl) { Scheme = Uri.UriSchemeHttps, Port = parsedApiUrl.Port }.Uri.ToString();
+}
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -25,6 +38,16 @@ builder.Services.AddHttpClient<ApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+}).ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    // In Development the API uses a self-signed localhost dev certificate.
+    // Accept it without requiring OS-level trust so developers don't need
+    // to run 'dotnet dev-certs https --trust' before the Web app can talk to the API.
+    if (builder.Environment.IsDevelopment())
+        handler.ServerCertificateCustomValidationCallback =
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    return handler;
 });
 
 builder.Services.AddControllersWithViews(options =>
