@@ -27,7 +27,14 @@ builder.Services.AddHttpClient<ApiClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    // The Web app is a thin UI layer over the API; the API does all real validation.
+    // Non-nullable string properties should accept empty strings from forms (e.g. LlmApiKey
+    // submitted empty means "keep the existing key"). Suppress the ASP.NET Core 6+ implicit
+    // [Required] behavior that would otherwise reject empty-string form fields.
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
 
 var app = builder.Build();
 

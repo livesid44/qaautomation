@@ -6,7 +6,14 @@ using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // The Web layer sends empty strings (or null after ASP.NET Core converts empty form
+    // fields to null) for optional fields like LlmApiKey / LanguageApiKey.  Suppress the
+    // implicit [Required] that <Nullable>enable</Nullable> adds to non-nullable string
+    // properties so those empty/null values are accepted without triggering 400 responses.
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -18,7 +25,14 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=qa_automation.db"));
+{
+    // Build an absolute path so the DB file is always in the project/content-root
+    // directory regardless of the working directory (VS, dotnet run, IIS Express, etc.).
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connStr))
+        connStr = $"Data Source={Path.Combine(builder.Environment.ContentRootPath, "qa_automation.db")}";
+    options.UseSqlite(connStr);
+});
 
 builder.Services.AddCors(options =>
 {
@@ -106,7 +120,7 @@ using (var scope = app.Services.CreateScope())
         ("AiConfigs",         "LlmDeployment",       "ALTER TABLE AiConfigs ADD COLUMN LlmDeployment TEXT NULL DEFAULT 'gpt-4o'"),
         ("AiConfigs",         "LlmTemperature",      "ALTER TABLE AiConfigs ADD COLUMN LlmTemperature REAL NULL DEFAULT 0.1"),
         ("AiConfigs",         "SentimentProvider",   "ALTER TABLE AiConfigs ADD COLUMN SentimentProvider TEXT NULL DEFAULT 'AzureOpenAI'"),
-        ("AiConfigs",         "LanguageEndpoint",    "ALTER TABLE AiConfigs ADD COLUMN LanguageEndpoint TEXT NULL"),
+        ("AiConfigs",         "LanguageEndpoint",    "ALTER TABLE AiConfigs ADD COLUMN LanguageEndpoint TEXT NOT NULL DEFAULT ''"),
         // API key columns use empty-string default (not NULL) because the C# model uses non-nullable
         // string and the service guards against blank values before saving.
         ("AiConfigs",         "LanguageApiKey",      "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''"),

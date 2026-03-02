@@ -33,15 +33,18 @@ public class DbAiConfigService : IAiConfigService
     public async Task<AiConfig> SaveAsync(AiConfigDto dto)
     {
         var cfg = await GetAsync();
-        cfg.LlmProvider = dto.LlmProvider;
-        cfg.LlmEndpoint = dto.LlmEndpoint;
+        // Null-coalesce all string assignments: ASP.NET Core model binding converts empty
+        // form strings to null, so we fall back to the existing DB value (for required
+        // fields) or empty string (for optional fields) rather than violating NOT NULL.
+        cfg.LlmProvider = dto.LlmProvider ?? cfg.LlmProvider;
+        cfg.LlmEndpoint = dto.LlmEndpoint ?? string.Empty;
         // Only update keys if a real value was submitted (not blank and not the masked placeholder "***")
         if (!string.IsNullOrEmpty(dto.LlmApiKey) && dto.LlmApiKey != "***")
             cfg.LlmApiKey = dto.LlmApiKey;
-        cfg.LlmDeployment = dto.LlmDeployment;
+        cfg.LlmDeployment = dto.LlmDeployment ?? cfg.LlmDeployment;
         cfg.LlmTemperature = dto.LlmTemperature;
-        cfg.SentimentProvider = dto.SentimentProvider;
-        cfg.LanguageEndpoint = dto.LanguageEndpoint;
+        cfg.SentimentProvider = dto.SentimentProvider ?? cfg.SentimentProvider;
+        cfg.LanguageEndpoint = dto.LanguageEndpoint ?? string.Empty;
         if (!string.IsNullOrEmpty(dto.LanguageApiKey) && dto.LanguageApiKey != "***")
             cfg.LanguageApiKey = dto.LanguageApiKey;
         cfg.RagTopK = dto.RagTopK;

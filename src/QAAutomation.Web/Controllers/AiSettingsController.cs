@@ -41,7 +41,12 @@ public class AiSettingsController : Controller
     public async Task<IActionResult> Index(AiSettingsViewModel model)
     {
         if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Where(e => e.Value?.Errors.Count > 0)
+                .Select(e => $"{e.Key}: {string.Join(", ", e.Value!.Errors.Select(x => x.ErrorMessage))}");
+            _logger.LogWarning("AiSettings POST: ModelState invalid — {Errors}", string.Join("; ", errors));
             return View(model);
+        }
 
         var ok = await _api.SaveAiSettings(model);
         if (ok)

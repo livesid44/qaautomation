@@ -298,6 +298,11 @@ public class ApiClient
         try
         {
             var resp = await _http.PutAsJsonAsync("api/aiconfig", model);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _logger.LogWarning("SaveAiSettings API returned {Status}: {Body}", (int)resp.StatusCode, body);
+            }
             return resp.IsSuccessStatusCode;
         }
         catch (Exception ex) { _logger.LogError(ex, "SaveAiSettings failed"); return false; }
