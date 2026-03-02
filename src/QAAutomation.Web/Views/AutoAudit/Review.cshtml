@@ -58,7 +58,7 @@
         </h4>
         <p class="text-muted mb-0">@Model.FormName &middot; Agent: <strong>@(string.IsNullOrEmpty(Model.AgentName) ? "Unknown" : Model.AgentName)</strong></p>
     </div>
-    <a href="/AutoAudit/Upload" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>New Analysis</a>
+    <a href="@Url.Action("Upload", "AutoAudit")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>New Analysis</a>
 </div>
 
 @if (!string.IsNullOrEmpty(Model.AnalysisError))
@@ -86,7 +86,7 @@
     </div>
 }
 
-<form method="post" action="/AutoAudit/Save" id="reviewForm">
+<form method="post" action="@Url.Action("Save", "AutoAudit")" id="reviewForm">
     @Html.AntiForgeryToken()
     <input type="hidden" id="reviewJsonInput" name="reviewJson" />
 
@@ -368,8 +368,8 @@
                 <button type="submit" class="btn btn-success btn-lg px-4" onclick="prepareSubmit()">
                     <i class="bi bi-check-circle me-2"></i>Save Audit Record
                 </button>
-                <a href="/AutoAudit/Upload" class="btn btn-outline-secondary btn-lg">Re-analyze</a>
-                <a href="/Audit" class="btn btn-outline-secondary btn-lg">Discard</a>
+                <a href="@Url.Action("Upload", "AutoAudit")" class="btn btn-outline-secondary btn-lg">Re-analyze</a>
+                <a href="@Url.Action("Index", "Audit")" class="btn btn-outline-secondary btn-lg">Discard</a>
             </div>
         </div>
 

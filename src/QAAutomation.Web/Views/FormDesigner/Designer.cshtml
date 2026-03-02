@@ -60,12 +60,12 @@
         </h4>
         <p class="text-muted mb-0">Build a 3-level evaluation form with sections, parameters, and rating criteria.</p>
     </div>
-    <a href="/FormDesigner" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Index", "FormDesigner")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
     </a>
 </div>
 
-<form method="post" action="/FormDesigner/Designer" id="formDesigner">
+<form method="post" action="@Url.Action("Designer", "FormDesigner")" id="formDesigner">
     @Html.AntiForgeryToken()
     <input type="hidden" name="formJson" id="formJsonInput" />
 
@@ -145,7 +145,7 @@
                 <button type="submit" class="btn btn-info text-white px-4" onclick="collectForm()">
                     <i class="bi bi-check-lg me-1"></i>Save Form
                 </button>
-                <a href="/FormDesigner" class="btn btn-outline-secondary">Cancel</a>
+                <a href="@Url.Action("Index", "FormDesigner")" class="btn btn-outline-secondary">Cancel</a>
             </div>
         </div>
 

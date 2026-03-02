@@ -13,7 +13,7 @@
         </h4>
         <p class="text-muted mb-0">Define the improvement plan, assign the agent and trainer, then add observations and recommendations.</p>
     </div>
-    <a href="/Training" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <a href="@Url.Action("Index", "Training")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
 </div>
 
 <form method="post" action="@formAction" id="planForm">
@@ -87,7 +87,7 @@
                         <button type="submit" class="btn btn-primary" onclick="syncItems()">
                             <i class="bi bi-save me-1"></i>@(isEdit ? "Save Changes" : "Create Plan")
                         </button>
-                        <a href="/Training" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="@Url.Action("Index", "Training")" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </div>
             </div>
@@ -102,13 +102,13 @@
                         <div class="fw-semibold mb-2"><i class="bi bi-link-45deg me-1 text-info"></i>Created from Audit Context</div>
                         @if (Model.EvaluationResultId.HasValue)
                         {
-                            <a href="/Audit/Details/@Model.EvaluationResultId" class="btn btn-sm btn-outline-secondary w-100 mb-1" target="_blank">
+                            <a href="@Url.Action("Details", "Audit", new { id = Model.EvaluationResultId })" class="btn btn-sm btn-outline-secondary w-100 mb-1" target="_blank">
                                 <i class="bi bi-clipboard2-check me-1"></i>View Source Audit #@Model.EvaluationResultId
                             </a>
                         }
                         @if (Model.HumanReviewItemId.HasValue)
                         {
-                            <a href="/HumanReview/Review/@Model.HumanReviewItemId" class="btn btn-sm btn-outline-secondary w-100" target="_blank">
+                            <a href="@Url.Action("Review", "HumanReview", new { id = Model.HumanReviewItemId })" class="btn btn-sm btn-outline-secondary w-100" target="_blank">
                                 <i class="bi bi-person-check me-1"></i>View Human Review #@Model.HumanReviewItemId
                             </a>
                         }

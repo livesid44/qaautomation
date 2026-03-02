@@ -9,9 +9,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>@Model.Name</h5>
-        <small class="text-muted">Project ID: @Model.Id · <a href="/Lobs?projectId=@Model.Id">Manage LOBs</a></small>
+        <small class="text-muted">Project ID: @Model.Id · <a href="@Url.Action("Index", "Lobs", new { projectId = Model.Id })">Manage LOBs</a></small>
     </div>
-    <a href="/Projects" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Projects</a>
+    <a href="@Url.Action("Index", "Projects")" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Projects</a>
 </div>
 
 @if (TempData["Success"] != null)
@@ -27,7 +27,7 @@
                 <h6 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>Project Settings</h6>
             </div>
             <div class="card-body">
-                <form method="post" action="/Projects/Edit/@Model.Id">
+                <form method="post" action="@Url.Action("Edit", "Projects", new { id = Model.Id })">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Project Name *</label>
@@ -56,7 +56,7 @@
                         <div class="fw-semibold small">Lines of Business</div>
                         <div class="text-muted small">@Model.LobCount LOB@(Model.LobCount != 1 ? "s" : "") in this project</div>
                     </div>
-                    <a href="/Lobs?projectId=@Model.Id" class="btn btn-sm btn-outline-primary">
+                    <a href="@Url.Action("Index", "Lobs", new { projectId = Model.Id })" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-layers me-1"></i>Manage LOBs
                     </a>
                 </div>
@@ -86,7 +86,7 @@
                                     <td><span class="badge bg-secondary">@u.Role</span></td>
                                     <td class="text-muted small">@u.GrantedAt.ToString("MMM d, yyyy")</td>
                                     <td>
-                                        <form method="post" action="/Projects/RevokeAccess" class="d-inline">
+                                        <form method="post" action="@Url.Action("RevokeAccess", "Projects")" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@Model.Id" />
                                             <input type="hidden" name="userId" value="@u.Id" />
@@ -108,7 +108,7 @@
 
                 @if (unassignedUsers.Any())
                 {
-                    <form method="post" action="/Projects/GrantAccess" class="d-flex gap-2">
+                    <form method="post" action="@Url.Action("GrantAccess", "Projects")" class="d-flex gap-2">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@Model.Id" />
                         <select name="userId" class="form-select form-select-sm">

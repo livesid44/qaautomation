@@ -19,7 +19,7 @@
         </h4>
         <p class="text-muted mb-0">@(string.IsNullOrEmpty(Model.Description) ? "Knowledge source" : Model.Description)</p>
     </div>
-    <a href="/KnowledgeBase" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Sources</a>
+    <a href="@Url.Action("Index", "KnowledgeBase")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Sources</a>
 </div>
 
 @if (TempData["Success"] != null)
@@ -48,7 +48,7 @@
                 <h6 class="fw-bold mb-0">Add Document</h6>
             </div>
             <div class="card-body">
-                <form method="post" action="/KnowledgeBase/AddDocument" enctype="multipart/form-data">
+                <form method="post" action="@Url.Action("AddDocument", "KnowledgeBase")" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="SourceId" value="@Model.Id" />
                     <div class="mb-3">
@@ -116,7 +116,7 @@
                         </div>
                         <div class="content-preview">@(doc.Content.Length > 400 ? doc.Content[..400] + "..." : doc.Content)</div>
                         <div class="mt-2">
-                            <form method="post" action="/KnowledgeBase/DeleteDocument" class="d-inline">
+                            <form method="post" action="@Url.Action("DeleteDocument", "KnowledgeBase")" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@doc.Id" />
                                 <input type="hidden" name="sourceId" value="@Model.Id" />
@@ -139,7 +139,7 @@
                 <h6 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>Source Settings</h6>
             </div>
             <div class="card-body">
-                <form method="post" action="/KnowledgeBase/Source/@Model.Id">
+                <form method="post" action="@Url.Action("Source", "KnowledgeBase", new { id = Model.Id })">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Name</label>
@@ -227,7 +227,7 @@
         const el = document.getElementById('retrievalResults');
         el.innerHTML = '<span class="text-muted">Searching...</span>';
         try {
-            const resp = await fetch('/api/knowledgebase/search?q=' + encodeURIComponent(q) + '&topK=3', { credentials: 'include' });
+            const resp = await fetch('@Url.Content("~/api/knowledgebase/search")?q=' + encodeURIComponent(q) + '&topK=3', { credentials: 'include' });
             const data = await resp.json();
             if (!data.length) {
                 el.innerHTML = '<span class="text-muted">No results found.</span>';

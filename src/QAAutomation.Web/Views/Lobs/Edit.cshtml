@@ -7,7 +7,7 @@
         <h5 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-primary"></i>@Model.Name</h5>
         <small class="text-muted">Project: <strong>@Model.ProjectName</strong></small>
     </div>
-    <a href="/Lobs?projectId=@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
+    <a href="@Url.Action("Index", "Lobs", new { projectId = Model.ProjectId })" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back to LOBs
     </a>
 </div>
@@ -17,7 +17,7 @@
 }
 <div class="card border-0 shadow-sm" style="max-width:520px">
     <div class="card-body">
-        <form method="post" action="/Lobs/Edit/@Model.Id">
+        <form method="post" action="@Url.Action("Edit", "Lobs", new { id = Model.Id })">
             @Html.AntiForgeryToken()
             <div class="mb-3">
                 <label class="form-label fw-semibold small">LOB Name *</label>

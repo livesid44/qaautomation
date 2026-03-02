@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - AuraAI</title>
-    <link rel="stylesheet" href="/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/bootstrap-icons.min.css" />
     <style>
         /* ── Brand Palette ─────────────────────────────────────────────────── */
         :root {
@@ -163,55 +163,55 @@
 @if (User.Identity?.IsAuthenticated == true)
 {
     <div class="sidebar">
-        <a class="sidebar-brand" href="/Analytics">
-            <img src="/asset1.png" alt="AuraAI" />
+        <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")">
+            <img src="~/asset1.png" alt="AuraAI" />
         </a>
         <nav class="flex-column mt-2">
             <div class="nav-section">Main</div>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" || ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")"
-               href="/Analytics">
+               href="@Url.Action("Index", "Analytics")">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
 
             <div class="nav-section">Configuration</div>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Parameters" ? "active" : "")"
-               href="/Parameters">
+               href="@Url.Action("Index", "Parameters")">
                 <i class="bi bi-sliders"></i> Parameters
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "ParameterClubs" ? "active" : "")"
-               href="/ParameterClubs">
+               href="@Url.Action("Index", "ParameterClubs")">
                 <i class="bi bi-collection"></i> Parameter Clubs
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "RatingCriteria" ? "active" : "")"
-               href="/RatingCriteria">
+               href="@Url.Action("Index", "RatingCriteria")">
                 <i class="bi bi-star-half"></i> Rating Criteria
             </a>
 
             <div class="nav-section">Forms</div>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "FormDesigner" ? "active" : "")"
-               href="/FormDesigner">
+               href="@Url.Action("Index", "FormDesigner")">
                 <i class="bi bi-layout-text-window"></i> Form Designer
             </a>
 
             <div class="nav-section">Audits</div>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")"
-               href="/Audit">
+               href="@Url.Action("Index", "Audit")">
                 <i class="bi bi-clipboard2-check"></i> Audit Records
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AutoAudit" ? "active" : "")"
-               href="/AutoAudit/Upload">
+               href="@Url.Action("Upload", "AutoAudit")">
                 <i class="bi bi-robot"></i> Auto Audit <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">AI</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" ? "active" : "")"
-               href="/CallPipeline">
+               href="@Url.Action("Index", "CallPipeline")">
                 <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
-               href="/HumanReview">
+               href="@Url.Action("Index", "HumanReview")">
                 <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
             </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
-               href="/Training">
+               href="@Url.Action("Index", "Training")">
                 <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
             </a>
 
@@ -219,28 +219,28 @@
             {
                 <div class="nav-section">Admin</div>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AiSettings" ? "active" : "")"
-                   href="/AiSettings">
+                   href="@Url.Action("Index", "AiSettings")">
                     <i class="bi bi-gear-wide-connected"></i> AI Settings
                     <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sampling" ? "active" : "")"
-                   href="/Sampling">
+                   href="@Url.Action("Index", "Sampling")">
                     <i class="bi bi-funnel"></i> Sampling Policies
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "KnowledgeBase" ? "active" : "")"
-                   href="/KnowledgeBase">
+                   href="@Url.Action("Index", "KnowledgeBase")">
                     <i class="bi bi-database"></i> Knowledge Base
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")"
-                   href="/Projects">
+                   href="@Url.Action("Index", "Projects")">
                     <i class="bi bi-building"></i> Projects
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lobs" ? "active" : "")"
-                   href="/Lobs">
+                   href="@Url.Action("Index", "Lobs")">
                     <i class="bi bi-layers"></i> Lines of Business
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Users" ? "active" : "")"
-                   href="/Users">
+                   href="@Url.Action("Index", "Users")">
                     <i class="bi bi-people"></i> Users
                 </a>
             }
@@ -298,7 +298,7 @@
                             @foreach (var (pId, pName) in allProjects)
                             {
                                 <li>
-                                    <form method="post" action="/Account/SwitchProject">
+                                    <form method="post" action="@Url.Action("SwitchProject", "Account")">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="projectId" value="@pId" />
                                         <input type="hidden" name="projectName" value="@pName" />
@@ -316,7 +316,7 @@
                     <i class="bi bi-person-circle me-1"></i>@User.Identity?.Name
                     <span class="badge bg-secondary ms-1">@(User.IsInRole("Admin") ? "Admin" : "User")</span>
                 </span>
-                <form method="post" action="/Account/Logout" class="m-0">
+                <form method="post" action="@Url.Action("Logout", "Account")" class="m-0">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-box-arrow-right"></i> Logout
@@ -339,7 +339,7 @@ else
         @RenderBody()
     </div>
 }
-<script src="/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/bootstrap.bundle.min.js"></script>
 @RenderSection("Scripts", required: false)
 </body>
 </html>

@@ -17,7 +17,7 @@
             }
         </p>
     </div>
-    <a href="/HumanReview" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Index", "HumanReview")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back to Queue
     </a>
 </div>
@@ -64,12 +64,12 @@
                     }
 
                     <div class="mt-3 d-flex gap-2 flex-wrap">
-                        <a href="/Audit/Details/@item.EvaluationResultId" class="btn btn-sm btn-outline-primary" target="_blank">
+                        <a href="@Url.Action("Details", "Audit", new { id = item.EvaluationResultId })" class="btn btn-sm btn-outline-primary" target="_blank">
                             <i class="bi bi-box-arrow-up-right me-1"></i>View Full AI Audit Record
                         </a>
                         @if (User.IsInRole("Admin"))
                         {
-                            <a href="/Training/Create?humanReviewItemId=@item.Id&evaluationResultId=@item.EvaluationResultId&agentName=@Uri.EscapeDataString(item.AgentName ?? "")&callReference=@Uri.EscapeDataString(item.CallReference ?? "")&formName=@Uri.EscapeDataString(item.FormName ?? "")&aiReasoning=@Uri.EscapeDataString(item.AiReasoning ?? "")"
+                            <a href="@Url.Action("Create", "Training", new { humanReviewItemId = item.Id, evaluationResultId = item.EvaluationResultId, agentName = item.AgentName, callReference = item.CallReference, formName = item.FormName, aiReasoning = item.AiReasoning })"
                                class="btn btn-sm btn-warning text-dark">
                                 <i class="bi bi-mortarboard me-1"></i>Create Training Plan
                             </a>
@@ -117,7 +117,7 @@
                         <i class="bi bi-pencil-square me-2 text-warning"></i>Submit Your Review
                     </div>
                     <div class="card-body">
-                        <form method="post" action="/HumanReview/Review">
+                        <form method="post" action="@Url.Action("Review", "HumanReview")">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="ReviewItemId" value="@Model.ReviewItemId" />
 
@@ -164,7 +164,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-check-circle me-1"></i>Submit Review
                                 </button>
-                                <a href="/HumanReview" class="btn btn-outline-secondary">Cancel</a>
+                                <a href="@Url.Action("Index", "HumanReview")" class="btn btn-outline-secondary">Cancel</a>
                             </div>
                         </form>
                     </div>

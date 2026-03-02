@@ -7,7 +7,7 @@
         <h4 class="fw-bold mb-1"><i class="bi bi-sliders me-2 text-primary"></i>Parameters</h4>
         <p class="text-muted mb-0">Individual evaluation criteria used in parameter clubs.</p>
     </div>
-    <a href="/Parameters/Create" class="btn btn-primary">
+    <a href="@Url.Action("Create", "Parameters")" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i>Add Parameter
     </a>
 </div>
@@ -17,7 +17,7 @@
         {
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-sliders fs-1 d-block mb-2"></i>
-                No parameters found. <a href="/Parameters/Create">Add the first parameter.</a>
+                No parameters found. <a href="@Url.Action("Create", "Parameters")">Add the first parameter.</a>
             </div>
         }
         else
@@ -69,10 +69,10 @@
                                     </span>
                                 </td>
                                 <td class="text-end">
-                                    <a href="/Parameters/Edit/@p.Id" class="btn btn-sm btn-outline-secondary me-1">
+                                    <a href="@Url.Action("Edit", "Parameters", new { id = p.Id })" class="btn btn-sm btn-outline-secondary me-1">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <form method="post" action="/Parameters/Delete/@p.Id" class="d-inline"
+                                    <form method="post" action="@Url.Action("Delete", "Parameters", new { id = p.Id })" class="d-inline"
                                           onsubmit="return confirm('Delete parameter @p.Name?')">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger">

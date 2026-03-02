@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-1"><i class="bi bi-check2-circle me-2 text-success"></i>Close Training Loop</h4>
         <p class="text-muted mb-0">Confirm that all training has been delivered and the improvement cycle is complete.</p>
     </div>
-    <a href="/Training/Detail/@Model.PlanId" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Detail", "Training", new { id = Model.PlanId })" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back to Plan
     </a>
 </div>
@@ -17,7 +17,7 @@
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                <form method="post" action="/Training/Close">
+                <form method="post" action="@Url.Action("Close", "Training")">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="PlanId" value="@Model.PlanId" />
 
@@ -38,7 +38,7 @@
                         <button type="submit" class="btn btn-success">
                             <i class="bi bi-check2-circle me-1"></i>Close &amp; Complete Loop
                         </button>
-                        <a href="/Training/Detail/@Model.PlanId" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="@Url.Action("Detail", "Training", new { id = Model.PlanId })" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-1"><i class="bi bi-database me-2 text-success"></i>Knowledge Base</h4>
         <p class="text-muted mb-0">Manage process documentation for Knowledge-Based QA evaluation. Documents are retrieved via RAG when scoring.</p>
     </div>
-    <a href="/KnowledgeBase/Create" class="btn btn-success">
+    <a href="@Url.Action("Create", "KnowledgeBase")" class="btn btn-success">
         <i class="bi bi-plus-lg me-1"></i>Add Source
     </a>
 </div>
@@ -35,7 +35,7 @@
             <i class="bi bi-database-x fs-1 text-muted mb-3 d-block"></i>
             <h6 class="fw-semibold">No knowledge sources yet</h6>
             <p class="text-muted small mb-3">Add a source to upload process documentation for RAG-powered QA evaluation.</p>
-            <a href="/KnowledgeBase/Create" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add First Source</a>
+            <a href="@Url.Action("Create", "KnowledgeBase")" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add First Source</a>
         </div>
     </div>
 }
@@ -82,10 +82,10 @@ else
                         </div>
                     </div>
                     <div class="card-footer bg-white border-0 pt-0 d-flex gap-2">
-                        <a href="/KnowledgeBase/Source/@src.Id" class="btn btn-sm btn-outline-primary flex-fill">
+                        <a href="@Url.Action("Source", "KnowledgeBase", new { id = src.Id })" class="btn btn-sm btn-outline-primary flex-fill">
                             <i class="bi bi-folder2-open me-1"></i>Manage
                         </a>
-                        <form method="post" action="/KnowledgeBase/DeleteSource" class="d-inline">
+                        <form method="post" action="@Url.Action("DeleteSource", "KnowledgeBase")" class="d-inline">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@src.Id" />
                             <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -103,6 +103,6 @@ else
 <div class="mt-4 p-3 rounded bg-light border small text-muted">
     <i class="bi bi-lightbulb me-2 text-warning"></i>
     <strong>RAG tip:</strong> Documents in active sources are automatically retrieved when scoring parameters
-    marked as <strong>KnowledgeBased</strong>. Go to <a href="/Parameters">Parameters</a> to set evaluation type per parameter,
-    and <a href="/AiSettings">AI Settings</a> to configure Top-K chunks.
+    marked as <strong>KnowledgeBased</strong>. Go to <a href="@Url.Action("Index", "Parameters")">Parameters</a> to set evaluation type per parameter,
+    and <a href="@Url.Action("Index", "AiSettings")">AI Settings</a> to configure Top-K chunks.
 </div>

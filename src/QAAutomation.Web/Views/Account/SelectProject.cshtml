@@ -8,8 +8,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Select Project - QA Automation</title>
-    <link rel="stylesheet" href="/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/bootstrap-icons.min.css" />
     <style>
         body { background: #f0f2f5; }
         .card { max-width: 600px; }
@@ -27,7 +27,7 @@
             @foreach (var project in Model.Projects)
             {
                 <div class="col-12">
-                    <form method="post" action="/Account/SelectProject">
+                    <form method="post" action="@Url.Action("SelectProject", "Account")">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="projectId" value="@project.Id" />
                         <input type="hidden" name="projectName" value="@project.Name" />
@@ -52,12 +52,12 @@
         </div>
     </div>
     <div class="card-footer bg-white border-0 text-center pb-4">
-        <form method="post" action="/Account/Logout">
+        <form method="post" action="@Url.Action("Logout", "Account")">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-link text-muted small">Sign out</button>
         </form>
     </div>
 </div>
-<script src="/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

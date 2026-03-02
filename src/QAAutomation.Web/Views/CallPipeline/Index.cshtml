@@ -11,10 +11,10 @@
         <p class="text-muted mb-0">Fully automated end-to-end QA analysis — no human review required.</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/CallPipeline/BatchUrl" class="btn btn-primary">
+        <a href="@Url.Action("BatchUrl", "CallPipeline")" class="btn btn-primary">
             <i class="bi bi-link-45deg me-1"></i>Batch URLs
         </a>
-        <a href="/CallPipeline/FromConnector" class="btn btn-outline-secondary">
+        <a href="@Url.Action("FromConnector", "CallPipeline")" class="btn btn-outline-secondary">
             <i class="bi bi-plug me-1"></i>From Connector
         </a>
     </div>
@@ -35,10 +35,10 @@
             <i class="bi bi-diagram-3 fs-1 text-muted opacity-50"></i>
             <h5 class="mt-3 text-muted">No pipeline jobs yet</h5>
             <p class="text-muted">Submit a batch of recording URLs or configure a connector to get started.</p>
-            <a href="/CallPipeline/BatchUrl" class="btn btn-primary me-2">
+            <a href="@Url.Action("BatchUrl", "CallPipeline")" class="btn btn-primary me-2">
                 <i class="bi bi-link-45deg me-1"></i>Submit Batch URLs
             </a>
-            <a href="/CallPipeline/FromConnector" class="btn btn-outline-secondary">
+            <a href="@Url.Action("FromConnector", "CallPipeline")" class="btn btn-outline-secondary">
                 <i class="bi bi-plug me-1"></i>Configure Connector
             </a>
         </div>
@@ -73,7 +73,7 @@ else
                         var progress = job.TotalItems > 0 ? (double)(job.CompletedItems + job.FailedItems) / job.TotalItems * 100 : 0;
                         <tr>
                             <td class="align-middle">
-                                <a href="/CallPipeline/Detail/@job.Id" class="fw-semibold text-decoration-none">@job.Name</a>
+                                <a href="@Url.Action("Detail", "CallPipeline", new { id = job.Id })" class="fw-semibold text-decoration-none">@job.Name</a>
                                 @if (!string.IsNullOrEmpty(job.ErrorMessage))
                                 {
                                     <small class="d-block text-danger">@job.ErrorMessage</small>
@@ -102,12 +102,12 @@ else
                             </td>
                             <td class="align-middle text-muted small">@job.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</td>
                             <td class="align-middle text-end">
-                                <a href="/CallPipeline/Detail/@job.Id" class="btn btn-sm btn-outline-primary">
+                                <a href="@Url.Action("Detail", "CallPipeline", new { id = job.Id })" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 @if (job.Status is "Pending" or "Failed")
                                 {
-                                    <form method="post" action="/CallPipeline/Process" class="d-inline ms-1">
+                                    <form method="post" action="@Url.Action("Process", "CallPipeline")" class="d-inline ms-1">
                                         <input type="hidden" name="id" value="@job.Id" />
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-warning" title="Re-process">

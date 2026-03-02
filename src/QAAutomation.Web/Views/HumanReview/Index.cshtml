@@ -11,7 +11,7 @@
     </div>
     @if (User.IsInRole("Admin"))
     {
-        <a href="/Sampling" class="btn btn-outline-secondary">
+        <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">
             <i class="bi bi-funnel me-1"></i>Manage Sampling Policies
         </a>
     }
@@ -28,22 +28,22 @@
 <!-- Status filter tabs -->
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == null ? "active" : "")" href="/HumanReview">
+        <a class="nav-link @(currentStatus == null ? "active" : "")" href="@Url.Action("Index", "HumanReview")">
             All <span class="badge bg-secondary ms-1">@Model.Count</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == "Pending" ? "active" : "")" href="/HumanReview?status=Pending">
+        <a class="nav-link @(currentStatus == "Pending" ? "active" : "")" href="@Url.Action("Index", "HumanReview", new { status = "Pending" })">
             Pending <span class="badge bg-warning text-dark ms-1">@Model.Count(i => i.Status == "Pending")</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == "InReview" ? "active" : "")" href="/HumanReview?status=InReview">
+        <a class="nav-link @(currentStatus == "InReview" ? "active" : "")" href="@Url.Action("Index", "HumanReview", new { status = "InReview" })">
             In Review <span class="badge bg-info text-dark ms-1">@Model.Count(i => i.Status == "InReview")</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == "Reviewed" ? "active" : "")" href="/HumanReview?status=Reviewed">
+        <a class="nav-link @(currentStatus == "Reviewed" ? "active" : "")" href="@Url.Action("Index", "HumanReview", new { status = "Reviewed" })">
             Reviewed <span class="badge bg-success ms-1">@Model.Count(i => i.Status == "Reviewed")</span>
         </a>
     </li>
@@ -58,7 +58,7 @@
                 @if (currentStatus == null)
                 {
                     <span>No items in the review queue yet.<br />
-                    Ask an admin to apply a <a href="/Sampling">Sampling Policy</a> to populate the queue.</span>
+                    Ask an admin to apply a <a href="@Url.Action("Index", "Sampling")">Sampling Policy</a> to populate the queue.</span>
                 }
                 else
                 {
@@ -140,13 +140,13 @@ else
                             <td class="text-end">
                                 @if (item.Status != "Reviewed")
                                 {
-                                    <a href="/HumanReview/Review/@item.Id" class="btn btn-sm btn-primary">
+                                    <a href="@Url.Action("Review", "HumanReview", new { id = item.Id })" class="btn btn-sm btn-primary">
                                         <i class="bi bi-eye me-1"></i>Review
                                     </a>
                                 }
                                 else
                                 {
-                                    <a href="/HumanReview/Review/@item.Id" class="btn btn-sm btn-outline-secondary">
+                                    <a href="@Url.Action("Review", "HumanReview", new { id = item.Id })" class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-eye me-1"></i>View
                                     </a>
                                 }

@@ -29,12 +29,12 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/CallPipeline" class="btn btn-outline-secondary btn-sm">
+        <a href="@Url.Action("Index", "CallPipeline")" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>All Jobs
         </a>
         @if (Model.Status is "Pending" or "Failed")
         {
-            <form method="post" action="/CallPipeline/Process">
+            <form method="post" action="@Url.Action("Process", "CallPipeline")">
                 <input type="hidden" name="id" value="@Model.Id" />
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-primary btn-sm">
@@ -164,7 +164,7 @@
                             <td class="align-middle">
                                 @if (item.EvaluationResultId.HasValue)
                                 {
-                                    <a href="/Audit/Detail/@item.EvaluationResultId" class="btn btn-xs btn-outline-primary py-0 px-1">
+                                    <a href="@Url.Action("Detail", "Audit", new { id = item.EvaluationResultId })" class="btn btn-xs btn-outline-primary py-0 px-1">
                                         <i class="bi bi-eye"></i> View
                                     </a>
                                 }

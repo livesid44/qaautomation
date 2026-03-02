@@ -22,7 +22,7 @@
             }
         </p>
     </div>
-    <a href="/Training" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Index", "Training")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back to Plans
     </a>
 </div>
@@ -76,10 +76,10 @@
                 <div class="d-flex gap-2 ms-auto">
                     @if (isAdmin && Model.Status == "Draft")
                     {
-                        <a href="/Training/Edit/@Model.Id" class="btn btn-sm btn-outline-secondary">
+                        <a href="@Url.Action("Edit", "Training", new { id = Model.Id })" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-pencil me-1"></i>Edit
                         </a>
-                        <form method="post" action="/Training/Activate/@Model.Id">
+                        <form method="post" action="@Url.Action("Activate", "Training", new { id = Model.Id })">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="bi bi-send me-1"></i>Activate
@@ -88,7 +88,7 @@
                     }
                     @if (Model.Status == "Active" && (isAdmin || isTrainer))
                     {
-                        <form method="post" action="/Training/Start/@Model.Id">
+                        <form method="post" action="@Url.Action("Start", "Training", new { id = Model.Id })">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-info">
                                 <i class="bi bi-play-fill me-1"></i>Start Training
@@ -97,7 +97,7 @@
                     }
                     @if (Model.Status is "InProgress" or "Completed" && isAdmin)
                     {
-                        <a href="/Training/Close/@Model.Id" class="btn btn-sm btn-success">
+                        <a href="@Url.Action("Close", "Training", new { id = Model.Id })" class="btn btn-sm btn-success">
                             <i class="bi bi-check2-circle me-1"></i>Close Loop
                         </a>
                     }
@@ -247,13 +247,13 @@
                 <div class="card-body small">
                     @if (Model.EvaluationResultId.HasValue)
                     {
-                        <a href="/Audit/Details/@Model.EvaluationResultId" class="btn btn-sm btn-outline-secondary w-100 mb-2" target="_blank">
+                        <a href="@Url.Action("Details", "Audit", new { id = Model.EvaluationResultId })" class="btn btn-sm btn-outline-secondary w-100 mb-2" target="_blank">
                             <i class="bi bi-clipboard2-check me-1"></i>View Audit Record #@Model.EvaluationResultId
                         </a>
                     }
                     @if (Model.HumanReviewItemId.HasValue)
                     {
-                        <a href="/HumanReview/Review/@Model.HumanReviewItemId" class="btn btn-sm btn-outline-secondary w-100" target="_blank">
+                        <a href="@Url.Action("Review", "HumanReview", new { id = Model.HumanReviewItemId })" class="btn btn-sm btn-outline-secondary w-100" target="_blank">
                             <i class="bi bi-person-check me-1"></i>View Human Review #@Model.HumanReviewItemId
                         </a>
                     }

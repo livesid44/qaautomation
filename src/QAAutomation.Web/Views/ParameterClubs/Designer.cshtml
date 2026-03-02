@@ -36,12 +36,12 @@
         </h4>
         <p class="text-muted mb-0">Drag parameters from the left panel to assign them to this club.</p>
     </div>
-    <a href="/ParameterClubs" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Index", "ParameterClubs")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
     </a>
 </div>
 
-<form method="post" action="/ParameterClubs/Designer/@(Model.Id > 0 ? Model.Id.ToString() : "")" id="designerForm">
+<form method="post" action="@(Model.Id > 0 ? Url.Action("Designer", "ParameterClubs", new { id = Model.Id }) : Url.Action("Designer", "ParameterClubs"))" id="designerForm">
     @Html.AntiForgeryToken()
     <input type="hidden" name="id" value="@(Model.Id > 0 ? Model.Id.ToString() : "")" />
     <input type="hidden" name="itemsJson" id="itemsJsonInput" />
@@ -94,7 +94,7 @@
                         }
                         @if (!allParameters.Any())
                         {
-                            <p class="text-muted text-center small py-3">No parameters available.<br /><a href="/Parameters/Create">Create one first.</a></p>
+                            <p class="text-muted text-center small py-3">No parameters available.<br /><a href="@Url.Action("Create", "Parameters")">Create one first.</a></p>
                         }
                     </div>
                 </div>
@@ -125,7 +125,7 @@
         <button type="submit" class="btn btn-success px-4" onclick="collectItems()">
             <i class="bi bi-check-lg me-1"></i>Save Club
         </button>
-        <a href="/ParameterClubs" class="btn btn-outline-secondary">Cancel</a>
+        <a href="@Url.Action("Index", "ParameterClubs")" class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
 

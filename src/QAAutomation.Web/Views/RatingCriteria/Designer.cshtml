@@ -16,12 +16,12 @@
         </h4>
         <p class="text-muted mb-0">Define the scoring scale and descriptive levels.</p>
     </div>
-    <a href="/RatingCriteria" class="btn btn-outline-secondary">
+    <a href="@Url.Action("Index", "RatingCriteria")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Back
     </a>
 </div>
 
-<form method="post" action="/RatingCriteria/Designer/@(Model.Id > 0 ? Model.Id.ToString() : "")" id="criteriaForm">
+<form method="post" action="@(Model.Id > 0 ? Url.Action("Designer", "RatingCriteria", new { id = Model.Id }) : Url.Action("Designer", "RatingCriteria"))" id="criteriaForm">
     @Html.AntiForgeryToken()
     <input type="hidden" name="levelsJson" id="levelsJsonInput" />
 
@@ -92,7 +92,7 @@
         <button type="submit" class="btn btn-warning text-dark px-4" onclick="collectLevels()">
             <i class="bi bi-check-lg me-1"></i>Save Criteria
         </button>
-        <a href="/RatingCriteria" class="btn btn-outline-secondary">Cancel</a>
+        <a href="@Url.Action("Index", "RatingCriteria")" class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
 

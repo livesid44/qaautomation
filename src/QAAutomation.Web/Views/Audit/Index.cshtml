@@ -14,7 +14,7 @@
         </h4>
         <p class="text-muted mb-0">Quality evaluations of customer support interactions.</p>
     </div>
-    <a href="/Audit/New" class="btn btn-warning text-white">
+    <a href="@Url.Action("New", "Audit")" class="btn btn-warning text-white">
         <i class="bi bi-plus-lg me-1"></i>Record New Audit
     </a>
 </div>
@@ -68,7 +68,7 @@
             </select>
             @if (selectedFormId.HasValue)
             {
-                <a href="/Audit" class="btn btn-sm btn-outline-secondary">Clear</a>
+                <a href="@Url.Action("Index", "Audit")" class="btn btn-sm btn-outline-secondary">Clear</a>
             }
         </form>
     </div>
@@ -82,7 +82,7 @@
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-clipboard2 fs-1 d-block mb-3 opacity-25"></i>
                 <p class="mb-2">No audit records found.</p>
-                <a href="/Audit/New" class="btn btn-sm btn-warning text-white">Record the first audit</a>
+                <a href="@Url.Action("New", "Audit")" class="btn btn-sm btn-warning text-white">Record the first audit</a>
             </div>
         }
         else
@@ -121,10 +121,10 @@
                             </td>
                             <td class="small text-muted">@audit.EvaluatedAt.ToString("MMM d, yyyy HH:mm")</td>
                             <td class="text-end">
-                                <a href="/Audit/Detail/@audit.Id" class="btn btn-sm btn-outline-info me-1">
+                                <a href="@Url.Action("Detail", "Audit", new { id = audit.Id })" class="btn btn-sm btn-outline-info me-1">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <form method="post" action="/Audit/Delete/@audit.Id" class="d-inline"
+                                <form method="post" action="@Url.Action("Delete", "Audit", new { id = audit.Id })" class="d-inline"
                                       onsubmit="return confirm('Delete this audit record?')">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger">

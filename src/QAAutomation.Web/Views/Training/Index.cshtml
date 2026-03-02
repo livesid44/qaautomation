@@ -11,7 +11,7 @@
     </div>
     @if (User.IsInRole("Admin"))
     {
-        <a href="/Training/Create" class="btn btn-primary">
+        <a href="@Url.Action("Create", "Training")" class="btn btn-primary">
             <i class="bi bi-plus-circle me-1"></i>New Training Plan
         </a>
     }
@@ -34,12 +34,12 @@
 
 <!-- Status tabs -->
 <ul class="nav nav-tabs mb-4">
-    <li class="nav-item"><a class="nav-link @(currentStatus == null ? "active" : "")" href="/Training">All <span class="badge bg-secondary ms-1">@Model.Count</span></a></li>
-    <li class="nav-item"><a class="nav-link @(currentStatus == "Draft" ? "active" : "")" href="/Training?status=Draft">Draft <span class="badge bg-light text-dark border ms-1">@Model.Count(p => p.Status == "Draft")</span></a></li>
-    <li class="nav-item"><a class="nav-link @(currentStatus == "Active" ? "active" : "")" href="/Training?status=Active">Active <span class="badge bg-primary ms-1">@Model.Count(p => p.Status == "Active")</span></a></li>
-    <li class="nav-item"><a class="nav-link @(currentStatus == "InProgress" ? "active" : "")" href="/Training?status=InProgress">In Progress <span class="badge bg-info text-dark ms-1">@Model.Count(p => p.Status == "InProgress")</span></a></li>
-    <li class="nav-item"><a class="nav-link @(currentStatus == "Completed" ? "active" : "")" href="/Training?status=Completed">Completed <span class="badge bg-warning text-dark ms-1">@Model.Count(p => p.Status == "Completed")</span></a></li>
-    <li class="nav-item"><a class="nav-link @(currentStatus == "Closed" ? "active" : "")" href="/Training?status=Closed">Closed <span class="badge bg-success ms-1">@Model.Count(p => p.Status == "Closed")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == null ? "active" : "")" href="@Url.Action("Index", "Training")">All <span class="badge bg-secondary ms-1">@Model.Count</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Draft" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Draft" })">Draft <span class="badge bg-light text-dark border ms-1">@Model.Count(p => p.Status == "Draft")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Active" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Active" })">Active <span class="badge bg-primary ms-1">@Model.Count(p => p.Status == "Active")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "InProgress" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "InProgress" })">In Progress <span class="badge bg-info text-dark ms-1">@Model.Count(p => p.Status == "InProgress")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Completed" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Completed" })">Completed <span class="badge bg-warning text-dark ms-1">@Model.Count(p => p.Status == "Completed")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Closed" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Closed" })">Closed <span class="badge bg-success ms-1">@Model.Count(p => p.Status == "Closed")</span></a></li>
 </ul>
 
 @if (!Model.Any())
@@ -54,7 +54,7 @@
                 }
                 else if (User.IsInRole("Admin"))
                 {
-                    <span>No training plans yet. Create one from an <a href="/Audit">Audit Record</a> or the <a href="/HumanReview">Review Queue</a>, or start a standalone plan.</span>
+                    <span>No training plans yet. Create one from an <a href="@Url.Action("Index", "Audit")">Audit Record</a> or the <a href="@Url.Action("Index", "HumanReview")">Review Queue</a>, or start a standalone plan.</span>
                 }
                 else
                 {
@@ -86,19 +86,19 @@ else
                     {
                         <tr>
                             <td>
-                                <a href="/Training/Detail/@plan.Id" class="fw-semibold text-decoration-none">@plan.Title</a>
+                                <a href="@Url.Action("Detail", "Training", new { id = plan.Id })" class="fw-semibold text-decoration-none">@plan.Title</a>
                                 @if (plan.EvaluationResultId.HasValue || plan.HumanReviewItemId.HasValue)
                                 {
                                     <div class="small text-muted">
                                         @if (plan.EvaluationResultId.HasValue)
                                         {
-                                            <a href="/Audit/Details/@plan.EvaluationResultId" class="text-muted" target="_blank">
+                                            <a href="@Url.Action("Details", "Audit", new { id = plan.EvaluationResultId })" class="text-muted" target="_blank">
                                                 <i class="bi bi-link-45deg"></i> Audit #@plan.EvaluationResultId
                                             </a>
                                         }
                                         @if (plan.HumanReviewItemId.HasValue)
                                         {
-                                            <a href="/HumanReview/Review/@plan.HumanReviewItemId" class="text-muted ms-2" target="_blank">
+                                            <a href="@Url.Action("Review", "HumanReview", new { id = plan.HumanReviewItemId })" class="text-muted ms-2" target="_blank">
                                                 <i class="bi bi-link-45deg"></i> Review #@plan.HumanReviewItemId
                                             </a>
                                         }
@@ -147,15 +147,15 @@ else
                             <td class="small text-muted">@plan.CreatedBy</td>
                             <td class="text-end">
                                 <div class="d-flex gap-1 justify-content-end">
-                                    <a href="/Training/Detail/@plan.Id" class="btn btn-sm btn-outline-primary">
+                                    <a href="@Url.Action("Detail", "Training", new { id = plan.Id })" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if (User.IsInRole("Admin") && plan.Status is not "Closed")
                                     {
-                                        <a href="/Training/Edit/@plan.Id" class="btn btn-sm btn-outline-secondary">
+                                        <a href="@Url.Action("Edit", "Training", new { id = plan.Id })" class="btn btn-sm btn-outline-secondary">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="post" action="/Training/Delete/@plan.Id" class="d-inline">
+                                        <form method="post" action="@Url.Action("Delete", "Training", new { id = plan.Id })" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-sm btn-outline-danger"
                                                     onclick="return confirm('Delete this training plan?')">

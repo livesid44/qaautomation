@@ -66,6 +66,10 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
 }
 
+var pathBase = app.Configuration["PathBase"];
+if (!string.IsNullOrEmpty(pathBase))
+    app.UsePathBase(pathBase);
+
 app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
