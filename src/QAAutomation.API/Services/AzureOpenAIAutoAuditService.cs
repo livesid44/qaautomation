@@ -95,7 +95,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         return response;
     }
 
-    private static string BuildSystemPrompt(string formName, List<AutoAuditFieldDefinition> fields,
+    internal static string BuildSystemPrompt(string formName, List<AutoAuditFieldDefinition> fields,
         Dictionary<int, string>? kbContextMap = null)
     {
         var sb = new StringBuilder();
@@ -106,7 +106,15 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         sb.AppendLine("- For fields with MaxRating=5: score 1 (Unacceptable), 2 (Needs Improvement), 3 (Meets Standard), 4 (Exceeds Standard), 5 (Outstanding)");
         sb.AppendLine("- For fields with MaxRating=1: score 0 (FAIL) or 1 (PASS) — these are binary compliance checks");
         sb.AppendLine("- Be evidence-based: cite specific moments in the transcript for your reasoning");
-        sb.AppendLine("- Fields marked [KB] must be scored against the provided Knowledge Base excerpts as the ground truth");
+        if (kbContextMap != null && kbContextMap.Count > 0)
+        {
+            sb.AppendLine("- Fields marked [KB] must be scored against the provided Knowledge Base excerpts as the ground truth");
+            sb.AppendLine("- Fields without a [KB] tag should be scored using general QA industry knowledge, regulatory standards, and transcript evidence");
+        }
+        else
+        {
+            sb.AppendLine("- Score all fields using general QA industry knowledge, regulatory standards, and transcript evidence");
+        }
         sb.AppendLine("- If evidence is insufficient to score a field, default to 3 (Meets Standard) for 1-5 fields or 1 (PASS) for compliance");
         sb.AppendLine();
         sb.AppendLine("FORM FIELDS TO SCORE:");
@@ -115,7 +123,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             sb.AppendLine($"[{g.Key}]");
             foreach (var f in g)
             {
-                var kbTag = f.EvaluationType == "KnowledgeBased" ? " [KB]" : "";
+                var kbTag = (f.EvaluationType == "KnowledgeBased" && kbContextMap != null && kbContextMap.ContainsKey(f.FieldId)) ? " [KB]" : "";
                 sb.AppendLine($"  - FieldId={f.FieldId}, Label=\"{f.Label}\"{kbTag}, MaxRating={f.MaxRating}{(string.IsNullOrEmpty(f.Description) ? "" : $", Description=\"{f.Description}\"")}");
             }
         }

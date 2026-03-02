@@ -43,24 +43,28 @@ public class AutoAuditController : ControllerBase
         if (form == null)
             return NotFound($"Active evaluation form with id {request.FormId} not found.");
 
-        // Load parameter EvaluationType map (label → type) for RAG routing
-        var paramTypes = await _db.Parameters
+        // Load parameter metadata (label → EvaluationType + Description) for LLM prompt enrichment
+        var paramMap = await _db.Parameters
             .Where(p => p.IsActive)
-            .Select(p => new { p.Name, p.EvaluationType })
-            .ToDictionaryAsync(p => p.Name, p => p.EvaluationType);
+            .Select(p => new { p.Name, p.EvaluationType, p.Description })
+            .ToDictionaryAsync(p => p.Name, p => (p.EvaluationType, p.Description));
 
         var fieldDefinitions = form.Sections
             .OrderBy(s => s.Order)
             .SelectMany(s => s.Fields
                 .OrderBy(f => f.Order)
-                .Select(f => new AutoAuditFieldDefinition(
-                    FieldId: f.Id,
-                    Label: f.Label,
-                    Description: null,
-                    MaxRating: f.MaxRating,
-                    IsRequired: f.IsRequired,
-                    SectionTitle: s.Title,
-                    EvaluationType: paramTypes.TryGetValue(f.Label, out var et) ? et : "LLM")))
+                .Select(f =>
+                {
+                    var (evalType, desc) = paramMap.TryGetValue(f.Label, out var pm) ? pm : ("LLM", (string?)null);
+                    return new AutoAuditFieldDefinition(
+                        FieldId: f.Id,
+                        Label: f.Label,
+                        Description: desc,
+                        MaxRating: f.MaxRating,
+                        IsRequired: f.IsRequired,
+                        SectionTitle: s.Title,
+                        EvaluationType: evalType);
+                }))
             .ToList();
 
         if (fieldDefinitions.Count == 0)
