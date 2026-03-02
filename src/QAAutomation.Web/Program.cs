@@ -57,7 +57,13 @@ builder.Services.AddControllersWithViews(options =>
     // submitted empty means "keep the existing key"). Suppress the ASP.NET Core 6+ implicit
     // [Required] behavior that would otherwise reject empty-string form fields.
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
-});
+})
+// Store TempData in the server-side session instead of a cookie.
+// The AI analysis result (AutoAuditReview) can be several kilobytes; keeping it
+// in a cookie causes HTTP 400 "Request Too Long" when the browser sends it back
+// in request headers.  Session storage replaces the data cookie with a tiny
+// session-ID cookie, eliminating the header-size overflow.
+.AddSessionStateTempDataProvider();
 
 var app = builder.Build();
 
