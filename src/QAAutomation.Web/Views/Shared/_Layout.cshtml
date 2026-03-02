@@ -22,17 +22,32 @@
 
         /* ── Sidebar ──────────────────────────────────────────────────────── */
         .sidebar {
-            min-height: 100vh;
+            height: 100vh;
             background: var(--brand-dark);
             width: 250px;
             position: fixed;
             top: 0; left: 0;
             z-index: 100;
             padding-top: 0;
-            overflow-y: auto;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
         }
+        .sidebar nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,.15) transparent;
+        }
+        /* Thin scrollbar styled to match the dark sidebar */
+        .sidebar nav::-webkit-scrollbar { width: 4px; }
+        .sidebar nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.15);
+            border-radius: 2px;
+        }
+        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.3); }
 
         /* Brand / logo area */
         .sidebar-brand {
