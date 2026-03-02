@@ -17,8 +17,8 @@ public class KnowledgeBaseController : ControllerBase
 
     [HttpGet("sources")]
     [ProducesResponseType(typeof(List<KnowledgeSourceDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<KnowledgeSourceDto>>> GetSources() =>
-        Ok(await _svc.GetSourcesAsync());
+    public async Task<ActionResult<List<KnowledgeSourceDto>>> GetSources([FromQuery] int? projectId = null) =>
+        Ok(await _svc.GetSourcesAsync(projectId));
 
     [HttpGet("sources/{id:int}")]
     [ProducesResponseType(typeof(KnowledgeSourceDto), StatusCodes.Status200OK)]

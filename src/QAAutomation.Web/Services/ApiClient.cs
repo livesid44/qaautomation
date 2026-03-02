@@ -211,9 +211,10 @@ public class ApiClient
     }
 
     // Audits (EvaluationResults)
-    public async Task<List<AuditViewModel>> GetAudits()
+    public async Task<List<AuditViewModel>> GetAudits(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<AuditViewModel>>("api/evaluationresults", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/evaluationresults?projectId={projectId.Value}" : "api/evaluationresults";
+        try { return await _http.GetFromJsonAsync<List<AuditViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetAudits failed"); return new(); }
     }
 
@@ -309,9 +310,10 @@ public class ApiClient
     }
 
     // Knowledge Base sources
-    public async Task<List<KnowledgeSourceViewModel>> GetKnowledgeSources()
+    public async Task<List<KnowledgeSourceViewModel>> GetKnowledgeSources(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<KnowledgeSourceViewModel>>("api/knowledgebase/sources", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/knowledgebase/sources?projectId={projectId.Value}" : "api/knowledgebase/sources";
+        try { return await _http.GetFromJsonAsync<List<KnowledgeSourceViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetKnowledgeSources failed"); return new(); }
     }
 
@@ -456,9 +458,10 @@ public class ApiClient
     }
 
     // Analytics
-    public async Task<AnalyticsViewModel?> GetAnalytics()
+    public async Task<AnalyticsViewModel?> GetAnalytics(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<AnalyticsViewModel>("api/analytics", _jsonOptions); }
+        var url = projectId.HasValue ? $"api/analytics?projectId={projectId.Value}" : "api/analytics";
+        try { return await _http.GetFromJsonAsync<AnalyticsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetAnalytics failed"); return null; }
     }
 }

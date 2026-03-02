@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -6,8 +5,7 @@ using System.Text.Json;
 
 namespace QAAutomation.Web.Controllers;
 
-[Authorize]
-public class RatingCriteriaController : Controller
+public class RatingCriteriaController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -15,7 +13,8 @@ public class RatingCriteriaController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var items = await _api.GetRatingCriteria();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var items = await _api.GetRatingCriteria(pid);
         return View(items);
     }
 
@@ -62,6 +61,7 @@ public class RatingCriteriaController : Controller
             minScore,
             maxScore,
             isActive = true,
+            projectId = CurrentProjectId > 0 ? CurrentProjectId : (int?)null,
             levels
         };
 

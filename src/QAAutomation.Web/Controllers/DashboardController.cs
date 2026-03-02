@@ -18,7 +18,7 @@ public class DashboardController : ProjectAwareController
         var clubs = await _api.GetParameterClubs(pid);
         var criteria = await _api.GetRatingCriteria(pid);
         var forms = await _api.GetEvaluationForms(pid);
-        var audits = await _api.GetAudits();
+        var audits = await _api.GetAudits(pid);
 
         var vm = new DashboardViewModel
         {

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -6,8 +5,7 @@ using System.Text.Json;
 
 namespace QAAutomation.Web.Controllers;
 
-[Authorize]
-public class ParameterClubsController : Controller
+public class ParameterClubsController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -69,7 +67,12 @@ public class ParameterClubsController : Controller
         }
         else
         {
-            var created = await _api.CreateParameterClub(new { name = clubName, description = clubDescription });
+            var created = await _api.CreateParameterClub(new
+            {
+                name = clubName,
+                description = clubDescription,
+                projectId = CurrentProjectId > 0 ? CurrentProjectId : (int?)null
+            });
             if (created != null)
                 await _api.UpdateClubItems(created.Id, items);
         }

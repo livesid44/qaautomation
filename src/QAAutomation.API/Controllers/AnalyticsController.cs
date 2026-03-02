@@ -14,19 +14,26 @@ public class AnalyticsController : ControllerBase
 
     public AnalyticsController(AppDbContext db) => _db = db;
 
-    /// <summary>Returns aggregated QA analytics: daily scores, agent performance, parameter trends, and call-type trends.</summary>
+    /// <summary>Returns aggregated QA analytics: daily scores, agent performance, parameter trends, and call-type trends.
+    /// Pass ?projectId=N to restrict analysis to a single project.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(AnalyticsDto), StatusCodes.Status200OK)]
-    public async Task<ActionResult<AnalyticsDto>> Get()
+    public async Task<ActionResult<AnalyticsDto>> Get([FromQuery] int? projectId = null)
     {
         // Load all results with scores + field metadata in a single query
-        var results = await _db.EvaluationResults
+        var query = _db.EvaluationResults
             .Include(r => r.Form)
+                .ThenInclude(f => f.Lob)
             .Include(r => r.Scores)
                 .ThenInclude(s => s.Field)
                     .ThenInclude(f => f.Section)
             .AsNoTracking()
-            .ToListAsync();
+            .AsQueryable();
+
+        if (projectId.HasValue)
+            query = query.Where(r => r.Form.Lob != null && r.Form.Lob.ProjectId == projectId.Value);
+
+        var results = await query.ToListAsync();
 
         if (results.Count == 0)
             return Ok(new AnalyticsDto());

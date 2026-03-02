@@ -18,19 +18,24 @@ public class EvaluationResultsController : ControllerBase
         _db = db;
     }
 
-    /// <summary>Gets all evaluation results.</summary>
-    /// <returns>A list of all evaluation results.</returns>
+    /// <summary>Gets all evaluation results. Filter by ?projectId=N to restrict to a single project.</summary>
+    /// <returns>A list of evaluation results.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<EvaluationResultDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<EvaluationResultDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<EvaluationResultDto>>> GetAll([FromQuery] int? projectId = null)
     {
-        var results = await _db.EvaluationResults
+        var query = _db.EvaluationResults
             .Include(r => r.Form)
+                .ThenInclude(f => f.Lob)
             .Include(r => r.Scores)
                 .ThenInclude(s => s.Field)
                     .ThenInclude(f => f.Section)
-            .ToListAsync();
+            .AsQueryable();
 
+        if (projectId.HasValue)
+            query = query.Where(r => r.Form.Lob != null && r.Form.Lob.ProjectId == projectId.Value);
+
+        var results = await query.ToListAsync();
         return Ok(results.Select(MapToDto));
     }
 

@@ -44,6 +44,7 @@ public class RatingCriteriaController : ControllerBase
             MaxScore = dto.MaxScore,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
+            ProjectId = dto.ProjectId,
             Levels = dto.Levels.Select(l => new RatingLevel
             {
                 Score = l.Score,

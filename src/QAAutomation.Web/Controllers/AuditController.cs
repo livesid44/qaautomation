@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -6,8 +5,7 @@ using System.Text.Json;
 
 namespace QAAutomation.Web.Controllers;
 
-[Authorize]
-public class AuditController : Controller
+public class AuditController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -15,9 +13,10 @@ public class AuditController : Controller
 
     public async Task<IActionResult> Index(int? formId)
     {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
         var audits = formId.HasValue
             ? await _api.GetAuditsByForm(formId.Value)
-            : await _api.GetAudits();
+            : await _api.GetAudits(pid);
         var forms = await _api.GetLegacyForms();
         ViewBag.Forms = forms;
         ViewBag.SelectedFormId = formId;

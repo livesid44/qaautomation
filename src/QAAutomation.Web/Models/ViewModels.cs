@@ -368,6 +368,7 @@ public class KnowledgeSourceViewModel
     public DateTime CreatedAt { get; set; }
     public DateTime? LastSyncedAt { get; set; }
     public int DocumentCount { get; set; }
+    public int? ProjectId { get; set; }
 }
 
 public class KnowledgeDocumentViewModel

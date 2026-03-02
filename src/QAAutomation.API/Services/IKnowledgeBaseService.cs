@@ -9,7 +9,7 @@ namespace QAAutomation.API.Services;
 public interface IKnowledgeBaseService
 {
     // Sources
-    Task<List<KnowledgeSourceDto>> GetSourcesAsync();
+    Task<List<KnowledgeSourceDto>> GetSourcesAsync(int? projectId = null);
     Task<KnowledgeSourceDto?> GetSourceAsync(int id);
     Task<KnowledgeSourceDto> CreateSourceAsync(KnowledgeSourceDto dto);
     Task<KnowledgeSourceDto?> UpdateSourceAsync(int id, KnowledgeSourceDto dto);
@@ -43,12 +43,15 @@ public class KnowledgeBaseService : IKnowledgeBaseService
 
     // ── Sources ───────────────────────────────────────────────────────────────
 
-    public async Task<List<KnowledgeSourceDto>> GetSourcesAsync()
+    public async Task<List<KnowledgeSourceDto>> GetSourcesAsync(int? projectId = null)
     {
-        var sources = await _db.KnowledgeSources
+        var query = _db.KnowledgeSources
             .Include(s => s.Documents)
             .OrderBy(s => s.Name)
-            .ToListAsync();
+            .AsQueryable();
+        if (projectId.HasValue)
+            query = query.Where(s => s.ProjectId == projectId.Value);
+        var sources = await query.ToListAsync();
         return sources.Select(s => ToDto(s, s.Documents.Count)).ToList();
     }
 
@@ -239,7 +242,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         IsActive = s.IsActive,
         CreatedAt = s.CreatedAt,
         LastSyncedAt = s.LastSyncedAt,
-        DocumentCount = docCount
+        DocumentCount = docCount,
+        ProjectId = s.ProjectId
     };
 
     private static KnowledgeSource FromDto(KnowledgeSourceDto dto) => new()
@@ -258,7 +262,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         SharePointClientId = dto.SharePointClientId,
         SharePointClientSecret = dto.SharePointClientSecret,
         SharePointLibraryName = dto.SharePointLibraryName,
-        IsActive = dto.IsActive
+        IsActive = dto.IsActive,
+        ProjectId = dto.ProjectId
     };
 
     private static KnowledgeDocumentDto ToDocDto(KnowledgeDocument d) => new()

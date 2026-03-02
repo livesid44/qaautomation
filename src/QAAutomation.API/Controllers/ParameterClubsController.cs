@@ -48,6 +48,7 @@ public class ParameterClubsController : ControllerBase
             Description = dto.Description,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
+            ProjectId = dto.ProjectId,
             Items = dto.Items.Select((item, idx) => new ParameterClubItem
             {
                 ParameterId = item.ParameterId,

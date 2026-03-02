@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -6,8 +5,7 @@ using QAAutomation.Web.Services;
 namespace QAAutomation.Web.Controllers;
 
 /// <summary>Web UI for managing knowledge base sources and documents.</summary>
-[Authorize(Roles = "Admin")]
-public class KnowledgeBaseController : Controller
+public class KnowledgeBaseController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -22,19 +20,31 @@ public class KnowledgeBaseController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var sources = await _api.GetKnowledgeSources();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var sources = await _api.GetKnowledgeSources(pid);
         return View(sources);
     }
 
     // ── Create source ─────────────────────────────────────────────────────────
 
     [HttpGet]
-    public IActionResult Create() => View(new KnowledgeSourceViewModel());
+    public IActionResult Create()
+    {
+        var model = new KnowledgeSourceViewModel
+        {
+            ProjectId = CurrentProjectId > 0 ? CurrentProjectId : null
+        };
+        return View(model);
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(KnowledgeSourceViewModel model)
     {
+        // Always associate the new source with the currently selected project
+        if (CurrentProjectId > 0)
+            model.ProjectId = CurrentProjectId;
+
         var created = await _api.CreateKnowledgeSource(model);
         if (created == null)
         {

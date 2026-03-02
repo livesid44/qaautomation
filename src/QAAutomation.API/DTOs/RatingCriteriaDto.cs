@@ -36,6 +36,7 @@ public class CreateRatingCriteriaDto
     public string? Description { get; set; }
     public int MinScore { get; set; } = 1;
     public int MaxScore { get; set; } = 5;
+    public int? ProjectId { get; set; }
     public List<CreateRatingLevelDto> Levels { get; set; } = new();
 }
 
