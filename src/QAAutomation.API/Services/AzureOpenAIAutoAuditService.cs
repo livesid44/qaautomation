@@ -205,8 +205,11 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
                 if (scoreEl.TryGetProperty("score", out var scoreValEl))
                     score = scoreValEl.ValueKind == JsonValueKind.Number ? scoreValEl.GetDouble() : 0;
 
-                // Clamp score to valid range
-                score = Math.Max(0, Math.Min(field.MaxRating, score));
+                // Clamp score to valid range; binary fields must be exactly 0 or 1
+                if (field.MaxRating == 1)
+                    score = score >= 0.5 ? 1 : 0;
+                else
+                    score = Math.Max(0, Math.Min(field.MaxRating, score));
 
                 var reasoning = scoreEl.TryGetProperty("reasoning", out var rEl) ? rEl.GetString() ?? "" : "";
 

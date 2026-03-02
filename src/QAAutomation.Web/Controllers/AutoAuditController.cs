@@ -127,6 +127,11 @@ public class AutoAuditController : Controller
         if (review == null)
             return RedirectToAction(nameof(Upload));
 
+        // Pre-serialize fields with camelCase naming for the JavaScript score-preview panel
+        ViewData["FieldsJson"] = JsonSerializer.Serialize(
+            review.Fields,
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
         return View(review);
     }
 

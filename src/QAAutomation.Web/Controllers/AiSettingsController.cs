@@ -35,6 +35,7 @@ public class AiSettingsController : Controller
         if (settings.LlmApiKey == "***") settings.LlmApiKey = "";
         if (settings.LanguageApiKey == "***") settings.LanguageApiKey = "";
         if (settings.SpeechApiKey == "***") settings.SpeechApiKey = "";
+        ViewData["ApiBaseUrl"] = _api.BaseUrl;
         return View(settings);
     }
 

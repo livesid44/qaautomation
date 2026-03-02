@@ -16,6 +16,9 @@ public class ApiClient
         _logger = logger;
     }
 
+    /// <summary>The base URL of the backend API this client is configured to call.</summary>
+    public string BaseUrl => _http.BaseAddress?.ToString().TrimEnd('/') ?? string.Empty;
+
     // Auth - returns projects in addition to role/success
     public async Task<(bool success, string role, string message, List<ProjectViewModel> projects)> Login(string username, string password)
     {

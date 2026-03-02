@@ -158,9 +158,9 @@
                                                     @if (field.MaxRating == 1)
                                                     {
                                                         <div class="compliance-toggle btn-group">
-                                                            <button type="button" class="btn btn-sm @(field.FinalScore == 1 ? "btn-success" : "btn-outline-success") pass-btn"
+                                                            <button type="button" class="btn btn-sm @(field.FinalScore >= 0.5 ? "btn-success" : "btn-outline-success") pass-btn"
                                                                     onclick="setScore(@fieldIdx,1,this)"><i class="bi bi-check-lg"></i> PASS</button>
-                                                            <button type="button" class="btn btn-sm @(field.FinalScore == 0 ? "btn-danger" : "btn-outline-danger") fail-btn"
+                                                            <button type="button" class="btn btn-sm @(field.FinalScore < 0.5 ? "btn-danger" : "btn-outline-danger") fail-btn"
                                                                     onclick="setScore(@fieldIdx,0,this)"><i class="bi bi-x-lg"></i> FAIL</button>
                                                         </div>
                                                     }
@@ -458,7 +458,7 @@
 
 @section Scripts {
 <script>
-    const fields = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Fields));
+    const fields = @Html.Raw(ViewData["FieldsJson"] as string ?? "[]");
     const totalMax = @Model.MaxPossibleScore;
     const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
 
