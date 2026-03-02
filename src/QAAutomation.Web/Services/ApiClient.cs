@@ -512,4 +512,95 @@ public class ApiClient
         }
         catch (Exception ex) { _logger.LogError(ex, "TriggerPipelineProcess failed"); return null; }
     }
+
+    // ── Sampling Policies ─────────────────────────────────────────────────────
+
+    public async Task<List<SamplingPolicyViewModel>> GetSamplingPolicies(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/samplingpolicies?projectId={projectId}" : "api/samplingpolicies";
+        try { return await _http.GetFromJsonAsync<List<SamplingPolicyViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetSamplingPolicies failed"); return new(); }
+    }
+
+    public async Task<SamplingPolicyViewModel?> GetSamplingPolicy(int id)
+    {
+        try { return await _http.GetFromJsonAsync<SamplingPolicyViewModel>($"api/samplingpolicies/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetSamplingPolicy failed"); return null; }
+    }
+
+    public async Task<SamplingPolicyViewModel?> CreateSamplingPolicy(object dto)
+    {
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/samplingpolicies", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<SamplingPolicyViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateSamplingPolicy failed"); return null; }
+    }
+
+    public async Task<bool> UpdateSamplingPolicy(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/samplingpolicies/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateSamplingPolicy failed"); return false; }
+    }
+
+    public async Task<bool> DeleteSamplingPolicy(int id)
+    {
+        try { var r = await _http.DeleteAsync($"api/samplingpolicies/{id}"); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "DeleteSamplingPolicy failed"); return false; }
+    }
+
+    public async Task<object?> ApplySamplingPolicy(int id, string appliedBy)
+    {
+        try
+        {
+            var r = await _http.PostAsync($"api/samplingpolicies/{id}/apply?appliedBy={Uri.EscapeDataString(appliedBy)}", null);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<object>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "ApplySamplingPolicy failed"); return null; }
+    }
+
+    // ── Human Review Queue ────────────────────────────────────────────────────
+
+    public async Task<List<HumanReviewItemViewModel>> GetReviewQueue(
+        string? status = null, string? assignedTo = null, int? projectId = null)
+    {
+        var qs = new List<string>();
+        if (!string.IsNullOrEmpty(status)) qs.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrEmpty(assignedTo)) qs.Add($"assignedTo={Uri.EscapeDataString(assignedTo)}");
+        if (projectId.HasValue) qs.Add($"projectId={projectId}");
+        var url = "api/humanreview" + (qs.Any() ? "?" + string.Join("&", qs) : "");
+        try { return await _http.GetFromJsonAsync<List<HumanReviewItemViewModel>>(url, _jsonOptions) ?? new(); }
+        catch (Exception ex) { _logger.LogError(ex, "GetReviewQueue failed"); return new(); }
+    }
+
+    public async Task<HumanReviewItemViewModel?> GetReviewItem(int id)
+    {
+        try { return await _http.GetFromJsonAsync<HumanReviewItemViewModel>($"api/humanreview/{id}", _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetReviewItem failed"); return null; }
+    }
+
+    public async Task<bool> StartReview(int id, string reviewer)
+    {
+        try
+        {
+            var r = await _http.PutAsync($"api/humanreview/{id}/start?reviewer={Uri.EscapeDataString(reviewer)}", null);
+            return r.IsSuccessStatusCode;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "StartReview failed"); return false; }
+    }
+
+    public async Task<bool> SubmitReview(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/humanreview/{id}/review", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "SubmitReview failed"); return false; }
+    }
+
+    public async Task<bool> AddManualReview(object dto)
+    {
+        try { var r = await _http.PostAsJsonAsync("api/humanreview/manual", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "AddManualReview failed"); return false; }
+    }
 }

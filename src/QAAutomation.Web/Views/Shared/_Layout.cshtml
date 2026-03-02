@@ -126,6 +126,10 @@
                href="/CallPipeline">
                 <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.65rem">Auto</span>
             </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
+               href="/HumanReview">
+                <i class="bi bi-person-check"></i> Human Review <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">HITL</span>
+            </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" ? "active" : "")"
                href="/Analytics">
                 <i class="bi bi-bar-chart-line"></i> Analytics
@@ -138,6 +142,10 @@
                    href="/AiSettings">
                     <i class="bi bi-gear-wide-connected"></i> AI Settings
                     <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sampling" ? "active" : "")"
+                   href="/Sampling">
+                    <i class="bi bi-funnel"></i> Sampling Policies
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "KnowledgeBase" ? "active" : "")"
                    href="/KnowledgeBase">

@@ -1,0 +1,160 @@
+@model List<HumanReviewItemViewModel>
+@{
+    ViewData["Title"] = "Human Review Queue";
+    string? currentStatus = ViewBag.StatusFilter as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-person-check me-2 text-primary"></i>Human Review Queue</h4>
+        <p class="text-muted mb-0">AI-audited calls sampled for human validation. Review the AI score, add your comment, and submit a verdict.</p>
+    </div>
+    @if (User.IsInRole("Admin"))
+    {
+        <a href="/Sampling" class="btn btn-outline-secondary">
+            <i class="bi bi-funnel me-1"></i>Manage Sampling Policies
+        </a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Status filter tabs -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == null ? "active" : "")" href="/HumanReview">
+            All <span class="badge bg-secondary ms-1">@Model.Count</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "Pending" ? "active" : "")" href="/HumanReview?status=Pending">
+            Pending <span class="badge bg-warning text-dark ms-1">@Model.Count(i => i.Status == "Pending")</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "InReview" ? "active" : "")" href="/HumanReview?status=InReview">
+            In Review <span class="badge bg-info text-dark ms-1">@Model.Count(i => i.Status == "InReview")</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "Reviewed" ? "active" : "")" href="/HumanReview?status=Reviewed">
+            Reviewed <span class="badge bg-success ms-1">@Model.Count(i => i.Status == "Reviewed")</span>
+        </a>
+    </li>
+</ul>
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-inbox" style="font-size:3rem"></i>
+            <p class="mt-3">
+                @if (currentStatus == null)
+                {
+                    <span>No items in the review queue yet.<br />
+                    Ask an admin to apply a <a href="/Sampling">Sampling Policy</a> to populate the queue.</span>
+                }
+                else
+                {
+                    <span>No <strong>@currentStatus</strong> items.</span>
+                }
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Call Ref</th>
+                        <th>Form / Call Type</th>
+                        <th>Call Date</th>
+                        <th>AI Score</th>
+                        <th>Status</th>
+                        <th>Sampled By</th>
+                        <th>Policy</th>
+                        <th>Verdict</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@(item.AgentName ?? "—")</td>
+                            <td class="small text-muted">@(item.CallReference ?? "—")</td>
+                            <td class="small">@(item.FormName ?? "—")</td>
+                            <td class="small text-muted">@(item.CallDate?.ToString("MMM d, yyyy") ?? "—")</td>
+                            <td>
+                                @if (item.AiScorePercent.HasValue)
+                                {
+                                    var score = item.AiScorePercent.Value;
+                                    var badgeClass = score >= 80 ? "bg-success" : score >= 60 ? "bg-warning text-dark" : "bg-danger";
+                                    <span class="badge @badgeClass">@score%</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @switch (item.Status)
+                                {
+                                    case "Pending":
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                        break;
+                                    case "InReview":
+                                        <span class="badge bg-info text-dark">In Review</span>
+                                        break;
+                                    case "Reviewed":
+                                        <span class="badge bg-success">Reviewed</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary">@item.Status</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="small text-muted">@item.SampledBy</td>
+                            <td class="small text-muted">@(item.SamplingPolicyName ?? "Manual")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.ReviewVerdict))
+                                {
+                                    var vc = item.ReviewVerdict switch {
+                                        "Agree" => "bg-success",
+                                        "Disagree" => "bg-danger",
+                                        _ => "bg-warning text-dark"
+                                    };
+                                    <span class="badge @vc">@item.ReviewVerdict</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (item.Status != "Reviewed")
+                                {
+                                    <a href="/HumanReview/Review/@item.Id" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye me-1"></i>Review
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a href="/HumanReview/Review/@item.Id" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

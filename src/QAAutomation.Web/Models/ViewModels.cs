@@ -569,3 +569,80 @@ public class CallPipelineConnectorViewModel
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
 }
+
+// ── Human Review / Sampling ViewModels ─────────────────────────────────────
+
+public class SamplingPolicyViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? ProjectId { get; set; }
+    public string? CallTypeFilter { get; set; }
+    public int? MinDurationSeconds { get; set; }
+    public int? MaxDurationSeconds { get; set; }
+    public string SamplingMethod { get; set; } = "Percentage";
+    public float SampleValue { get; set; } = 10f;
+    public bool IsActive { get; set; } = true;
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public class CreateSamplingPolicyViewModel
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.MaxLength(500)]
+    public string? Description { get; set; }
+
+    public int? ProjectId { get; set; }
+
+    [System.ComponentModel.DataAnnotations.MaxLength(200)]
+    public string? CallTypeFilter { get; set; }
+
+    public int? MinDurationSeconds { get; set; }
+    public int? MaxDurationSeconds { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string SamplingMethod { get; set; } = "Percentage";
+
+    public float SampleValue { get; set; } = 10f;
+
+    public bool IsActive { get; set; } = true;
+}
+
+public class HumanReviewItemViewModel
+{
+    public int Id { get; set; }
+    public int EvaluationResultId { get; set; }
+    public int? SamplingPolicyId { get; set; }
+    public string? SamplingPolicyName { get; set; }
+    public DateTime SampledAt { get; set; }
+    public string SampledBy { get; set; } = string.Empty;
+    public string? AssignedTo { get; set; }
+    public string Status { get; set; } = "Pending";
+    public string? ReviewerComment { get; set; }
+    public string? ReviewVerdict { get; set; }
+    public string? ReviewedBy { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    // Embedded AI audit info
+    public string? AgentName { get; set; }
+    public string? CallReference { get; set; }
+    public DateTime? CallDate { get; set; }
+    public string? FormName { get; set; }
+    public double? AiScorePercent { get; set; }
+    public string? AiReasoning { get; set; }
+    public int? ProjectId { get; set; }
+}
+
+public class SubmitReviewViewModel
+{
+    public int ReviewItemId { get; set; }
+    public string? ReviewerComment { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string ReviewVerdict { get; set; } = "Agree";
+}

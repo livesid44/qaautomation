@@ -146,6 +146,7 @@ public class EvaluationResultsController : ControllerBase
         AgentName = result.AgentName,
         CallReference = result.CallReference,
         CallDate = result.CallDate,
+        CallDurationSeconds = result.CallDurationSeconds,
         Scores = result.Scores.Select(s => new EvaluationScoreDto
         {
             Id = s.Id,

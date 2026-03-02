@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<UserProjectAccess> UserProjectAccesses => Set<UserProjectAccess>();
     public DbSet<CallPipelineJob> CallPipelineJobs => Set<CallPipelineJob>();
     public DbSet<CallPipelineItem> CallPipelineItems => Set<CallPipelineItem>();
+    public DbSet<SamplingPolicy> SamplingPolicies => Set<SamplingPolicy>();
+    public DbSet<HumanReviewItem> HumanReviewItems => Set<HumanReviewItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -221,6 +223,32 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.EvaluationResult)
                   .WithMany()
                   .HasForeignKey(e => e.EvaluationResultId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SamplingPolicy>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.SamplingMethod).HasMaxLength(20);
+            entity.Property(e => e.CreatedBy).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<HumanReviewItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.SampledBy).HasMaxLength(200);
+            entity.Property(e => e.AssignedTo).HasMaxLength(200);
+            entity.Property(e => e.ReviewVerdict).HasMaxLength(20);
+            entity.Property(e => e.ReviewedBy).HasMaxLength(200);
+            entity.HasOne(e => e.EvaluationResult)
+                  .WithMany()
+                  .HasForeignKey(e => e.EvaluationResultId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SamplingPolicy)
+                  .WithMany()
+                  .HasForeignKey(e => e.SamplingPolicyId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
     }

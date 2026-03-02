@@ -21,6 +21,8 @@ public class EvaluationResult
     public string? AgentName { get; set; }      // The agent/employee being evaluated
     public string? CallReference { get; set; }  // Call ID / interaction reference
     public DateTime? CallDate { get; set; }     // Date of the evaluated call
+    /// <summary>Call recording duration in seconds (populated by the pipeline when available).</summary>
+    public int? CallDurationSeconds { get; set; }
 
     public ICollection<EvaluationScore> Scores { get; set; } = new List<EvaluationScore>();
 

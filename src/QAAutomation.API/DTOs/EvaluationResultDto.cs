@@ -11,6 +11,7 @@ public class EvaluationResultDto
     public string? AgentName { get; set; }
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
+    public int? CallDurationSeconds { get; set; }
     public List<EvaluationScoreDto> Scores { get; set; } = new();
     public double TotalScore { get; set; }
     public double MaxPossibleScore { get; set; }
