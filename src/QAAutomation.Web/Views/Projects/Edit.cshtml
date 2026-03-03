@@ -38,9 +38,9 @@
                         <textarea name="description" class="form-control" rows="2">@Model.Description</textarea>
                     </div>
                     <div class="mb-3 form-check">
-                        <input type="hidden" name="isActive" value="false" />
                         <input type="checkbox" name="isActive" value="true" class="form-check-input" id="isActive"
                                @(Model.IsActive ? "checked" : "") />
+                        <input type="hidden" name="isActive" value="false" />
                         <label for="isActive" class="form-check-label small">Project is active</label>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Save</button>
