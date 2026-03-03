@@ -712,6 +712,20 @@ public class ApiClient
         try { var r = await _http.DeleteAsync($"api/trainingplans/{id}"); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "DeleteTrainingPlan failed"); return false; }
     }
+
+    // ── Insights Chat ────────────────────────────────────────────────────────
+
+    public async Task<InsightsChatResultViewModel?> InsightsChat(string question, int? projectId)
+    {
+        try
+        {
+            var payload = new { question, projectId };
+            var r = await _http.PostAsJsonAsync("api/insightschat", payload);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<InsightsChatResultViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "InsightsChat failed"); return null; }
+    }
 }
 
 /// <summary>Result of a lightweight API connectivity check.</summary>

@@ -215,6 +215,11 @@
                 <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
             </a>
 
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "InsightsChat" ? "active" : "")"
+               href="@Url.Action("Index", "InsightsChat")">
+                <i class="bi bi-chat-dots"></i> Insights Chat
+            </a>
+
             @if (User.IsInRole("Admin"))
             {
                 <div class="nav-section">Admin</div>

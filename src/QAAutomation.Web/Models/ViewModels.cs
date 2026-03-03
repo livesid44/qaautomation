@@ -741,3 +741,16 @@ public class CloseTrainingPlanViewModel
     public int PlanId { get; set; }
     public string? ClosingNotes { get; set; }
 }
+
+// ── Insights Chat ViewModels ────────────────────────────────────────────────
+
+public class InsightsChatResultViewModel
+{
+    public string Question { get; set; } = string.Empty;
+    public string Sql { get; set; } = string.Empty;
+    public List<string> Columns { get; set; } = new();
+    public List<List<object?>> Rows { get; set; } = new();
+    public string Insights { get; set; } = string.Empty;
+    public int RowCount { get; set; }
+    public string? Error { get; set; }
+}

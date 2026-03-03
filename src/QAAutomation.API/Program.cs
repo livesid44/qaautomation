@@ -66,6 +66,9 @@ builder.Services.AddScoped<MockSentimentService>();
 builder.Services.AddScoped<IAutoAuditService, RuntimeAutoAuditService>();
 builder.Services.AddScoped<ISentimentService, RuntimeSentimentService>();
 
+// Insights Chat — NL→SQL analytics chatbot using tenant LLM
+builder.Services.AddScoped<InsightsChatService>();
+
 var app = builder.Build();
 
 // Auto-migrate on startup
