@@ -17,7 +17,7 @@ public class AuditController : ProjectAwareController
         var audits = formId.HasValue
             ? await _api.GetAuditsByForm(formId.Value)
             : await _api.GetAudits(pid);
-        var forms = await _api.GetLegacyForms();
+        var forms = await _api.GetLegacyForms(pid);
         ViewBag.Forms = forms;
         ViewBag.SelectedFormId = formId;
         return View(audits);
@@ -26,7 +26,8 @@ public class AuditController : ProjectAwareController
     [HttpGet]
     public async Task<IActionResult> New(int? formId)
     {
-        var forms = await _api.GetLegacyForms();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var forms = await _api.GetLegacyForms(pid);
         ViewBag.Forms = forms;
 
         LegacyFormViewModel? selectedForm = null;

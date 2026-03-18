@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -10,8 +9,7 @@ namespace QAAutomation.Web.Controllers;
 /// Controller for the automated audit module: transcript upload,
 /// LLM-powered scoring review, and audit record creation.
 /// </summary>
-[Authorize]
-public class AutoAuditController : Controller
+public class AutoAuditController : ProjectAwareController
 {
     private readonly ApiClient _api;
     private readonly ILogger<AutoAuditController> _logger;
@@ -29,7 +27,8 @@ public class AutoAuditController : Controller
     [HttpGet]
     public async Task<IActionResult> Upload(int? formId)
     {
-        var forms = await _api.GetLegacyForms();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var forms = await _api.GetLegacyForms(pid);
         ViewBag.Forms = forms;
         var selectedId = formId ?? forms.FirstOrDefault()?.Id ?? 0;
         return View(new AutoAuditUploadViewModel
@@ -60,7 +59,8 @@ public class AutoAuditController : Controller
 
         if (string.IsNullOrWhiteSpace(transcript))
         {
-            var forms = await _api.GetLegacyForms();
+            var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+            var forms = await _api.GetLegacyForms(pid);
             ViewBag.Forms = forms;
             ModelState.AddModelError("", "Please provide a transcript — either upload a file or paste the text.");
             return View(model);
@@ -96,7 +96,8 @@ public class AutoAuditController : Controller
 
         if (review == null)
         {
-            var forms = await _api.GetLegacyForms();
+            var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+            var forms = await _api.GetLegacyForms(pid);
             ViewBag.Forms = forms;
             ModelState.AddModelError("", "The analysis service returned an error. Please try again.");
             return View(model);

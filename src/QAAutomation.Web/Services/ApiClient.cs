@@ -281,9 +281,10 @@ public class ApiClient
     }
 
     // Legacy forms (EvaluationForms with sections and FormFields)
-    public async Task<List<LegacyFormViewModel>> GetLegacyForms()
+    public async Task<List<LegacyFormViewModel>> GetLegacyForms(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<LegacyFormViewModel>>("api/evaluationforms", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/evaluationforms?projectId={projectId}" : "api/evaluationforms";
+        try { return await _http.GetFromJsonAsync<List<LegacyFormViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetLegacyForms failed"); return new(); }
     }
 

@@ -82,12 +82,17 @@
                         {
                             <div class="param-card card mb-2 border" draggable="true"
                                  data-param-id="@p.Id" data-param-name="@p.Name"
-                                 data-param-weight="@p.DefaultWeight">
+                                 data-param-weight="@p.DefaultWeight"
+                                 data-param-description="@(p.Description ?? "")">
                                 <div class="card-body py-2 px-3">
                                     <div class="fw-semibold small">@p.Name</div>
                                     @if (!string.IsNullOrEmpty(p.Category))
                                     {
                                         <div class="text-muted" style="font-size:0.75rem">@p.Category</div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(p.Description))
+                                    {
+                                        <div class="text-muted fst-italic" style="font-size:0.7rem;line-height:1.3;">@p.Description</div>
                                     }
                                 </div>
                             </div>
@@ -161,6 +166,7 @@
                 <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
                 <div class="flex-grow-1">
                     <div class="fw-semibold small">${item.parameterName}</div>
+                    ${item.parameterDescription ? `<div class="text-muted fst-italic" style="font-size:0.7rem;line-height:1.3;">${item.parameterDescription}</div>` : ''}
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <input type="number" step="0.1" min="0" placeholder="Weight"
@@ -187,9 +193,9 @@
         renderAssigned();
     }
 
-    function addItem(id, name, weight) {
+    function addItem(id, name, weight, description) {
         if (assignedItems.some(i => i.parameterId === id)) return; // no duplicates
-        assignedItems.push({ parameterId: id, parameterName: name, order: assignedItems.length, weightOverride: null, ratingCriteriaId: null });
+        assignedItems.push({ parameterId: id, parameterName: name, parameterDescription: description || '', order: assignedItems.length, weightOverride: null, ratingCriteriaId: null });
         renderAssigned();
     }
 
@@ -205,7 +211,8 @@
         e.dataTransfer.setData('text/plain', JSON.stringify({
             id: parseInt(card.dataset.paramId),
             name: card.dataset.paramName,
-            weight: parseFloat(card.dataset.paramWeight)
+            weight: parseFloat(card.dataset.paramWeight),
+            description: card.dataset.paramDescription || ''
         }));
     });
 
@@ -220,16 +227,18 @@
             el.classList.remove('drag-over');
             try {
                 const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                addItem(data.id, data.name, data.weight);
+                addItem(data.id, data.name, data.weight, data.description);
             } catch {}
         });
     });
 
-    // Search
+    // Search (matches name, category, and description)
     document.getElementById('paramSearch').addEventListener('input', function() {
         const q = this.value.toLowerCase();
         document.querySelectorAll('#availableList .param-card').forEach(card => {
-            card.style.display = card.dataset.paramName.toLowerCase().includes(q) ? '' : 'none';
+            const matchName = card.dataset.paramName.toLowerCase().includes(q);
+            const matchDesc = (card.dataset.paramDescription || '').toLowerCase().includes(q);
+            card.style.display = (matchName || matchDesc) ? '' : 'none';
         });
     });
 
