@@ -73,6 +73,24 @@ public class KnowledgeBaseController : ControllerBase
         return StatusCode(StatusCodes.Status201Created, doc);
     }
 
+    [HttpPost("fetch-url")]
+    [ProducesResponseType(typeof(KnowledgeDocumentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<KnowledgeDocumentDto>> FetchUrl([FromBody] KnowledgeUrlFetchDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Url))
+            return BadRequest("URL is required.");
+        try
+        {
+            var doc = await _svc.FetchUrlAsync(dto);
+            return StatusCode(StatusCodes.Status201Created, doc);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpDelete("documents/{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -411,6 +411,14 @@ public class KnowledgeDocumentUploadViewModel
     public string? TextContent { get; set; }
 }
 
+public class KnowledgeUrlFetchViewModel
+{
+    [Required] public int SourceId { get; set; }
+    [Required, Url] public string Url { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public string? Tags { get; set; }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Multi-tenancy: Project & LOB view models
 // ──────────────────────────────────────────────────────────────────────────────

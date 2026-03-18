@@ -48,34 +48,79 @@
                 <h6 class="fw-bold mb-0">Add Document</h6>
             </div>
             <div class="card-body">
-                <form method="post" action="@Url.Action("AddDocument", "KnowledgeBase")" enctype="multipart/form-data">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="SourceId" value="@Model.Id" />
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Document Title *</label>
-                        <input type="text" name="Title" class="form-control" required placeholder="e.g. Credit Card Dispute Process Guide" />
+                <!-- Tab switcher -->
+                <ul class="nav nav-tabs mb-3" id="addDocTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-upload-btn" data-bs-toggle="tab" data-bs-target="#tab-upload" type="button" role="tab">
+                            <i class="bi bi-upload me-1"></i>Upload / Paste
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-url-btn" data-bs-toggle="tab" data-bs-target="#tab-url" type="button" role="tab">
+                            <i class="bi bi-link-45deg me-1"></i>Import from URL
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- ── Upload / Paste tab ── -->
+                    <div class="tab-pane fade show active" id="tab-upload" role="tabpanel">
+                        <form method="post" action="@Url.Action("AddDocument", "KnowledgeBase")" enctype="multipart/form-data">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SourceId" value="@Model.Id" />
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Document Title *</label>
+                                <input type="text" name="Title" class="form-control" required placeholder="e.g. Credit Card Dispute Process Guide" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Tags (comma-separated, optional)</label>
+                                <input type="text" name="Tags" class="form-control" placeholder="dispute, compliance, regulation" />
+                                <div class="form-text">Used to filter which documents are retrieved for specific parameters.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Upload File (.txt, .md, .csv)</label>
+                                <input type="file" name="documentFile" class="form-control" accept=".txt,.md,.csv" />
+                            </div>
+                            <div class="or-divider d-flex align-items-center gap-2 my-2 text-muted small">
+                                <div style="flex:1;height:1px;background:#dee2e6"></div>
+                                OR paste text
+                                <div style="flex:1;height:1px;background:#dee2e6"></div>
+                            </div>
+                            <div class="mb-3">
+                                <textarea name="TextContent" class="form-control" rows="5"
+                                          placeholder="Paste process documentation, policy text, script content, compliance guidelines..."></textarea>
+                                <div class="form-text">Max 50,000 characters. Longer content is truncated.</div>
+                            </div>
+                            <button type="submit" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add Document</button>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Tags (comma-separated, optional)</label>
-                        <input type="text" name="Tags" class="form-control" placeholder="dispute, compliance, regulation" />
-                        <div class="form-text">Used to filter which documents are retrieved for specific parameters.</div>
+
+                    <!-- ── Import from URL tab ── -->
+                    <div class="tab-pane fade" id="tab-url" role="tabpanel">
+                        <form method="post" action="@Url.Action("AddFromUrl", "KnowledgeBase")">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SourceId" value="@Model.Id" />
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Web URL *</label>
+                                <input type="url" name="Url" class="form-control" required
+                                       placeholder="https://support.google.com/youtube/answer/72851" />
+                                <div class="form-text">Enter the full URL of a publicly accessible web page. The server will fetch and extract its text content.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Document Title (optional)</label>
+                                <input type="text" name="Title" class="form-control"
+                                       placeholder="Defaults to the URL if left blank" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small">Tags (comma-separated, optional)</label>
+                                <input type="text" name="Tags" class="form-control" placeholder="policy, eligibility, youtube" />
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-cloud-download me-1"></i>Import from URL
+                            </button>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Upload File (.txt, .md, .csv)</label>
-                        <input type="file" name="documentFile" class="form-control" accept=".txt,.md,.csv" />
-                    </div>
-                    <div class="or-divider d-flex align-items-center gap-2 my-2 text-muted small">
-                        <div style="flex:1;height:1px;background:#dee2e6"></div>
-                        OR paste text
-                        <div style="flex:1;height:1px;background:#dee2e6"></div>
-                    </div>
-                    <div class="mb-3">
-                        <textarea name="TextContent" class="form-control" rows="5"
-                                  placeholder="Paste process documentation, policy text, script content, compliance guidelines..."></textarea>
-                        <div class="form-text">Max 50,000 characters. Longer content is truncated.</div>
-                    </div>
-                    <button type="submit" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add Document</button>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -97,7 +142,18 @@
                                 <div class="fw-semibold">@doc.Title</div>
                                 @if (!string.IsNullOrEmpty(doc.FileName))
                                 {
-                                    <div class="text-muted small"><i class="bi bi-file-earmark me-1"></i>@doc.FileName</div>
+                                    @if (Uri.TryCreate(doc.FileName, UriKind.Absolute, out var docUri) &&
+                                         (docUri.Scheme == Uri.UriSchemeHttps || docUri.Scheme == Uri.UriSchemeHttp))
+                                    {
+                                        <div class="text-muted small">
+                                            <i class="bi bi-link-45deg me-1"></i>
+                                            <a href="@docUri.AbsoluteUri" target="_blank" rel="noopener noreferrer" class="text-muted">@doc.FileName</a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-muted small"><i class="bi bi-file-earmark me-1"></i>@doc.FileName</div>
+                                    }
                                 }
                                 @if (!string.IsNullOrEmpty(doc.Tags))
                                 {

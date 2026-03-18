@@ -433,6 +433,26 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "AddKnowledgeDocument failed"); return false; }
     }
 
+    /// <summary>
+    /// Asks the API to fetch a public URL and store its content as a knowledge document.
+    /// Returns null on failure; on success returns the error message from the API if the URL cannot be fetched.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> FetchUrlDocument(KnowledgeUrlFetchViewModel dto)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync("api/knowledgebase/fetch-url", dto);
+            if (resp.IsSuccessStatusCode) return (true, null);
+            var body = await resp.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(body) ? "Failed to fetch URL." : body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "FetchUrlDocument failed");
+            return (false, ex.Message);
+        }
+    }
+
     public async Task<bool> DeleteKnowledgeDocument(int id)
     {
         try { var resp = await _http.DeleteAsync($"api/knowledgebase/documents/{id}"); return resp.IsSuccessStatusCode; }

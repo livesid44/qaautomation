@@ -44,6 +44,14 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IAiConfigService, DbAiConfigService>();
 builder.Services.AddScoped<IKnowledgeBaseService, KnowledgeBaseService>();
 
+// Named HttpClient for fetching web URLs into the Knowledge Bank
+builder.Services.AddHttpClient("kb-url-fetch")
+    .ConfigureHttpClient(c =>
+    {
+        c.Timeout = TimeSpan.FromSeconds(20);
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("QAAutomation-KnowledgeBot/1.0");
+    });
+
 // Pipeline service — fetches transcripts from URLs / SFTP / SharePoint / recording platforms
 builder.Services.AddHttpClient("pipeline")
     .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(120));

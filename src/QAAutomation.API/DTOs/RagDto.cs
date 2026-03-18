@@ -71,3 +71,12 @@ public class KnowledgeDocumentUploadDto
     [Required] public string Content { get; set; } = string.Empty;
     public string? Tags { get; set; }
 }
+
+public class KnowledgeUrlFetchDto
+{
+    [Required] public int SourceId { get; set; }
+    [Required, Url] public string Url { get; set; } = string.Empty;
+    /// <summary>Optional human-readable title. Defaults to the URL when empty.</summary>
+    public string? Title { get; set; }
+    public string? Tags { get; set; }
+}
