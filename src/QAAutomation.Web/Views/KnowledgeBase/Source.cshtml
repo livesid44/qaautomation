@@ -294,5 +294,17 @@
             el.innerHTML = '<span class="text-danger">Error: ' + e.message + '</span>';
         }
     }
+
+    // Auto-activate the "Import from URL" tab when the page is opened with #url-import in the URL
+    // (e.g. when arriving from the KM index per-card import button deep-link)
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.location.hash === '#url-import') {
+            const urlTabBtn = document.getElementById('tab-url-btn');
+            if (urlTabBtn) {
+                bootstrap.Tab.getOrCreateInstance(urlTabBtn).show();
+                urlTabBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
 </script>
 }
