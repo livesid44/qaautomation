@@ -147,6 +147,7 @@ using (var scope = app.Services.CreateScope())
         catch (Exception ex) { logger.LogWarning(ex, "Column migration failed: {Sql}", sql); }
     }
     await db.SeedAsync();
+    await db.SeedYouTubeAsync();
 
     // For existing databases: ensure all data is associated to default project/LOB
     await MigrateExistingDataToDefaultProjectAsync(db, logger);

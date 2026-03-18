@@ -822,7 +822,7 @@ public class AppDbContext : DbContext
         // Seed Knowledge Base
         if (!await KnowledgeSources.AnyAsync())
         {
-            var project = await Projects.FirstOrDefaultAsync();
+            var project = await Projects.FirstOrDefaultAsync(p => p.Name == "Capital One");
             var source = new KnowledgeSource
             {
                 Name = "Capital One QA Policy Documents",
@@ -866,5 +866,231 @@ public class AppDbContext : DbContext
             KnowledgeSources.Add(source);
             await SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Seeds the YouTube project with LOB "CSO" and an evaluation form based on the
+    /// YouTube IQA (Internal Quality Assurance) framework. Safe to call on every startup
+    /// — exits immediately if the "Youtube" project already exists.
+    /// </summary>
+    public async Task SeedYouTubeAsync()
+    {
+        if (await Projects.AnyAsync(p => p.Name == "Youtube"))
+            return;
+
+        // ── Project & LOB ──────────────────────────────────────────────────────
+        var ytProject = new Project
+        {
+            Name = "Youtube",
+            Description = "YouTube Creator Support Operations — Internal Quality Assurance",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        Projects.Add(ytProject);
+        await SaveChangesAsync();
+
+        var csoLob = new Lob
+        {
+            ProjectId = ytProject.Id,
+            Name = "CSO",
+            Description = "Creator Support Operations line of business",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        Lobs.Add(csoLob);
+        await SaveChangesAsync();
+
+        // Grant admin user access to the YouTube project
+        var adminUser = await AppUsers.FirstOrDefaultAsync(u => u.Username == "admin");
+        if (adminUser != null && !await UserProjectAccesses.AnyAsync(a => a.UserId == adminUser.Id && a.ProjectId == ytProject.Id))
+        {
+            UserProjectAccesses.Add(new UserProjectAccess { UserId = adminUser.Id, ProjectId = ytProject.Id, GrantedAt = DateTime.UtcNow });
+            await SaveChangesAsync();
+        }
+
+        // ── Rating Criteria (shared Pass/Fail for all YouTube competencies) ────
+        var ytPassFail = new RatingCriteria
+        {
+            Name = "YouTube IQA — Pass/Fail",
+            Description = "Non-compensatory pass/fail used across all YouTube IQA competencies. Failure in any mandatory competency results in auto-fail for that category.",
+            MinScore = 0,
+            MaxScore = 1,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            ProjectId = ytProject.Id,
+            Levels = new List<RatingLevel>
+            {
+                new() { Score = 0, Label = "FAIL", Description = "Competency not met — triggers category auto-fail", Color = "#dc3545" },
+                new() { Score = 1, Label = "PASS", Description = "Competency met or not applicable (Yes/NA)", Color = "#198754" }
+            }
+        };
+        RatingCriteria.Add(ytPassFail);
+        await SaveChangesAsync();
+
+        // ── Parameters (one per IQA competency) ───────────────────────────────
+        // Creator Critical — Effectiveness
+        var ytParamDefs = new[]
+        {
+            ("Accuracy",                   "Did the creator receive an accurate and complete solution for all the informed issues?",                                                                  "Creator Critical — Effectiveness", 1.0),
+            ("Tailoring",                  "Were the issues or expectations of the creator met with the right level of personalisation?",                                                             "Creator Critical — Effectiveness", 1.0),
+            ("Obviation & Next Steps",     "Has the creator been equipped with relevant obviation opportunities and next steps?",                                                                     "Creator Critical — Effectiveness", 1.0),
+            // Creator Critical — Effort
+            ("Responsiveness",             "Have we set and/or kept expectations with regards to timely and proactive follow-up communications?",                                                     "Creator Critical — Effort",        1.0),
+            ("Internal Coordination",      "Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?",                                          "Creator Critical — Effort",        1.0),
+            ("Workflows Adherence",        "Did we minimise creator effort by following correct workflows?",                                                                                         "Creator Critical — Effort",        1.0),
+            ("Creator Feedback",           "Was the creator reassured that their feedback was captured and addressed?",                                                                              "Creator Critical — Effort",        1.0),
+            ("CSAT Survey",                "Was the creator appropriately asked to provide feedback through a CSAT survey?",                                                                         "Creator Critical — Effort",        1.0),
+            // Creator Critical — Engagement
+            ("Clarity",                    "Has the creator received clear communication through the use of correct language and effective questioning?",                                             "Creator Critical — Engagement",    1.0),
+            ("Empathy",                    "Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?",                                       "Creator Critical — Engagement",    1.0),
+            ("Tone",                       "Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?",                          "Creator Critical — Engagement",    1.0),
+            // Business Critical
+            ("Due Diligence",              "Did the agent complete all required due-diligence steps before responding or escalating?",                                                               "Business Critical",                1.0),
+            ("Issue Tagging",              "Was the case correctly tagged / categorised using Neo Categorization?",                                                                                  "Business Critical",                1.0),
+            // Compliance Critical
+            ("Authentication",             "Did the agent follow the correct authentication process before discussing account or creator details?",                                                  "Compliance Critical",              1.0),
+            ("Keep YouTube Safe",          "Did the agent adhere to all policies that keep YouTube and its creators safe (trust & safety, content policy)?",                                        "Compliance Critical",              1.0),
+            ("Policy",                     "Did the agent correctly apply and communicate YouTube policies relevant to the creator's issue?",                                                        "Compliance Critical",              1.0),
+        };
+
+        foreach (var (name, desc, cat, weight) in ytParamDefs)
+        {
+            Parameters.Add(new Parameter
+            {
+                Name = name,
+                Description = desc,
+                Category = cat,
+                DefaultWeight = weight,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                ProjectId = ytProject.Id
+            });
+        }
+        await SaveChangesAsync();
+
+        var ytAllParams = await Parameters.Where(p => p.ProjectId == ytProject.Id).ToListAsync();
+        int GetYtParamId(string name) => ytAllParams.First(p => p.Name == name).Id;
+        int pfId = ytPassFail.Id;
+
+        // ── Parameter Clubs (one per IQA category / CX driver) ────────────────
+        var ytClubDefs = new[]
+        {
+            ("Creator Critical – Effectiveness",
+             "Measures whether the creator received an accurate, tailored, and complete solution including relevant next steps.",
+             new[] { "Accuracy", "Tailoring", "Obviation & Next Steps" }),
+
+            ("Creator Critical – Effort",
+             "Measures how much effort was required for the creator to reach resolution, covering responsiveness, coordination, workflows, and feedback loops.",
+             new[] { "Responsiveness", "Internal Coordination", "Workflows Adherence", "Creator Feedback", "CSAT Survey" }),
+
+            ("Creator Critical – Engagement",
+             "Measures how the creator felt during the interaction in terms of communication clarity, empathy, and professional tone.",
+             new[] { "Clarity", "Empathy", "Tone" }),
+
+            ("Business Critical",
+             "Non-compensatory business-critical checks: due diligence and correct issue tagging.",
+             new[] { "Due Diligence", "Issue Tagging" }),
+
+            ("Compliance Critical",
+             "Non-compensatory compliance checks: authentication, trust & safety, and policy adherence.",
+             new[] { "Authentication", "Keep YouTube Safe", "Policy" }),
+        };
+
+        foreach (var (clubName, clubDesc, paramNames) in ytClubDefs)
+        {
+            var club = new ParameterClub
+            {
+                Name = clubName,
+                Description = clubDesc,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                ProjectId = ytProject.Id,
+                Items = paramNames.Select((pName, idx) => new ParameterClubItem
+                {
+                    ParameterId = GetYtParamId(pName),
+                    RatingCriteriaId = pfId,
+                    Order = idx
+                }).ToList()
+            };
+            ParameterClubs.Add(club);
+        }
+        await SaveChangesAsync();
+
+        // ── Evaluation Form ────────────────────────────────────────────────────
+        var ytForm = new EvaluationForm
+        {
+            Name = "YouTube CSO IQA Evaluation Form",
+            Description = "Internal Quality Assurance evaluation form for YouTube Creator Support Operations. Based on the YouTube CSO QA Framework covering Effectiveness, Effort, Engagement, Business Critical, and Compliance Critical competencies.",
+            IsActive = true,
+            LobId = csoLob.Id,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Sections = new List<FormSection>
+            {
+                new()
+                {
+                    Title = "Creator Critical – Effectiveness",
+                    Description = "Have we helped the creator with their goal/issue?",
+                    Order = 0,
+                    Fields = new List<FormField>
+                    {
+                        new() { Label = "Accuracy",               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
+                        new() { Label = "Tailoring",              FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
+                        new() { Label = "Obviation & Next Steps", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
+                    }
+                },
+                new()
+                {
+                    Title = "Creator Critical – Effort",
+                    Description = "How much effort was it for the creator to get a resolution?",
+                    Order = 1,
+                    Fields = new List<FormField>
+                    {
+                        new() { Label = "Responsiveness",         FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
+                        new() { Label = "Internal Coordination",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
+                        new() { Label = "Workflows Adherence",    FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
+                        new() { Label = "Creator Feedback",       FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 3 },
+                        new() { Label = "CSAT Survey",            FieldType = FieldType.Rating, MaxRating = 1, IsRequired = false, Order = 4 },
+                    }
+                },
+                new()
+                {
+                    Title = "Creator Critical – Engagement",
+                    Description = "How did we make the creator feel during their interaction?",
+                    Order = 2,
+                    Fields = new List<FormField>
+                    {
+                        new() { Label = "Clarity",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Empathy",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                        new() { Label = "Tone",     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                    }
+                },
+                new()
+                {
+                    Title = "Business Critical",
+                    Description = "Non-compensatory business-critical competencies — failure in any one triggers an auto-fail for this category.",
+                    Order = 3,
+                    Fields = new List<FormField>
+                    {
+                        new() { Label = "Due Diligence", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Issue Tagging",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                    }
+                },
+                new()
+                {
+                    Title = "Compliance Critical",
+                    Description = "Non-compensatory compliance competencies — failure in any one triggers an auto-fail for this category.",
+                    Order = 4,
+                    Fields = new List<FormField>
+                    {
+                        new() { Label = "Authentication",     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Keep YouTube Safe",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                        new() { Label = "Policy",             FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                    }
+                },
+            }
+        };
+        EvaluationForms.Add(ytForm);
+        await SaveChangesAsync();
     }
 }
