@@ -106,6 +106,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         sb.AppendLine("SCORING RULES:");
         sb.AppendLine("- For fields with MaxRating=5: score 1 (Unacceptable), 2 (Needs Improvement), 3 (Meets Standard), 4 (Exceeds Standard), 5 (Outstanding)");
         sb.AppendLine("- For fields with MaxRating=1: score 0 (FAIL) or 1 (PASS) — these are binary compliance checks");
+        sb.AppendLine("- CRITICAL: your score MUST be consistent with your reasoning. If your reasoning states the agent did NOT demonstrate a behaviour, the score must be 0 (FAIL), not 1 (PASS).");
         sb.AppendLine("- Be evidence-based: cite specific moments in the transcript for your reasoning");
         if (kbContextMap != null && kbContextMap.Count > 0)
         {
@@ -214,13 +215,23 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
 
                 var reasoning = scoreEl.TryGetProperty("reasoning", out var rEl) ? rEl.GetString() ?? "" : "";
 
+                // Negative-intent correction: when the LLM's own reasoning describes what the agent
+                // *failed* to do but still returned PASS (1), override to FAIL (0).
+                // SuggestedScore preserves the raw LLM value for reviewer transparency.
+                var suggestedScore = score;
+                if (field.MaxRating == 1 && score == 1 && NegativeIntentDetector.HasNegativeIntent(reasoning))
+                {
+                    score = 0;
+                    reasoning += " [Score corrected PASS→FAIL: reasoning indicates agent did not perform this behaviour.]";
+                }
+
                 response.Fields.Add(new AutoAuditFieldScoreDto
                 {
                     FieldId = fieldId,
                     FieldLabel = field.Label,
                     SectionTitle = field.SectionTitle,
                     MaxRating = field.MaxRating,
-                    SuggestedScore = score,
+                    SuggestedScore = suggestedScore,
                     FinalScore = score,
                     Reasoning = reasoning
                 });
