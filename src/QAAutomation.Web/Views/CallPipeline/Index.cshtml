@@ -1,0 +1,125 @@
+@model List<CallPipelineJobViewModel>
+@{
+    ViewData["Title"] = "Call Pipeline Jobs";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-diagram-3 me-2 text-primary"></i>Call Pipeline
+        </h4>
+        <p class="text-muted mb-0">Fully automated end-to-end QA analysis — no human review required.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("BatchUrl", "CallPipeline")" class="btn btn-primary">
+            <i class="bi bi-link-45deg me-1"></i>Batch URLs
+        </a>
+        <a href="@Url.Action("FromConnector", "CallPipeline")" class="btn btn-outline-secondary">
+            <i class="bi bi-plug me-1"></i>From Connector
+        </a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-diagram-3 fs-1 text-muted opacity-50"></i>
+            <h5 class="mt-3 text-muted">No pipeline jobs yet</h5>
+            <p class="text-muted">Submit a batch of recording URLs or configure a connector to get started.</p>
+            <a href="@Url.Action("BatchUrl", "CallPipeline")" class="btn btn-primary me-2">
+                <i class="bi bi-link-45deg me-1"></i>Submit Batch URLs
+            </a>
+            <a href="@Url.Action("FromConnector", "CallPipeline")" class="btn btn-outline-secondary">
+                <i class="bi bi-plug me-1"></i>Configure Connector
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Job Name</th>
+                        <th>Source</th>
+                        <th>Form</th>
+                        <th>Items</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model)
+                    {
+                        var badgeClass = job.Status switch
+                        {
+                            "Completed" => "bg-success",
+                            "Running" => "bg-warning text-dark",
+                            "Failed" => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                        var progress = job.TotalItems > 0 ? (double)(job.CompletedItems + job.FailedItems) / job.TotalItems * 100 : 0;
+                        <tr>
+                            <td class="align-middle">
+                                <a href="@Url.Action("Detail", "CallPipeline", new { id = job.Id })" class="fw-semibold text-decoration-none">@job.Name</a>
+                                @if (!string.IsNullOrEmpty(job.ErrorMessage))
+                                {
+                                    <small class="d-block text-danger">@job.ErrorMessage</small>
+                                }
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge bg-light text-dark border">@job.SourceType</span>
+                            </td>
+                            <td class="align-middle text-muted small">@(job.FormName ?? $"Form #{job.FormId}")</td>
+                            <td class="align-middle">
+                                <span class="text-success fw-semibold">@job.CompletedItems</span>
+                                <span class="text-muted">/</span>@job.TotalItems
+                                @if (job.FailedItems > 0)
+                                {
+                                    <span class="text-danger small ms-1">(@job.FailedItems failed)</span>
+                                }
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge @badgeClass">@job.Status</span>
+                                @if (job.Status == "Running" || job.Status == "Pending" && job.TotalItems > 0)
+                                {
+                                    <div class="progress mt-1" style="height:4px;width:80px">
+                                        <div class="progress-bar bg-primary" style="width:@progress.ToString("F0")%"></div>
+                                    </div>
+                                }
+                            </td>
+                            <td class="align-middle text-muted small">@job.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</td>
+                            <td class="align-middle text-end">
+                                <a href="@Url.Action("Detail", "CallPipeline", new { id = job.Id })" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                @if (job.Status is "Pending" or "Failed")
+                                {
+                                    <form method="post" action="@Url.Action("Process", "CallPipeline")" class="d-inline ms-1">
+                                        <input type="hidden" name="id" value="@job.Id" />
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Re-process">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

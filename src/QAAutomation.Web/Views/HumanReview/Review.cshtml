@@ -1,0 +1,194 @@
+@model SubmitReviewViewModel
+@{
+    var item = ViewBag.Item as HumanReviewItemViewModel;
+    ViewData["Title"] = "Review Call Audit";
+    bool isReviewed = item?.Status == "Reviewed";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-person-check me-2 text-primary"></i>Review AI Audit</h4>
+        <p class="text-muted mb-0">
+            @if (item != null)
+            {
+                <span>Agent: <strong>@(item.AgentName ?? "Unknown")</strong>
+                — Call Ref: <strong>@(item.CallReference ?? "N/A")</strong>
+                — Form: <strong>@(item.FormName ?? "N/A")</strong></span>
+            }
+        </p>
+    </div>
+    <a href="@Url.Action("Index", "HumanReview")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Queue
+    </a>
+</div>
+
+@if (item != null)
+{
+    <div class="row g-4">
+        <!-- AI Audit Summary Panel -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-semibold border-0 pt-3">
+                    <i class="bi bi-robot me-2 text-primary"></i>AI Audit Result
+                    @if (item.AiScorePercent.HasValue)
+                    {
+                        var score = item.AiScorePercent.Value;
+                        var badgeClass = score >= 80 ? "bg-success" : score >= 60 ? "bg-warning text-dark" : "bg-danger";
+                        <span class="badge @badgeClass ms-2">@score% Overall Score</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <dl class="row small mb-3">
+                        <dt class="col-4 text-muted">Agent</dt>
+                        <dd class="col-8">@(item.AgentName ?? "—")</dd>
+                        <dt class="col-4 text-muted">Call Reference</dt>
+                        <dd class="col-8">@(item.CallReference ?? "—")</dd>
+                        <dt class="col-4 text-muted">Call Date</dt>
+                        <dd class="col-8">@(item.CallDate?.ToString("MMM d, yyyy") ?? "—")</dd>
+                        <dt class="col-4 text-muted">Form / Call Type</dt>
+                        <dd class="col-8">@(item.FormName ?? "—")</dd>
+                        <dt class="col-4 text-muted">Sampled By</dt>
+                        <dd class="col-8">@item.SampledBy — @item.SampledAt.ToString("MMM d, yyyy HH:mm")</dd>
+                        @if (!string.IsNullOrEmpty(item.SamplingPolicyName))
+                        {
+                            <dt class="col-4 text-muted">Policy</dt>
+                            <dd class="col-8">@item.SamplingPolicyName</dd>
+                        }
+                    </dl>
+                    @if (!string.IsNullOrEmpty(item.AiReasoning))
+                    {
+                        <div class="alert alert-light border small mb-0">
+                            <div class="fw-semibold mb-1"><i class="bi bi-chat-square-text me-1"></i>AI Reasoning / Notes</div>
+                            <div style="white-space:pre-wrap">@item.AiReasoning</div>
+                        </div>
+                    }
+
+                    <div class="mt-3 d-flex gap-2 flex-wrap">
+                        <a href="@Url.Action("Details", "Audit", new { id = item.EvaluationResultId })" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>View Full AI Audit Record
+                        </a>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <a href="@Url.Action("Create", "Training", new { humanReviewItemId = item.Id, evaluationResultId = item.EvaluationResultId, agentName = item.AgentName, callReference = item.CallReference, formName = item.FormName, aiReasoning = item.AiReasoning })"
+                               class="btn btn-sm btn-warning text-dark">
+                                <i class="bi bi-mortarboard me-1"></i>Create Training Plan
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (isReviewed)
+            {
+                <!-- Already reviewed — show the verdict read-only -->
+                <div class="card border-0 shadow-sm border-start border-4 border-success">
+                    <div class="card-header bg-white fw-semibold border-0 pt-3">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i>Human Review Submitted
+                    </div>
+                    <div class="card-body">
+                        <dl class="row small mb-0">
+                            <dt class="col-4 text-muted">Verdict</dt>
+                            <dd class="col-8">
+                                @{
+                                    var vc = item.ReviewVerdict switch {
+                                        "Agree" => "bg-success",
+                                        "Disagree" => "bg-danger",
+                                        _ => "bg-warning text-dark"
+                                    };
+                                }
+                                <span class="badge @vc">@item.ReviewVerdict</span>
+                            </dd>
+                            <dt class="col-4 text-muted">Reviewer</dt>
+                            <dd class="col-8">@(item.ReviewedBy ?? "—") — @(item.ReviewedAt?.ToString("MMM d, yyyy HH:mm") ?? "")</dd>
+                            @if (!string.IsNullOrEmpty(item.ReviewerComment))
+                            {
+                                <dt class="col-4 text-muted">Comment</dt>
+                                <dd class="col-8">@item.ReviewerComment</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Review form -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0 pt-3">
+                        <i class="bi bi-pencil-square me-2 text-warning"></i>Submit Your Review
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="@Url.Action("Review", "HumanReview")">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="ReviewItemId" value="@Model.ReviewItemId" />
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Verdict <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ReviewVerdict"
+                                               id="verdictAgree" value="Agree"
+                                               @(Model.ReviewVerdict == "Agree" ? "checked" : "") />
+                                        <label class="form-check-label" for="verdictAgree">
+                                            <span class="badge bg-success">Agree</span>
+                                            <span class="small text-muted ms-1">AI scoring is correct</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-check ms-3">
+                                        <input class="form-check-input" type="radio" name="ReviewVerdict"
+                                               id="verdictPartial" value="Partial"
+                                               @(Model.ReviewVerdict == "Partial" ? "checked" : "") />
+                                        <label class="form-check-label" for="verdictPartial">
+                                            <span class="badge bg-warning text-dark">Partial</span>
+                                            <span class="small text-muted ms-1">Partially agree</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-check ms-3">
+                                        <input class="form-check-input" type="radio" name="ReviewVerdict"
+                                               id="verdictDisagree" value="Disagree"
+                                               @(Model.ReviewVerdict == "Disagree" ? "checked" : "") />
+                                        <label class="form-check-label" for="verdictDisagree">
+                                            <span class="badge bg-danger">Disagree</span>
+                                            <span class="small text-muted ms-1">AI scoring is wrong</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Comment</label>
+                                <textarea name="ReviewerComment" class="form-control" rows="4"
+                                          placeholder="Add your observations, disagreements, or coaching notes…">@Model.ReviewerComment</textarea>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Submit Review
+                                </button>
+                                <a href="@Url.Action("Index", "HumanReview")" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Side panel: tips -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-semibold small">
+                    <i class="bi bi-info-circle me-1 text-info"></i>Reviewer Guide
+                </div>
+                <div class="card-body small text-muted">
+                    <p><strong>Agree</strong> — you believe the AI correctly evaluated this call. No changes needed.</p>
+                    <p><strong>Partial</strong> — the AI was mostly right but missed some details. Use the comment to elaborate.</p>
+                    <p><strong>Disagree</strong> — the AI evaluation was inaccurate. Your comment should explain what was wrong
+                    so training data can be improved.</p>
+                    <hr />
+                    <p>Your verdict and comment are logged against the AI audit record and contribute to ongoing model quality measurement.</p>
+                    <p class="mb-0">If you need to see the full scored form including section-by-section scores, click
+                    <strong>View Full AI Audit Record</strong> above.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}

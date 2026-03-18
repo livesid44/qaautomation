@@ -1,0 +1,401 @@
+@model QAAutomation.Web.Models.AnalyticsViewModel
+@{
+    ViewData["Title"] = "Analytics Dashboard";
+
+    // Serialise data for Chart.js
+    var dailyLabels   = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.Date));
+    var dailyData     = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.AvgScorePercent));
+    var dailyCounts   = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.AuditCount));
+
+    var agentLabels   = System.Text.Json.JsonSerializer.Serialize(Model.AgentScores.Select(a => a.AgentName));
+    var agentData     = System.Text.Json.JsonSerializer.Serialize(Model.AgentScores.Select(a => a.AvgScorePercent));
+    var agentCounts   = System.Text.Json.JsonSerializer.Serialize(Model.AgentScores.Select(a => a.AuditCount));
+
+    var paramLabels   = System.Text.Json.JsonSerializer.Serialize(Model.ParameterTrends.Select(p => p.ParameterLabel));
+    var paramSections = System.Text.Json.JsonSerializer.Serialize(Model.ParameterTrends.Select(p => p.SectionTitle));
+    var paramData     = System.Text.Json.JsonSerializer.Serialize(Model.ParameterTrends.Select(p => p.AvgScorePercent));
+
+    var ctLabels      = System.Text.Json.JsonSerializer.Serialize(Model.CallTypeScores.Select(c => c.FormName));
+    var ctData        = System.Text.Json.JsonSerializer.Serialize(Model.CallTypeScores.Select(c => c.AvgScorePercent));
+    var ctCounts      = System.Text.Json.JsonSerializer.Serialize(Model.CallTypeScores.Select(c => c.AuditCount));
+
+    bool hasData      = Model.TotalAudits > 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Analytics Dashboard</h4>
+        <p class="text-muted mb-0">QA performance trends across all audits</p>
+    </div>
+    <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
+</div>
+
+@if (!hasData)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No audit records found. Submit some audits to see analytics.
+    </div>
+}
+else
+{
+    <!-- ── KPI summary row ──────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        @{
+            var overallAvg = Model.DailyScores.Count > 0
+                ? Math.Round(Model.DailyScores.Average(d => d.AvgScorePercent), 1) : 0.0;
+            var topAgent = Model.AgentScores.OrderByDescending(a => a.AvgScorePercent).FirstOrDefault();
+            var weakestParam = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).FirstOrDefault();
+            var bestForm = Model.CallTypeScores.OrderByDescending(c => c.AvgScorePercent).FirstOrDefault();
+        }
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="bi bi-percent fs-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold">@overallAvg<small class="fs-6 text-muted">%</small></div>
+                        <div class="text-muted small">Overall Avg Score</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                        <i class="bi bi-person-check fs-4 text-success"></i>
+                    </div>
+                    <div>
+                        <div class="fs-5 fw-bold text-truncate" style="max-width:130px" title="@topAgent?.AgentName">
+                            @(topAgent?.AgentName ?? "—")
+                        </div>
+                        <div class="text-muted small">Top Agent (@(topAgent != null ? topAgent.AvgScorePercent + "%" : "—"))</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@weakestParam?.ParameterLabel">
+                            @(weakestParam?.ParameterLabel ?? "—")
+                        </div>
+                        <div class="text-muted small">Weakest Parameter (@(weakestParam != null ? weakestParam.AvgScorePercent + "%" : "—"))</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                        <i class="bi bi-telephone-inbound fs-4 text-info"></i>
+                    </div>
+                    <div>
+                        <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@bestForm?.FormName">
+                            @(bestForm?.FormName ?? "—")
+                        </div>
+                        <div class="text-muted small">Best Form (@(bestForm != null ? bestForm.AvgScorePercent + "%" : "—"))</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 1: Daily trend + Agent performance ───────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Day-by-Day QA Score</h6>
+                    <small class="text-muted">Average score % per call date</small>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Agent Performance</h6>
+                    <small class="text-muted">Average score % per agent</small>
+                </div>
+                <div class="card-body">
+                    <canvas id="agentChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 2: Parameter trend + Call-type trend ─────────────────────── -->
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-warning"></i>Parameter-wise Performance</h6>
+                    <small class="text-muted">Average score % per evaluation parameter</small>
+                </div>
+                <div class="card-body" style="overflow-x:auto">
+                    <canvas id="paramChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-telephone me-2 text-info"></i>Call Type / Form Performance</h6>
+                    <small class="text-muted">Average score % by evaluation form</small>
+                </div>
+                <div class="card-body">
+                    <canvas id="callTypeChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Agent detail table ────────────────────────────────────────────── -->
+    @if (Model.AgentScores.Count > 0)
+    {
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Performance Details</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Agent</th>
+                                <th class="text-center">Audits</th>
+                                <th>Avg Score</th>
+                                <th>Score Bar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var agent in Model.AgentScores.OrderByDescending(a => a.AvgScorePercent))
+                            {
+                                var color = agent.AvgScorePercent >= 80 ? "success"
+                                          : agent.AvgScorePercent >= 60 ? "warning" : "danger";
+                                <tr>
+                                    <td class="fw-semibold">@agent.AgentName</td>
+                                    <td class="text-center">@agent.AuditCount</td>
+                                    <td><span class="badge bg-@color">@agent.AvgScorePercent%</span></td>
+                                    <td style="min-width:140px">
+                                        <div class="progress" style="height:8px">
+                                            <div class="progress-bar bg-@color" style="width:@agent.AvgScorePercent%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Parameter detail table ───────────────────────────────────────── -->
+    @if (Model.ParameterTrends.Count > 0)
+    {
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>Parameter Performance Details</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Section</th>
+                                <th>Parameter</th>
+                                <th class="text-center">Scored</th>
+                                <th>Avg Score</th>
+                                <th>Score Bar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var param in Model.ParameterTrends.OrderBy(p => p.SectionTitle).ThenBy(p => p.ParameterLabel))
+                            {
+                                var color = param.AvgScorePercent >= 80 ? "success"
+                                          : param.AvgScorePercent >= 60 ? "warning" : "danger";
+                                <tr>
+                                    <td class="text-muted small">@param.SectionTitle</td>
+                                    <td class="fw-semibold">@param.ParameterLabel</td>
+                                    <td class="text-center">@param.ScoredCount</td>
+                                    <td><span class="badge bg-@color">@param.AvgScorePercent%</span></td>
+                                    <td style="min-width:140px">
+                                        <div class="progress" style="height:8px">
+                                            <div class="progress-bar bg-@color" style="width:@param.AvgScorePercent%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const gridColor = 'rgba(0,0,0,0.06)';
+
+    // ── Daily QA score line chart ──────────────────────────────────────────
+    const dailyLabels  = @Html.Raw(dailyLabels);
+    const dailyData    = @Html.Raw(dailyData);
+    const dailyCounts  = @Html.Raw(dailyCounts);
+    if (dailyLabels.length) {
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'line',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    label: 'Avg Score %',
+                    data: dailyData,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13,110,253,0.08)',
+                    pointBackgroundColor: '#0d6efd',
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'y'
+                }, {
+                    label: 'Audit Count',
+                    data: dailyCounts,
+                    borderColor: '#6c757d',
+                    backgroundColor: 'rgba(108,117,125,0.12)',
+                    tension: 0.2,
+                    borderDash: [5,3],
+                    fill: false,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y:  { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
+                    y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Count' }, grid: { drawOnChartArea: false } },
+                    x:  { grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    // ── Agent bar chart ────────────────────────────────────────────────────
+    const agentLabels  = @Html.Raw(agentLabels);
+    const agentData    = @Html.Raw(agentData);
+    const agentCounts  = @Html.Raw(agentCounts);
+    if (agentLabels.length) {
+        const agentColors = agentData.map(v => v >= 80 ? '#198754' : v >= 60 ? '#ffc107' : '#dc3545');
+        new Chart(document.getElementById('agentChart'), {
+            type: 'bar',
+            data: {
+                labels: agentLabels,
+                datasets: [{
+                    label: 'Avg Score %',
+                    data: agentData,
+                    backgroundColor: agentColors,
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => `Audits: ${agentCounts[ctx.dataIndex]}`
+                        }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Parameter horizontal bar chart ─────────────────────────────────────
+    const paramLabels   = @Html.Raw(paramLabels);
+    const paramSections = @Html.Raw(paramSections);
+    const paramData     = @Html.Raw(paramData);
+    if (paramLabels.length) {
+        const paramColors = paramData.map(v => v >= 80 ? 'rgba(25,135,84,0.75)' : v >= 60 ? 'rgba(255,193,7,0.75)' : 'rgba(220,53,69,0.75)');
+        const paramH = Math.max(300, paramLabels.length * 28);
+        document.getElementById('paramChart').style.height = paramH + 'px';
+        new Chart(document.getElementById('paramChart'), {
+            type: 'bar',
+            data: {
+                labels: paramLabels,
+                datasets: [{
+                    label: 'Avg Score %',
+                    data: paramData,
+                    backgroundColor: paramColors,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            beforeTitle: (items) => paramSections[items[0].dataIndex] ? `[${paramSections[items[0].dataIndex]}]` : ''
+                        }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ── Call-type doughnut chart ───────────────────────────────────────────
+    const ctLabels = @Html.Raw(ctLabels);
+    const ctData   = @Html.Raw(ctData);
+    const ctCounts = @Html.Raw(ctCounts);
+    if (ctLabels.length) {
+        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997'];
+        new Chart(document.getElementById('callTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ctLabels,
+                datasets: [{
+                    data: ctData,
+                    backgroundColor: ctLabels.map((_, i) => palette[i % palette.length]),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.raw}% (${ctCounts[ctx.dataIndex]} audits)`
+                        }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+}

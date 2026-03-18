@@ -1,0 +1,151 @@
+@model CreateSamplingPolicyViewModel
+@{
+    ViewData["Title"] = "Create Sampling Policy";
+    bool isEdit = ViewBag.PolicyId != null;
+    var formAction = isEdit ? $"/Sampling/Edit/{ViewBag.PolicyId}" : "/Sampling/Create";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-funnel me-2 text-primary"></i>
+            @(isEdit ? "Edit Sampling Policy" : "New Sampling Policy")
+        </h4>
+        <p class="text-muted mb-0">
+            Define the sampling rules. When applied, the system will select a subset of
+            completed AI-audited calls and add them to the Human Review queue.
+        </p>
+    </div>
+    <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="post" action="@formAction">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Policy Name <span class="text-danger">*</span></label>
+                        <input type="text" name="Name" class="form-control" value="@Model.Name" required placeholder="e.g. 10% Random QA Check" />
+                        @Html.ValidationMessage("Name", new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="Description" class="form-control" rows="2" placeholder="Optional description…">@Model.Description</textarea>
+                    </div>
+
+                    <hr class="my-3" />
+                    <h6 class="fw-semibold text-muted mb-3"><i class="bi bi-filter me-1"></i>Call Filters (optional)</h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold small">Call Type Filter</label>
+                            <input type="text" name="CallTypeFilter" class="form-control" value="@Model.CallTypeFilter"
+                                   placeholder="Form name contains… (leave blank for all call types)" />
+                            <div class="form-text">Only evaluate calls whose QA Form name contains this text (case-insensitive).</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Min Duration (seconds)</label>
+                            <input type="number" name="MinDurationSeconds" class="form-control" value="@Model.MinDurationSeconds" min="0" placeholder="e.g. 60" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Max Duration (seconds)</label>
+                            <input type="number" name="MaxDurationSeconds" class="form-control" value="@Model.MaxDurationSeconds" min="0" placeholder="e.g. 600" />
+                        </div>
+                    </div>
+
+                    <hr class="my-3" />
+                    <h6 class="fw-semibold text-muted mb-3"><i class="bi bi-percent me-1"></i>Sampling Method</h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Method <span class="text-danger">*</span></label>
+                            <select name="SamplingMethod" class="form-select" id="samplingMethod">
+                                @if (Model.SamplingMethod == "Percentage")
+                                {
+                                    <option value="Percentage" selected>Percentage of eligible calls</option>
+                                    <option value="Count">Fixed count per application</option>
+                                }
+                                else
+                                {
+                                    <option value="Percentage">Percentage of eligible calls</option>
+                                    <option value="Count" selected>Fixed count per application</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small" id="sampleValueLabel">
+                                @(Model.SamplingMethod == "Count" ? "Number of Calls" : "Percentage (%)")
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" name="SampleValue" class="form-control" value="@Model.SampleValue"
+                                   id="sampleValue" min="0.1" step="0.1" placeholder="e.g. 10" required />
+                            <div class="form-text" id="sampleValueHelp">
+                                @(Model.SamplingMethod == "Count"
+                                    ? "How many calls to sample each time this policy is applied."
+                                    : "What percentage of eligible calls to sample (0–100).")
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" name="IsActive" id="isActive" value="true"
+                               @(Model.IsActive ? "checked" : "") />
+                        <input type="hidden" name="IsActive" value="false" />
+                        <label class="form-check-label fw-semibold" for="isActive">Policy is Active</label>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>@(isEdit ? "Save Changes" : "Create Policy")
+                        </button>
+                        <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-semibold small">
+                <i class="bi bi-lightbulb me-1 text-warning"></i>How Sampling Works
+            </div>
+            <div class="card-body small text-muted">
+                <p><strong>Percentage</strong> — when applied, the system selects the specified percentage of
+                eligible completed evaluations (randomly) that have not yet been queued for review.</p>
+                <p><strong>Count</strong> — selects up to the specified number of eligible evaluations each
+                time the policy is applied.</p>
+                <p><strong>Call Type Filter</strong> — restricts sampling to evaluations from forms whose
+                name contains the filter text (e.g. "Capital One" or "Sales").</p>
+                <p><strong>Duration Filter</strong> — limits sampling to calls within the specified duration
+                range (only applies when call duration data is available).</p>
+                <p class="mb-0">Click <strong>Apply</strong> on the policy list to run the sampling and
+                populate the Human Review queue.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const methodSelect = document.getElementById('samplingMethod');
+        const label = document.getElementById('sampleValueLabel');
+        const help = document.getElementById('sampleValueHelp');
+        if (!methodSelect) return;
+        methodSelect.addEventListener('change', function () {
+            if (this.value === 'Count') {
+                label.textContent = 'Number of Calls *';
+                help.textContent = 'How many calls to sample each time this policy is applied.';
+            } else {
+                label.textContent = 'Percentage (%) *';
+                help.textContent = 'What percentage of eligible calls to sample (0–100).';
+            }
+        });
+    })();
+</script>

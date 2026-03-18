@@ -1,0 +1,67 @@
+@model CreateParameterViewModel
+@{
+    ViewData["Title"] = "Edit Parameter";
+}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pencil me-2 text-primary"></i>Edit Parameter</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="Edit" asp-controller="Parameters" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label fw-semibold">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label fw-semibold">Category</label>
+                        <input asp-for="Category" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="DefaultWeight" class="form-label fw-semibold">Default Weight</label>
+                        <input asp-for="DefaultWeight" type="number" step="0.1" min="0" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="EvaluationType" class="form-label fw-semibold">Evaluation Type</label>
+                        <select asp-for="EvaluationType" class="form-select">
+                            <option value="LLM">LLM / Soft Skill — scored directly by the LLM</option>
+                            <option value="KnowledgeBased">Knowledge Based — scored using RAG context from Knowledge Base</option>
+                        </select>
+                        <div class="form-text">
+                            <strong>LLM</strong> is best for communication, empathy, and soft-skill parameters.
+                            <strong>Knowledge Based</strong> is best for compliance, process, and policy-driven parameters — the LLM is given relevant document excerpts as context.
+                        </div>
+                    </div>
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.Values.Any(v => v.Errors.Count > 0))
+                    {
+                        <div class="alert alert-danger py-2">
+                            @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <div>@err.ErrorMessage</div>
+                            }
+                        </div>
+                    }
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Save Changes
+                        </button>
+                        <a href="@Url.Action("Index", "Parameters")" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

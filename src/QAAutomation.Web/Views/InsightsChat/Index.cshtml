@@ -1,0 +1,476 @@
+@{
+    ViewData["Title"] = "Insights Chat";
+}
+
+<style>
+    .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 500px; }
+    .chat-history { flex: 1; overflow-y: auto; padding: 16px; background: #f8f9fb; border-radius: 12px; border: 1px solid #e5e7eb; scroll-behavior: smooth; }
+    .chat-history::-webkit-scrollbar { width: 5px; }
+    .chat-history::-webkit-scrollbar-thumb { background: #cdd1d9; border-radius: 3px; }
+    .bubble { max-width: 85%; margin-bottom: 14px; }
+    .bubble-user { margin-left: auto; }
+    .bubble-user .bubble-inner { background: #0d6efd; color: #fff; border-radius: 18px 18px 4px 18px; }
+    .bubble-ai   .bubble-inner { background: #fff; color: #212529; border-radius: 18px 18px 18px 4px; border: 1px solid #e5e7eb; }
+    .bubble-inner { padding: 10px 16px; font-size: .92rem; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .bubble-time { font-size: .72rem; color: #9ca3af; margin-top: 3px; padding: 0 6px; }
+    .bubble-user .bubble-time { text-align: right; }
+    .result-card { margin-top: 8px; width: 100%; }
+    .result-card .card { border: 1px solid #e5e7eb; border-radius: 10px; }
+    .view-tabs .nav-link { font-size: .82rem; padding: 5px 12px; }
+    .tbl-wrap { overflow-x: auto; max-height: 340px; overflow-y: auto; }
+    .tbl-wrap table { font-size: .82rem; }
+    .tbl-wrap th { position: sticky; top: 0; background: #f1f3f5; z-index: 1; }
+    #chartCanvas { max-height: 320px; }
+    .pivot-selectors select { font-size: .82rem; }
+    .insights-text { font-size: .88rem; line-height: 1.6; white-space: pre-wrap; }
+    .sql-badge { font-size: .72rem; font-family: monospace; background: #f1f3f5; border-radius: 6px; padding: 6px 10px; cursor: pointer; overflow: hidden; max-height: 3.5em; transition: max-height .3s; }
+    .sql-badge.expanded { max-height: 200px; }
+    .thinking-dots span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; margin: 0 2px; animation: blink 1.2s infinite; }
+    .thinking-dots span:nth-child(2) { animation-delay: .2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: .4s; }
+    @@keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+    .input-row { margin-top: 10px; }
+    .input-row textarea { resize: none; border-radius: 22px; padding: 10px 18px; font-size: .92rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .input-row .btn-send { border-radius: 50%; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .example-chips .badge { cursor: pointer; font-weight: 400; font-size: .8rem; transition: background .15s; }
+    .example-chips .badge:hover { background: #0d6efd !important; color: #fff !important; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-chat-dots me-2 text-primary"></i>Insights Chat</h4>
+        <p class="text-muted mb-0 small">Ask anything about your QA data — get tables, charts, pivot views, and AI insights.</p>
+    </div>
+</div>
+
+<div class="chat-wrap">
+    <!-- ── Chat history ─────────────────────────────────────────────────── -->
+    <div class="chat-history" id="chatHistory">
+        <div class="bubble bubble-ai">
+            <div class="bubble-inner">
+                <i class="bi bi-stars me-1 text-primary"></i>
+                <strong>Hello!</strong> I can answer questions about your QA audit data, agent scores, training plans, and more.
+                <div class="example-chips mt-2 d-flex flex-wrap gap-1">
+                    <span class="badge bg-light text-secondary border" data-q="Show average score per agent this month">Average score per agent</span>
+                    <span class="badge bg-light text-secondary border" data-q="Which agents have scored below 70% in the last 30 days?">Low-scoring agents</span>
+                    <span class="badge bg-light text-secondary border" data-q="Show daily audit counts over the last 2 weeks">Daily audit trend</span>
+                    <span class="badge bg-light text-secondary border" data-q="What are the weakest scoring parameters?">Weakest parameters</span>
+                    <span class="badge bg-light text-secondary border" data-q="How many training plans are active?">Training plan status</span>
+                    <span class="badge bg-light text-secondary border" data-q="Show audit score distribution by LOB">Score by LOB</span>
+                </div>
+            </div>
+            <div class="bubble-time">AuraAI · now</div>
+        </div>
+    </div>
+
+    <!-- ── Input row ────────────────────────────────────────────────────── -->
+    <div class="input-row d-flex gap-2 align-items-end">
+        <textarea id="questionInput" class="form-control flex-grow-1"
+                  rows="1" placeholder="Ask a question about your QA data…"
+                  style="max-height:100px;overflow-y:auto;"></textarea>
+        <button id="sendBtn" class="btn btn-primary btn-send flex-shrink-0" title="Send">
+            <i class="bi bi-send-fill"></i>
+        </button>
+    </div>
+</div>
+
+<!-- ── Result card template (hidden, cloned per answer) ──────────────── -->
+<template id="resultTpl">
+    <div class="result-card">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                <ul class="nav nav-tabs card-header-tabs view-tabs mb-0" role="tablist">
+                    <li class="nav-item"><a class="nav-link active" data-view="table"><i class="bi bi-table me-1"></i>Table</a></li>
+                    <li class="nav-item"><a class="nav-link" data-view="chart"><i class="bi bi-bar-chart me-1"></i>Chart</a></li>
+                    <li class="nav-item"><a class="nav-link" data-view="pivot"><i class="bi bi-grid-3x3-gap me-1"></i>Pivot</a></li>
+                    <li class="nav-item"><a class="nav-link" data-view="insights"><i class="bi bi-lightbulb me-1"></i>Insights</a></li>
+                </ul>
+                <small class="text-muted ms-2 row-count"></small>
+            </div>
+            <div class="card-body p-2 p-sm-3">
+                <!-- Table view -->
+                <div class="view-pane tbl-wrap" data-pane="table"></div>
+                <!-- Chart view -->
+                <div class="view-pane d-none" data-pane="chart">
+                    <div class="d-flex gap-2 mb-2 flex-wrap">
+                        <select class="form-select form-select-sm w-auto chart-type-sel">
+                            <option value="bar">Bar</option>
+                            <option value="line">Line</option>
+                            <option value="doughnut">Doughnut</option>
+                            <option value="pie">Pie</option>
+                        </select>
+                        <select class="form-select form-select-sm w-auto chart-label-sel"><option>— label column —</option></select>
+                        <select class="form-select form-select-sm w-auto chart-value-sel"><option>— value column —</option></select>
+                        <button class="btn btn-sm btn-outline-primary render-chart-btn"><i class="bi bi-arrow-clockwise me-1"></i>Render</button>
+                    </div>
+                    <canvas class="chart-canvas" style="max-height:320px;"></canvas>
+                </div>
+                <!-- Pivot view -->
+                <div class="view-pane d-none" data-pane="pivot">
+                    <div class="d-flex gap-2 mb-2 flex-wrap">
+                        <select class="form-select form-select-sm w-auto pivot-row-sel"><option>— row field —</option></select>
+                        <select class="form-select form-select-sm w-auto pivot-col-sel"><option>— column field —</option></select>
+                        <select class="form-select form-select-sm w-auto pivot-val-sel"><option>— value field —</option></select>
+                        <select class="form-select form-select-sm w-auto pivot-agg-sel">
+                            <option value="sum">Sum</option>
+                            <option value="avg">Average</option>
+                            <option value="count">Count</option>
+                            <option value="min">Min</option>
+                            <option value="max">Max</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary render-pivot-btn"><i class="bi bi-arrow-clockwise me-1"></i>Render</button>
+                    </div>
+                    <div class="tbl-wrap pivot-output"></div>
+                </div>
+                <!-- Insights view -->
+                <div class="view-pane d-none" data-pane="insights">
+                    <div class="insights-text text-muted fst-italic" style="font-size:.82rem;">Generating insights…</div>
+                </div>
+            </div>
+            <!-- SQL disclosure -->
+            <div class="card-footer py-1 px-3">
+                <small class="text-muted me-1"><i class="bi bi-code-slash me-1"></i>SQL:</small>
+                <code class="sql-badge" title="Click to expand"></code>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const history = document.getElementById('chatHistory');
+    const input   = document.getElementById('questionInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const antiForgery = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+    // ── Example chip clicks ──────────────────────────────────────────────
+    history.addEventListener('click', e => {
+        const chip = e.target.closest('[data-q]');
+        if (chip) { input.value = chip.dataset.q; input.focus(); }
+    });
+
+    // ── Auto-resize textarea ─────────────────────────────────────────────
+    input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+    });
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+    });
+    sendBtn.addEventListener('click', submit);
+
+    async function submit() {
+        const q = input.value.trim();
+        if (!q) return;
+        input.value = ''; input.style.height = 'auto';
+        appendUserBubble(q);
+        const thinkingEl = appendThinking();
+        sendBtn.disabled = true;
+
+        try {
+            const res = await fetch('@Url.Action("Ask", "InsightsChat")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiForgery },
+                body: JSON.stringify({ question: q })
+            });
+            const data = await res.json();
+            thinkingEl.remove();
+            appendAiResult(q, data);
+        } catch (err) {
+            thinkingEl.remove();
+            appendAiError(err.message);
+        } finally {
+            sendBtn.disabled = false;
+            scrollBottom();
+        }
+    }
+
+    // ── Chat bubble helpers ──────────────────────────────────────────────
+
+    function appendUserBubble(text) {
+        const d = document.createElement('div');
+        d.className = 'bubble bubble-user';
+        d.innerHTML = `<div class="bubble-inner">${esc(text)}</div><div class="bubble-time">${now()}</div>`;
+        history.appendChild(d);
+        scrollBottom();
+    }
+
+    function appendThinking() {
+        const d = document.createElement('div');
+        d.className = 'bubble bubble-ai';
+        d.innerHTML = `<div class="bubble-inner"><div class="thinking-dots"><span></span><span></span><span></span></div></div>`;
+        history.appendChild(d);
+        scrollBottom();
+        return d;
+    }
+
+    function appendAiError(msg) {
+        const d = document.createElement('div');
+        d.className = 'bubble bubble-ai';
+        d.innerHTML = `<div class="bubble-inner text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${esc(msg)}</div><div class="bubble-time">${now()}</div>`;
+        history.appendChild(d);
+    }
+
+    function appendAiResult(question, data) {
+        const wrap = document.createElement('div');
+        wrap.className = 'bubble bubble-ai' + (data.error ? '' : ' w-100');
+        if (data.error) {
+            wrap.innerHTML = `<div class="bubble-inner text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${esc(data.error)}</div><div class="bubble-time">${now()}</div>`;
+        } else {
+            const tpl = document.getElementById('resultTpl').content.cloneNode(true);
+            const card = tpl.querySelector('.result-card');
+            buildResultCard(card, data);
+            const inner = document.createElement('div');
+            inner.appendChild(card);
+            const timeEl = document.createElement('div');
+            timeEl.className = 'bubble-time'; timeEl.textContent = now();
+            wrap.appendChild(inner);
+            wrap.appendChild(timeEl);
+        }
+        history.appendChild(wrap);
+        scrollBottom();
+    }
+
+    // ── Result card population ───────────────────────────────────────────
+
+    function buildResultCard(card, data) {
+        const cols = data.columns || [];
+        const rows = data.rows || [];
+
+        // Row count badge
+        card.querySelector('.row-count').textContent = `${rows.length} row${rows.length !== 1 ? 's' : ''}`;
+
+        // SQL disclosure
+        const sqlEl = card.querySelector('.sql-badge');
+        sqlEl.textContent = data.sql || '';
+        sqlEl.addEventListener('click', () => sqlEl.classList.toggle('expanded'));
+
+        // Populate column selectors (chart & pivot)
+        populateSelectors(card, cols);
+
+        // ── Tab switching ────────────────────────────────────────────────
+        card.querySelectorAll('.view-tabs .nav-link').forEach(tab => {
+            tab.addEventListener('click', () => {
+                card.querySelectorAll('.view-tabs .nav-link').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const pane = tab.dataset.view;
+                card.querySelectorAll('.view-pane').forEach(p => {
+                    p.classList.toggle('d-none', p.dataset.pane !== pane);
+                });
+            });
+        });
+
+        // ── Table view ───────────────────────────────────────────────────
+        card.querySelector('[data-pane="table"]').innerHTML = buildTable(cols, rows);
+
+        // ── Chart view ───────────────────────────────────────────────────
+        card.querySelector('.render-chart-btn').addEventListener('click', () => renderChart(card, cols, rows));
+
+        // ── Pivot view ───────────────────────────────────────────────────
+        card.querySelector('.render-pivot-btn').addEventListener('click', () => renderPivot(card, cols, rows));
+
+        // ── Insights ─────────────────────────────────────────────────────
+        const insightsPane = card.querySelector('[data-pane="insights"]');
+        if (data.insights && data.insights.trim()) {
+            insightsPane.innerHTML = `<div class="insights-text">${formatInsights(data.insights)}</div>`;
+        } else {
+            insightsPane.innerHTML = '<p class="text-muted small fst-italic mb-0">No insights available (LLM may not be configured).</p>';
+        }
+
+        // Auto-render chart if data has 2 columns
+        if (cols.length === 2) {
+            const labelSel = card.querySelector('.chart-label-sel');
+            const valueSel = card.querySelector('.chart-value-sel');
+            if (labelSel.options.length > 1) labelSel.selectedIndex = 1;
+            if (valueSel.options.length > 1) valueSel.selectedIndex = 1;
+            // Auto-detect time series
+            if (rows.length > 0 && isDateLike(rows[0][0])) {
+                card.querySelector('.chart-type-sel').value = 'line';
+            }
+        }
+    }
+
+    function populateSelectors(card, cols) {
+        ['.chart-label-sel', '.chart-value-sel', '.pivot-row-sel', '.pivot-col-sel', '.pivot-val-sel'].forEach(sel => {
+            const el = card.querySelector(sel);
+            cols.forEach((c, i) => {
+                const opt = document.createElement('option');
+                opt.value = i; opt.textContent = c;
+                el.appendChild(opt);
+            });
+        });
+    }
+
+    // ── Table builder ────────────────────────────────────────────────────
+
+    function buildTable(cols, rows) {
+        if (!cols.length) return '<p class="text-muted small mb-0">No data.</p>';
+        let h = '<table class="table table-sm table-bordered table-hover mb-0"><thead><tr>';
+        cols.forEach(c => { h += `<th>${esc(c)}</th>`; });
+        h += '</tr></thead><tbody>';
+        rows.forEach(row => {
+            h += '<tr>';
+            row.forEach(v => { h += `<td>${v === null || v === undefined ? '<span class="text-muted">—</span>' : esc(String(v))}</td>`; });
+            h += '</tr>';
+        });
+        h += '</tbody></table>';
+        return h;
+    }
+
+    // ── Chart renderer ───────────────────────────────────────────────────
+
+    const chartInstances = new WeakMap();
+
+    function renderChart(card, cols, rows) {
+        const chartType  = card.querySelector('.chart-type-sel').value;
+        const labelIdx   = parseInt(card.querySelector('.chart-label-sel').value);
+        const valueIdx   = parseInt(card.querySelector('.chart-value-sel').value);
+
+        if (isNaN(labelIdx) || isNaN(valueIdx)) {
+            showCardError(card, 'Please select label and value columns.');
+            return;
+        }
+
+        const labels = rows.map(r => r[labelIdx] !== null ? String(r[labelIdx]) : '—');
+        const values = rows.map(r => parseFloat(r[valueIdx]) || 0);
+
+        const canvas = card.querySelector('.chart-canvas');
+        if (chartInstances.has(canvas)) chartInstances.get(canvas).destroy();
+
+        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997','#6610f2','#d63384'];
+
+        const isRound = ['doughnut','pie'].includes(chartType);
+        const chart = new Chart(canvas, {
+            type: chartType,
+            data: {
+                labels,
+                datasets: [{
+                    label: cols[valueIdx] || 'Value',
+                    data: values,
+                    backgroundColor: isRound
+                        ? labels.map((_, i) => palette[i % palette.length])
+                        : palette[0],
+                    borderColor: isRound ? '#fff' : palette[0],
+                    borderWidth: isRound ? 2 : 1,
+                    tension: 0.3,
+                    fill: chartType === 'line' ? false : undefined
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: isRound } },
+                scales: isRound ? {} : { y: { beginAtZero: true } }
+            }
+        });
+        chartInstances.set(canvas, chart);
+    }
+
+    // ── Pivot renderer ───────────────────────────────────────────────────
+
+    function renderPivot(card, cols, rows) {
+        const rowIdx = parseInt(card.querySelector('.pivot-row-sel').value);
+        const colIdx = parseInt(card.querySelector('.pivot-col-sel').value);
+        const valIdx = parseInt(card.querySelector('.pivot-val-sel').value);
+        const agg    = card.querySelector('.pivot-agg-sel').value;
+
+        if (isNaN(rowIdx) || isNaN(colIdx) || isNaN(valIdx)) {
+            showCardError(card, 'Please select row, column, and value fields.');
+            return;
+        }
+
+        // Collect unique row/column keys
+        const rowKeys = [...new Set(rows.map(r => r[rowIdx] !== null ? String(r[rowIdx]) : '—'))].sort();
+        const colKeys = [...new Set(rows.map(r => r[colIdx] !== null ? String(r[colIdx]) : '—'))].sort();
+
+        // Build cell buckets
+        const buckets = {};
+        rows.forEach(r => {
+            const rk = r[rowIdx] !== null ? String(r[rowIdx]) : '—';
+            const ck = r[colIdx] !== null ? String(r[colIdx]) : '—';
+            const v  = parseFloat(r[valIdx]);
+            const key = `${rk}|||${ck}`;
+            if (!buckets[key]) buckets[key] = [];
+            if (!isNaN(v)) buckets[key].push(v);
+        });
+
+        // Aggregate
+        function aggregate(vals) {
+            if (!vals.length) return '—';
+            if (agg === 'count') return vals.length;
+            if (agg === 'sum')   return round(vals.reduce((a,b)=>a+b,0));
+            if (agg === 'avg')   return round(vals.reduce((a,b)=>a+b,0) / vals.length);
+            if (agg === 'min')   return round(Math.min(...vals));
+            if (agg === 'max')   return round(Math.max(...vals));
+        }
+
+        // Render table
+        let h = `<table class="table table-sm table-bordered mb-0"><thead><tr><th>${esc(cols[rowIdx])} / ${esc(cols[colIdx])}</th>`;
+        colKeys.forEach(ck => { h += `<th class="text-center">${esc(ck)}</th>`; });
+        h += '<th class="text-center table-secondary">Total</th></tr></thead><tbody>';
+
+        rowKeys.forEach(rk => {
+            h += `<tr><td class="fw-semibold">${esc(rk)}</td>`;
+            let rowTotal = [];
+            colKeys.forEach(ck => {
+                const vals = buckets[`${rk}|||${ck}`] || [];
+                rowTotal = rowTotal.concat(vals);
+                h += `<td class="text-center">${aggregate(vals)}</td>`;
+            });
+            h += `<td class="text-center table-secondary fw-semibold">${aggregate(rowTotal)}</td></tr>`;
+        });
+
+        // Grand total row
+        h += `<tr class="table-secondary fw-semibold"><td>Total</td>`;
+        colKeys.forEach(ck => {
+            const vals = rowKeys.flatMap(rk => buckets[`${rk}|||${ck}`] || []);
+            h += `<td class="text-center">${aggregate(vals)}</td>`;
+        });
+        const allVals = rowKeys.flatMap(rk => colKeys.flatMap(ck => buckets[`${rk}|||${ck}`] || []));
+        h += `<td class="text-center">${aggregate(allVals)}</td></tr>`;
+        h += '</tbody></table>';
+
+        card.querySelector('.pivot-output').innerHTML = h;
+    }
+
+    // ── Utilities ────────────────────────────────────────────────────────
+
+    function showCardError(card, msg) {
+        // Show a dismissible Bootstrap alert inside the active view pane instead of alert()
+        const pane = card.querySelector('.view-pane:not(.d-none)');
+        const el = document.createElement('div');
+        el.className = 'alert alert-warning alert-dismissible py-2 mb-0';
+        el.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>${esc(msg)}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        if (pane) { pane.prepend(el); } else { card.querySelector('.card-body').prepend(el); }
+    }
+
+    function formatInsights(text) {
+        // Convert lines starting with bullet chars or numbers to <li>
+        const lines = text.split('\n').filter(l => l.trim());
+        const items = lines.map(l => l.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+        if (items.length > 1)
+            return '<ul class="mb-0 ps-3">' + items.map(i => `<li>${esc(i)}</li>`).join('') + '</ul>';
+        return `<p class="mb-0">${esc(text)}</p>`;
+    }
+
+    function isDateLike(v) {
+        if (!v) return false;
+        return /^\d{4}-\d{2}/.test(String(v));
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function round(n) { return Math.round(n * 100) / 100; }
+
+    function now() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function scrollBottom() {
+        setTimeout(() => { history.scrollTop = history.scrollHeight; }, 50);
+    }
+})();
+</script>

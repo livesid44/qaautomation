@@ -1,0 +1,141 @@
+@model List<AuditViewModel>
+@{
+    ViewData["Title"] = "Audit Records";
+    var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new List<LegacyFormViewModel>();
+    int? selectedFormId = ViewBag.SelectedFormId as int?;
+    double avgScore = Model.Any() ? Model.Average(a => a.ScorePercent) : 0;
+    double passRate = Model.Any() ? Model.Count(a => a.ScorePercent >= 80.0) * 100.0 / Model.Count : 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-clipboard2-check me-2 text-warning"></i>Audit Records
+        </h4>
+        <p class="text-muted mb-0">Quality evaluations of customer support interactions.</p>
+    </div>
+    <a href="@Url.Action("New", "Audit")" class="btn btn-warning text-white">
+        <i class="bi bi-plus-lg me-1"></i>Record New Audit
+    </a>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-warning">@Model.Count</div>
+            <div class="text-muted small">Total Audits</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold @(avgScore >= 80 ? "text-success" : avgScore >= 60 ? "text-warning" : "text-danger")">@avgScore.ToString("F1")%</div>
+            <div class="text-muted small">Average Score</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold @(passRate >= 80 ? "text-success" : "text-warning")">@passRate.ToString("F0")%</div>
+            <div class="text-muted small">Pass Rate (≥80%)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-2 fw-bold text-info">@forms.Count</div>
+            <div class="text-muted small">Active Forms</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <label class="fw-semibold small text-muted mb-0">Filter by Form:</label>
+            <select name="formId" class="form-select form-select-sm" style="max-width:300px" onchange="this.form.submit()">
+                <option value="">— All Forms —</option>
+                @foreach (var f in forms)
+                {
+                    if (selectedFormId == f.Id)
+                    {
+                        <option value="@f.Id" selected>@f.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@f.Id">@f.Name</option>
+                    }
+                }
+            </select>
+            @if (selectedFormId.HasValue)
+            {
+                <a href="@Url.Action("Index", "Audit")" class="btn btn-sm btn-outline-secondary">Clear</a>
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-clipboard2 fs-1 d-block mb-3 opacity-25"></i>
+                <p class="mb-2">No audit records found.</p>
+                <a href="@Url.Action("New", "Audit")" class="btn btn-sm btn-warning text-white">Record the first audit</a>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Form</th>
+                        <th>Call Reference</th>
+                        <th>Call Date</th>
+                        <th>Evaluated By</th>
+                        <th>Score</th>
+                        <th>Evaluated At</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var audit in Model.OrderByDescending(a => a.EvaluatedAt))
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@audit.AgentName</div>
+                            </td>
+                            <td class="text-muted small">@audit.FormName</td>
+                            <td class="small text-muted">@(audit.CallReference ?? "—")</td>
+                            <td class="small text-muted">@(audit.CallDate.HasValue ? audit.CallDate.Value.ToString("MMM d, yyyy") : "—")</td>
+                            <td class="small">@audit.EvaluatedBy</td>
+                            <td>
+                                @{
+                                    var pct = audit.ScorePercent;
+                                    var badgeClass = pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
+                                }
+                                <span class="badge @badgeClass fs-6 px-2">@pct.ToString("F0")%</span>
+                                <small class="text-muted ms-1">@audit.TotalScore/@audit.MaxPossibleScore</small>
+                            </td>
+                            <td class="small text-muted">@audit.EvaluatedAt.ToString("MMM d, yyyy HH:mm")</td>
+                            <td class="text-end">
+                                <a href="@Url.Action("Detail", "Audit", new { id = audit.Id })" class="btn btn-sm btn-outline-info me-1">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <form method="post" action="@Url.Action("Delete", "Audit", new { id = audit.Id })" class="d-inline"
+                                      onsubmit="return confirm('Delete this audit record?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

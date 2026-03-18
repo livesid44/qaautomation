@@ -1,0 +1,310 @@
+@model NewAuditViewModel
+@{
+    ViewData["Title"] = "Record New Audit";
+    var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new List<LegacyFormViewModel>();
+    var selectedForm = ViewBag.SelectedForm as LegacyFormViewModel;
+    int selectedFormId = ViewBag.SelectedFormId ?? 0;
+    int totalMax = selectedForm?.Sections.SelectMany(s => s.Fields).Sum(f => f.MaxRating) ?? 0;
+}
+
+@section Styles {
+<style>
+    .star-rating { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; }
+    .star-rating input { display: none; }
+    .star-rating label { font-size: 1.6rem; color: #dee2e6; cursor: pointer; transition: color 0.15s; }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label { color: #ffc107; }
+    .compliance-radio .form-check { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+    .section-card { border-left: 4px solid #0d6efd; }
+    .compliance-section { border-left-color: #dc3545 !important; }
+    .field-row { padding: 12px 0; border-bottom: 1px solid #f0f2f5; }
+    .field-row:last-child { border-bottom: none; }
+    #scorePreview { position: sticky; top: 80px; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-clipboard2-plus me-2 text-warning"></i>Record New Audit
+        </h4>
+        <p class="text-muted mb-0">Evaluate a customer support interaction.</p>
+    </div>
+    <a href="@Url.Action("Index", "Audit")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<!-- Form selector -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" action="@Url.Action("New", "Audit")" class="d-flex align-items-center gap-3">
+            <label class="fw-semibold">Evaluation Form:</label>
+            <select name="formId" class="form-select" style="max-width:400px" onchange="this.form.submit()">
+                <option value="">— Select a form —</option>
+                @foreach (var f in forms)
+                {
+                    if (selectedFormId == f.Id)
+                    {
+                        <option value="@f.Id" selected>@f.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@f.Id">@f.Name</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+@if (selectedForm != null)
+{
+    <form method="post" action="@Url.Action("New", "Audit")" id="auditForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="model.FormId" value="@selectedForm.Id" />
+        <input type="hidden" name="scoresJson" id="scoresJsonInput" />
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <!-- Interaction Details -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-person-badge me-2 text-primary"></i>Interaction Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Agent Name <span class="text-danger">*</span></label>
+                                <input type="text" name="model.AgentName" class="form-control" required
+                                       placeholder="Agent being evaluated" value="@Model.AgentName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Evaluated By <span class="text-danger">*</span></label>
+                                <input type="text" name="model.EvaluatedBy" class="form-control" required
+                                       placeholder="QA Evaluator name" value="@Model.EvaluatedBy" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Call Reference / Interaction ID</label>
+                                <input type="text" name="model.CallReference" class="form-control"
+                                       placeholder="e.g. CALL-2024-00123" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Call Date</label>
+                                <input type="date" name="model.CallDate" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scoring Sections -->
+                @foreach (var sec in selectedForm.Sections.OrderBy(s => s.Order))
+                {
+                    var isCompliance = sec.Title.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
+                    <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
+                        <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                            <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
+                            <h6 class="fw-bold mb-0">@sec.Title</h6>
+                            @if (isCompliance)
+                            {
+                                <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            @foreach (var field in sec.Fields.OrderBy(f => f.Id))
+                            {
+                                <div class="field-row" id="field-row-@field.Id">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold mb-1">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </div>
+                                            @if (field.MaxRating == 1)
+                                            {
+                                                <div class="compliance-radio mt-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input score-input" type="radio"
+                                                               name="score_@field.Id" id="pass_@field.Id"
+                                                               value="1" data-field-id="@field.Id" data-max="1"
+                                                               onchange="updateScore(this)" />
+                                                        <label class="form-check-label text-success fw-semibold" for="pass_@field.Id">
+                                                            <i class="bi bi-check-circle-fill"></i> PASS
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input score-input" type="radio"
+                                                               name="score_@field.Id" id="fail_@field.Id"
+                                                               value="0" data-field-id="@field.Id" data-max="1"
+                                                               onchange="updateScore(this)" />
+                                                        <label class="form-check-label text-danger fw-semibold" for="fail_@field.Id">
+                                                            <i class="bi bi-x-circle-fill"></i> FAIL
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="star-rating mt-1" data-field-id="@field.Id" data-max="@field.MaxRating">
+                                                    @for (int star = field.MaxRating; star >= 1; star--)
+                                                    {
+                                                        <input type="radio" id="star_@(field.Id)_@star"
+                                                               name="score_@field.Id" value="@star"
+                                                               class="score-input"
+                                                               data-field-id="@field.Id" data-max="@field.MaxRating"
+                                                               onchange="updateScore(this)" />
+                                                        <label for="star_@(field.Id)_@star" title="@star / @field.MaxRating">&#9733;</label>
+                                                    }
+                                                </div>
+                                                <div class="text-muted small mt-1" id="label_@field.Id">Not rated</div>
+                                            }
+                                        </div>
+                                        <div class="text-end" style="min-width:60px">
+                                            <span class="badge bg-secondary" id="badge_@field.Id">—/@field.MaxRating</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Notes -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <label class="form-label fw-semibold">Notes / Coaching Feedback</label>
+                        <textarea name="model.Notes" class="form-control" rows="4"
+                                  placeholder="Add coaching notes, specific observations, or areas for improvement..."></textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning text-white px-4" onclick="collectScores()">
+                        <i class="bi bi-check-lg me-1"></i>Submit Audit
+                    </button>
+                    <a href="@Url.Action("Index", "Audit")" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </div>
+
+            <!-- Score Preview Panel -->
+            <div class="col-lg-4">
+                <div id="scorePreview" class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-speedometer2 me-2 text-info"></i>Score Preview</h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="display-4 fw-bold mb-1" id="totalPct">0%</div>
+                        <div class="text-muted small mb-3" id="totalRaw">0 / @totalMax points</div>
+                        <div class="progress mb-3" style="height:12px">
+                            <div class="progress-bar" id="progressBar" role="progressbar" style="width:0%"></div>
+                        </div>
+                        <div id="scoreStatus" class="badge fs-6 bg-secondary px-3 py-2">Not Started</div>
+                    </div>
+                    <div class="card-body border-top pt-2">
+                        @foreach (var sec in selectedForm.Sections.OrderBy(s => s.Order))
+                        {
+                            <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                                <span class="small fw-semibold">@sec.Title</span>
+                                <span class="small text-muted" id="sec_@sec.Id">0/@sec.Fields.Sum(f => f.MaxRating)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+else if (forms.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>Please select an evaluation form above to start the audit.
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>No evaluation forms found.
+        <a href="@Url.Action("Index", "FormDesigner")">Create a form first</a>.
+    </div>
+}
+
+@section Scripts {
+<script>
+    const fieldData = {};
+    @if (selectedForm != null)
+    {
+        foreach (var sec in selectedForm.Sections)
+        {
+            foreach (var field in sec.Fields)
+            {
+                <text>fieldData[@field.Id] = { sectionId: @sec.Id, maxRating: @field.MaxRating, score: null };</text>
+            }
+        }
+    }
+
+    const sectionMaxes = {};
+    @if (selectedForm != null)
+    {
+        foreach (var sec in selectedForm.Sections)
+        {
+            <text>sectionMaxes[@sec.Id] = @sec.Fields.Sum(f => f.MaxRating);</text>
+        }
+    }
+
+    const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
+    const totalMax = @totalMax;
+
+    function updateScore(input) {
+        const fieldId = parseInt(input.dataset.fieldId);
+        const val = parseFloat(input.value);
+        if (!fieldData[fieldId]) return;
+        fieldData[fieldId].score = val;
+
+        const badge = document.getElementById('badge_' + fieldId);
+        if (badge) {
+            badge.textContent = val + '/' + input.dataset.max;
+            badge.className = 'badge ' + (val == input.dataset.max ? 'bg-success' : val == 0 ? 'bg-danger' : 'bg-warning text-dark');
+        }
+
+        const lbl = document.getElementById('label_' + fieldId);
+        if (lbl && ratingLabels[val]) lbl.textContent = ratingLabels[val];
+
+        updatePreview();
+    }
+
+    function updatePreview() {
+        let total = 0, sectionScores = {};
+        for (const [fid, fd] of Object.entries(fieldData)) {
+            if (fd.score !== null) {
+                total += fd.score;
+                sectionScores[fd.sectionId] = (sectionScores[fd.sectionId] || 0) + fd.score;
+            }
+        }
+        const pct = totalMax > 0 ? (total / totalMax * 100) : 0;
+        document.getElementById('totalPct').textContent = pct.toFixed(0) + '%';
+        document.getElementById('totalRaw').textContent = total + ' / ' + totalMax + ' points';
+        const bar = document.getElementById('progressBar');
+        bar.style.width = pct + '%';
+        bar.className = 'progress-bar ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning' : 'bg-danger');
+        const status = document.getElementById('scoreStatus');
+        status.textContent = pct >= 80 ? 'PASS' : pct >= 60 ? 'NEEDS IMPROVEMENT' : 'FAIL';
+        status.className = 'badge fs-6 px-3 py-2 ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning text-dark' : 'bg-danger');
+
+        for (const [sid, max] of Object.entries(sectionMaxes)) {
+            const el = document.getElementById('sec_' + sid);
+            if (el) el.textContent = (sectionScores[sid] || 0) + '/' + max;
+        }
+    }
+
+    function collectScores() {
+        const scores = [];
+        for (const [fid, fd] of Object.entries(fieldData)) {
+            if (fd.score !== null) {
+                scores.push({ fieldId: parseInt(fid), value: String(fd.score), numericValue: fd.score });
+            }
+        }
+        document.getElementById('scoresJsonInput').value = JSON.stringify(scores);
+    }
+</script>
+}

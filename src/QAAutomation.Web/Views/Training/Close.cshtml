@@ -1,0 +1,77 @@
+@model CloseTrainingPlanViewModel
+@{
+    ViewData["Title"] = "Close Training Plan";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-check2-circle me-2 text-success"></i>Close Training Loop</h4>
+        <p class="text-muted mb-0">Confirm that all training has been delivered and the improvement cycle is complete.</p>
+    </div>
+    <a href="@Url.Action("Detail", "Training", new { id = Model.PlanId })" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Plan
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <form method="post" action="@Url.Action("Close", "Training")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="PlanId" value="@Model.PlanId" />
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Closing Notes</label>
+                        <textarea name="ClosingNotes" class="form-control" rows="5"
+                                  placeholder="Confirm the training was completed, note any follow-up actions or observations…">@Model.ClosingNotes</textarea>
+                        <div class="form-text">These notes are stored permanently with the plan and visible to all parties.</div>
+                    </div>
+
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Closing a plan is irreversible. Once closed, no further changes can be made.
+                        Ensure all items are completed before closing.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check2-circle me-1"></i>Close &amp; Complete Loop
+                        </button>
+                        <a href="@Url.Action("Detail", "Training", new { id = Model.PlanId })" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-semibold border-0 pt-3 small">
+                <i class="bi bi-arrow-repeat me-1 text-success"></i>The Closed-Loop Workflow
+            </div>
+            <div class="card-body small text-muted">
+                <div class="d-flex gap-2 mb-2">
+                    <div class="text-muted"><i class="bi bi-1-circle-fill text-primary"></i></div>
+                    <div><strong>Quality Manager</strong> creates a Training Plan from an audit observation or human review.</div>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <div class="text-muted"><i class="bi bi-2-circle-fill text-primary"></i></div>
+                    <div><strong>Quality Manager</strong> activates the plan — agent and trainer are notified.</div>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <div class="text-muted"><i class="bi bi-3-circle-fill text-primary"></i></div>
+                    <div><strong>Trainer</strong> starts and delivers the training, marking each item done as they go.</div>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <div class="text-muted"><i class="bi bi-4-circle-fill text-primary"></i></div>
+                    <div>When all items are done the plan automatically moves to <strong>Completed</strong>.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="text-muted"><i class="bi bi-5-circle-fill text-success"></i></div>
+                    <div><strong>Quality Manager</strong> reviews and closes the loop — recording the outcome for compliance and trend reporting.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

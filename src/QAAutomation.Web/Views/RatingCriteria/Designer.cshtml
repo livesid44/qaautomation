@@ -1,0 +1,191 @@
+@model RatingCriteriaViewModel
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Edit: " + Model.Name : "New Rating Criteria";
+}
+@section Styles {
+<style>
+    .level-row td { vertical-align: middle; }
+    .color-preview { width: 28px; height: 28px; border-radius: 4px; border: 1px solid #dee2e6; display: inline-block; }
+</style>
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-star-half me-2 text-warning"></i>
+            @(Model.Id > 0 ? "Edit Rating Criteria" : "New Rating Criteria")
+        </h4>
+        <p class="text-muted mb-0">Define the scoring scale and descriptive levels.</p>
+    </div>
+    <a href="@Url.Action("Index", "RatingCriteria")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<form method="post" action="@(Model.Id > 0 ? Url.Action("Designer", "RatingCriteria", new { id = Model.Id }) : Url.Action("Designer", "RatingCriteria"))" id="criteriaForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="levelsJson" id="levelsJsonInput" />
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-0">
+            <h6 class="fw-bold">Criteria Details</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                    <input type="text" name="criteriaName" class="form-control" value="@Model.Name" required
+                           placeholder="e.g., 1-5 Rating Scale" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Description</label>
+                    <input type="text" name="criteriaDescription" class="form-control" value="@Model.Description"
+                           placeholder="Optional description" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Min Score</label>
+                    <input type="number" name="minScore" id="minScore" class="form-control" value="@(Model.MinScore == 0 ? 1 : Model.MinScore)" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Max Score</label>
+                    <input type="number" name="maxScore" id="maxScore" class="form-control" value="@(Model.MaxScore == 0 ? 5 : Model.MaxScore)" min="1" />
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="autoGenLevels()">
+                        <i class="bi bi-magic me-1"></i>Auto-Generate Levels from Min/Max
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-4 d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0">Rating Levels</h6>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLevel()">
+                <i class="bi bi-plus-lg me-1"></i>Add Level
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0" id="levelsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:80px">Score</th>
+                            <th>Label</th>
+                            <th>Description</th>
+                            <th style="width:100px">Color</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="levelsBody">
+                    </tbody>
+                </table>
+            </div>
+            <div id="noLevels" class="text-center py-4 text-muted">
+                <i class="bi bi-star fs-2 d-block mb-2"></i>
+                No levels defined. Use Auto-Generate or Add Level.
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning text-dark px-4" onclick="collectLevels()">
+            <i class="bi bi-check-lg me-1"></i>Save Criteria
+        </button>
+        <a href="@Url.Action("Index", "RatingCriteria")" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    const existingLevels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Levels.Select(l => new {
+        score = l.Score, label = l.Label, description = l.Description, color = l.Color
+    })));
+
+    let levels = [...existingLevels];
+
+    const defaultColors = ['#dc3545','#fd7e14','#ffc107','#20c997','#0d6efd'];
+
+    function renderLevels() {
+        const tbody = document.getElementById('levelsBody');
+        const noLevels = document.getElementById('noLevels');
+        noLevels.style.display = levels.length === 0 ? '' : 'none';
+        tbody.innerHTML = levels.map((l, idx) => `
+            <tr class="level-row">
+                <td>
+                    <input type="number" class="form-control form-control-sm" value="${l.score}"
+                           onchange="levels[${idx}].score = parseInt(this.value)" />
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${l.label ?? ''}"
+                           placeholder="e.g., Excellent"
+                           onchange="levels[${idx}].label = this.value" />
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" value="${l.description ?? ''}"
+                           placeholder="Optional"
+                           onchange="levels[${idx}].description = this.value" />
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="color-preview" style="background:${l.color}"></span>
+                        <input type="color" class="form-control form-control-color form-control-sm" value="${l.color}"
+                               style="width:36px;padding:2px"
+                               oninput="levels[${idx}].color = this.value; this.previousElementSibling.style.background = this.value" />
+                    </div>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLevel(${idx})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function addLevel() {
+        const nextScore = levels.length > 0 ? Math.max(...levels.map(l => l.score)) + 1 : 1;
+        const color = defaultColors[levels.length % defaultColors.length];
+        levels.push({ score: nextScore, label: '', description: '', color });
+        renderLevels();
+    }
+
+    function removeLevel(idx) {
+        levels.splice(idx, 1);
+        renderLevels();
+    }
+
+    function autoGenLevels() {
+        const min = parseInt(document.getElementById('minScore').value) || 1;
+        const max = parseInt(document.getElementById('maxScore').value) || 5;
+        const labels = ['Very Poor', 'Poor', 'Average', 'Good', 'Excellent', 'Outstanding'];
+        levels = [];
+        for (let i = min; i <= max; i++) {
+            const pct = (i - min) / Math.max(1, max - min);
+            const colorIdx = Math.min(Math.floor(pct * defaultColors.length), defaultColors.length - 1);
+            levels.push({
+                score: i,
+                label: labels[i - 1] ?? `Level ${i}`,
+                description: '',
+                color: defaultColors[colorIdx]
+            });
+        }
+        renderLevels();
+    }
+
+    function collectLevels() {
+        // collect current input values
+        const rows = document.querySelectorAll('#levelsBody tr.level-row');
+        rows.forEach((row, idx) => {
+            const inputs = row.querySelectorAll('input');
+            levels[idx].score = parseInt(inputs[0].value) || levels[idx].score;
+            levels[idx].label = inputs[1].value;
+            levels[idx].description = inputs[2].value;
+            levels[idx].color = inputs[3].value;
+        });
+        document.getElementById('levelsJsonInput').value = JSON.stringify(levels);
+    }
+
+    renderLevels();
+</script>
+}

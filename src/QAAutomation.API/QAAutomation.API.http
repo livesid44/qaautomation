@@ -1,0 +1,57 @@
+@QAAutomation.API_HostAddress = http://localhost:5018
+
+### List all active evaluation forms
+GET {{QAAutomation.API_HostAddress}}/api/evaluationforms
+Accept: application/json
+
+###
+
+### Get a single evaluation form by id
+GET {{QAAutomation.API_HostAddress}}/api/evaluationforms/1
+Accept: application/json
+
+###
+
+### Create a new custom evaluation form
+POST {{QAAutomation.API_HostAddress}}/api/evaluationforms
+Content-Type: application/json
+
+{
+  "name": "Code Review Checklist",
+  "description": "Standard code review evaluation form",
+  "sections": [
+    {
+      "title": "Code Quality",
+      "order": 1,
+      "fields": [
+        { "label": "Readability", "fieldType": 2, "isRequired": true, "order": 1, "maxRating": 5 },
+        { "label": "Test Coverage", "fieldType": 2, "isRequired": true, "order": 2, "maxRating": 5 },
+        { "label": "Comments", "fieldType": 1, "isRequired": false, "order": 3 }
+      ]
+    }
+  ]
+}
+
+###
+
+### Submit an evaluation result
+POST {{QAAutomation.API_HostAddress}}/api/evaluationresults
+Content-Type: application/json
+
+{
+  "formId": 1,
+  "evaluatedBy": "reviewer@example.com",
+  "notes": "Overall good quality",
+  "scores": [
+    { "fieldId": 1, "value": "4", "numericValue": 4 },
+    { "fieldId": 2, "value": "5", "numericValue": 5 }
+  ]
+}
+
+###
+
+### Get all evaluation results for a form
+GET {{QAAutomation.API_HostAddress}}/api/evaluationresults/byform/1
+Accept: application/json
+
+###

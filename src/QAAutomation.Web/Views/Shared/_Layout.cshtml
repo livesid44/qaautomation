@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - AuraAI</title>
+    <link rel="stylesheet" href="~/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/bootstrap-icons.min.css" />
+    <style>
+        /* ── Brand Palette ─────────────────────────────────────────────────── */
+        :root {
+            --brand-red:    #CC1212;
+            --brand-red-dk: #a30e0e;
+            --brand-dark:   #1e2433;
+            --brand-darker: #151920;
+            --brand-amber:  #E87722;
+            --brand-text:   #3d4354;
+            --brand-muted:  #6c757d;
+        }
+
+        body { background: #f0f2f5; }
+
+        /* ── Sidebar ──────────────────────────────────────────────────────── */
+        .sidebar {
+            height: 100vh;
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            width: 250px;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 100;
+            padding-top: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,0,0,.12) transparent;
+        }
+        /* Thin scrollbar styled to match the light sidebar */
+        .sidebar nav::-webkit-scrollbar { width: 4px; }
+        .sidebar nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar nav::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,.12);
+            border-radius: 2px;
+        }
+        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+
+        /* Brand / logo area */
+        .sidebar-brand {
+            padding: 14px 16px 12px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            border-bottom: 2px solid var(--brand-red);
+        }
+        .sidebar-brand img {
+            height: 42px;
+            width: auto;
+            object-fit: contain;
+        }
+        .sidebar-brand:hover { opacity: .85; }
+
+        /* Nav links */
+        .sidebar .nav-link {
+            color: var(--brand-text);
+            padding: 9px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 0;
+            transition: all 0.18s;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+        }
+        .sidebar .nav-link:hover {
+            color: var(--brand-red);
+            background: rgba(204,18,18,.06);
+            border-left-color: var(--brand-red);
+        }
+        .sidebar .nav-link.active {
+            color: var(--brand-red);
+            background: rgba(204,18,18,.1);
+            border-left-color: var(--brand-red);
+            font-weight: 600;
+        }
+        .sidebar .nav-link i { font-size: 1rem; }
+
+        /* Section headers */
+        .sidebar .nav-section {
+            color: #9ca3af;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 16px 20px 4px;
+        }
+
+        /* ── Main content ─────────────────────────────────────────────────── */
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top bar */
+        .topbar {
+            background: #fff;
+            border-bottom: 3px solid var(--brand-red);
+            padding: 8px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+            box-shadow: 0 2px 6px rgba(0,0,0,.08);
+        }
+        .topbar .page-title {
+            font-weight: 600;
+            color: var(--brand-dark);
+            font-size: 0.9rem;
+        }
+
+        .page-content { padding: 24px; flex: 1; }
+
+        /* ── Footer ───────────────────────────────────────────────────────── */
+        .app-footer {
+            background: #f8f9fa;
+            color: var(--brand-muted);
+            text-align: center;
+            font-size: 0.75rem;
+            padding: 10px 24px;
+            border-top: 1px solid rgba(204,18,18,.2);
+            letter-spacing: 0.02em;
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 250px;
+            z-index: 98;
+        }
+        .app-footer span { color: var(--brand-red); font-weight: 600; }
+
+        /* extra bottom padding so page content isn't hidden behind fixed footer */
+        .page-content { padding-bottom: 50px; }
+
+        @@media (max-width: 768px) {
+            .sidebar { width: 100%; min-height: auto; position: static; }
+            .main-content { margin-left: 0; }
+            .app-footer { left: 0; }
+        }
+    </style>
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <div class="sidebar">
+        <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")">
+            <img src="~/asset1.png" alt="AuraAI" />
+        </a>
+        <nav class="flex-column mt-2">
+            <div class="nav-section">Main</div>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" || ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")"
+               href="@Url.Action("Index", "Analytics")">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+
+            <div class="nav-section">Configuration</div>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Parameters" ? "active" : "")"
+               href="@Url.Action("Index", "Parameters")">
+                <i class="bi bi-sliders"></i> Parameters
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "ParameterClubs" ? "active" : "")"
+               href="@Url.Action("Index", "ParameterClubs")">
+                <i class="bi bi-collection"></i> Parameter Clubs
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "RatingCriteria" ? "active" : "")"
+               href="@Url.Action("Index", "RatingCriteria")">
+                <i class="bi bi-star-half"></i> Rating Criteria
+            </a>
+
+            <div class="nav-section">Forms</div>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "FormDesigner" ? "active" : "")"
+               href="@Url.Action("Index", "FormDesigner")">
+                <i class="bi bi-layout-text-window"></i> Form Designer
+            </a>
+
+            <div class="nav-section">Audits</div>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")"
+               href="@Url.Action("Index", "Audit")">
+                <i class="bi bi-clipboard2-check"></i> Audit Records
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AutoAudit" ? "active" : "")"
+               href="@Url.Action("Upload", "AutoAudit")">
+                <i class="bi bi-robot"></i> Auto Audit <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">AI</span>
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" ? "active" : "")"
+               href="@Url.Action("Index", "CallPipeline")">
+                <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
+               href="@Url.Action("Index", "HumanReview")">
+                <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
+            </a>
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
+               href="@Url.Action("Index", "Training")">
+                <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
+            </a>
+
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "InsightsChat" ? "active" : "")"
+               href="@Url.Action("Index", "InsightsChat")">
+                <i class="bi bi-chat-dots"></i> Insights Chat
+            </a>
+
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="nav-section">Admin</div>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AiSettings" ? "active" : "")"
+                   href="@Url.Action("Index", "AiSettings")">
+                    <i class="bi bi-gear-wide-connected"></i> AI Settings
+                    <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sampling" ? "active" : "")"
+                   href="@Url.Action("Index", "Sampling")">
+                    <i class="bi bi-funnel"></i> Sampling Policies
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "KnowledgeBase" ? "active" : "")"
+                   href="@Url.Action("Index", "KnowledgeBase")">
+                    <i class="bi bi-database"></i> Knowledge Base
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")"
+                   href="@Url.Action("Index", "Projects")">
+                    <i class="bi bi-building"></i> Projects
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lobs" ? "active" : "")"
+                   href="@Url.Action("Index", "Lobs")">
+                    <i class="bi bi-layers"></i> Lines of Business
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Users" ? "active" : "")"
+                   href="@Url.Action("Index", "Users")">
+                    <i class="bi bi-people"></i> Users
+                </a>
+            }
+        </nav>
+    </div>
+    <div class="main-content">
+        <div class="topbar">
+            <span class="page-title">
+                @ViewData["Title"]
+            </span>
+            <div class="d-flex align-items-center gap-3">
+                @{
+                    var projectId = int.TryParse(User.FindFirst("project_id")?.Value, out var pid) ? pid : 0;
+                    var projectName = User.FindFirst("project_name")?.Value ?? "";
+                    var projectCount = int.TryParse(User.FindFirst("project_count")?.Value, out var pc) ? pc : 1;
+                }
+                @if (projectId > 0)
+                {
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3"
+                          title="Current project">
+                        <i class="bi bi-building me-1"></i>@projectName
+                    </span>
+                }
+                @if (projectCount > 1 || User.IsInRole("Admin"))
+                {
+                    var projectsJson = User.FindFirst("projects_list")?.Value ?? "[]";
+                    List<(int Id, string Name)> allProjects = new();
+                    try {
+                        using var doc = System.Text.Json.JsonDocument.Parse(projectsJson);
+                        foreach (var el in doc.RootElement.EnumerateArray())
+                        {
+                            // Support both camelCase ("id","name") and PascalCase ("Id","Name")
+                            int pId = el.TryGetProperty("id", out var idProp) ? idProp.GetInt32()
+                                    : el.TryGetProperty("Id", out var idPropPascal) ? idPropPascal.GetInt32() : 0;
+                            string pName = el.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? ""
+                                         : el.TryGetProperty("Name", out var namePropPascal) ? namePropPascal.GetString() ?? "" : "";
+                            if (pId > 0) allProjects.Add((pId, pName));
+                        }
+                    } catch (System.Text.Json.JsonException) {
+                        // claims could not be parsed — switcher will show empty list
+                        allProjects = new();
+                    }
+                    <!-- Project switcher dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                                title="Switch project">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px">
+                            <li><h6 class="dropdown-header">Switch Project</h6></li>
+                            @if (!allProjects.Any())
+                            {
+                                <li><span class="dropdown-item-text text-muted small">No projects available</span></li>
+                            }
+                            @foreach (var (pId, pName) in allProjects)
+                            {
+                                <li>
+                                    <form method="post" action="@Url.Action("SwitchProject", "Account")">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="projectId" value="@pId" />
+                                        <input type="hidden" name="projectName" value="@pName" />
+                                        <button type="submit"
+                                                class="dropdown-item @(pId == projectId ? "active fw-semibold" : "")">
+                                            <i class="bi bi-building me-2"></i>@pName
+                                        </button>
+                                    </form>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <span class="text-muted small">
+                    <i class="bi bi-person-circle me-1"></i>@User.Identity?.Name
+                    <span class="badge bg-secondary ms-1">@(User.IsInRole("Admin") ? "Admin" : "User")</span>
+                </span>
+                <form method="post" action="@Url.Action("Logout", "Account")" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="page-content">
+            @RenderBody()
+        </div>
+        <footer class="app-footer">
+            &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> All rights reserved.
+            &nbsp;·&nbsp; AuraAI Intelligent Automation
+        </footer>
+    </div>
+}
+else
+{
+    <div class="container-fluid">
+        @RenderBody()
+    </div>
+}
+<script src="~/js/bootstrap.bundle.min.js"></script>
+@RenderSection("Scripts", required: false)
+<script>
+/* AuraAI — API connectivity diagnostics (visible in browser console & Network tab) */
+(function () {
+    var pingUrl = '@Url.Action("Ping", "Diagnostics")';
+    console.groupCollapsed('%c[AuraAI] API connectivity check', 'color:#0d6efd;font-weight:bold');
+    console.log('%cArchitecture note', 'font-weight:bold',
+        '— The browser never calls the backend API directly.',
+        'All API requests are proxied server-side:',
+        'Browser → Web Server → Backend API');
+    console.log('Calling diagnostics endpoint:', pingUrl);
+    fetch(pingUrl, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            console.log('%cCall flow:', 'font-weight:bold', d.callFlow);
+            if (d.ok) {
+                console.log('%c✔ API reachable', 'color:green;font-weight:bold',
+                    '| URL:', d.apiUrl,
+                    '| HTTP', d.statusCode,
+                    '| latency:', d.latencyMs + ' ms');
+            } else {
+                console.error('%c✘ API returned error', 'color:red;font-weight:bold',
+                    '| URL:', d.apiUrl,
+                    '| HTTP', d.statusCode,
+                    '| latency:', d.latencyMs + ' ms',
+                    d.error ? '| Error: ' + d.error : '');
+            }
+            console.log('Full ping result:', d);
+        })
+        .catch(function (err) {
+            console.error('%c✘ API ping request failed', 'color:red;font-weight:bold',
+                '— could not reach the diagnostics endpoint.', err);
+            console.log('Hint: ensure the web server is running and you are logged in.');
+            console.log('Remember: the browser calls /diagnostics/ping on the Web Server,',
+                'which then forwards the check to the Backend API. Neither hop is direct from the browser.');
+        });
+    console.groupEnd();
+}());
+</script>
+</body>
+</html>

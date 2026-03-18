@@ -1,0 +1,242 @@
+@model KnowledgeSourceViewModel
+@{
+    ViewData["Title"] = Model.Name + " — Knowledge Source";
+    var docs = ViewBag.Documents as List<KnowledgeDocumentViewModel> ?? new();
+}
+@section Styles {
+<style>
+    .doc-card { border-left:3px solid #198754; }
+    .content-preview { font-family:monospace; font-size:.8rem; background:#f8f9fa; border-radius:6px; padding:10px; max-height:140px; overflow-y:auto; white-space:pre-wrap; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-database me-2 text-success"></i>@Model.Name
+            <span class="badge bg-success ms-2" style="font-size:.7rem">@Model.ConnectorType</span>
+            @if (!Model.IsActive) { <span class="badge bg-secondary ms-1" style="font-size:.7rem">Inactive</span> }
+        </h4>
+        <p class="text-muted mb-0">@(string.IsNullOrEmpty(Model.Description) ? "Knowledge source" : Model.Description)</p>
+    </div>
+    <a href="@Url.Action("Index", "KnowledgeBase")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Sources</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Left: documents -->
+    <div class="col-lg-7">
+
+        <!-- Add document card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
+                <i class="bi bi-file-plus text-success"></i>
+                <h6 class="fw-bold mb-0">Add Document</h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="@Url.Action("AddDocument", "KnowledgeBase")" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SourceId" value="@Model.Id" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Document Title *</label>
+                        <input type="text" name="Title" class="form-control" required placeholder="e.g. Credit Card Dispute Process Guide" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Tags (comma-separated, optional)</label>
+                        <input type="text" name="Tags" class="form-control" placeholder="dispute, compliance, regulation" />
+                        <div class="form-text">Used to filter which documents are retrieved for specific parameters.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Upload File (.txt, .md, .csv)</label>
+                        <input type="file" name="documentFile" class="form-control" accept=".txt,.md,.csv" />
+                    </div>
+                    <div class="or-divider d-flex align-items-center gap-2 my-2 text-muted small">
+                        <div style="flex:1;height:1px;background:#dee2e6"></div>
+                        OR paste text
+                        <div style="flex:1;height:1px;background:#dee2e6"></div>
+                    </div>
+                    <div class="mb-3">
+                        <textarea name="TextContent" class="form-control" rows="5"
+                                  placeholder="Paste process documentation, policy text, script content, compliance guidelines..."></textarea>
+                        <div class="form-text">Max 50,000 characters. Longer content is truncated.</div>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Add Document</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Existing documents -->
+        <h6 class="fw-bold mb-3"><i class="bi bi-files me-2 text-success"></i>Documents (@docs.Count)</h6>
+
+        @if (!docs.Any())
+        {
+            <div class="alert alert-secondary">No documents yet. Add the first one above.</div>
+        }
+        else
+        {
+            @foreach (var doc in docs)
+            {
+                <div class="card border-0 shadow-sm mb-3 doc-card">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <div class="fw-semibold">@doc.Title</div>
+                                @if (!string.IsNullOrEmpty(doc.FileName))
+                                {
+                                    <div class="text-muted small"><i class="bi bi-file-earmark me-1"></i>@doc.FileName</div>
+                                }
+                                @if (!string.IsNullOrEmpty(doc.Tags))
+                                {
+                                    <div class="mt-1">
+                                        @foreach (var tag in doc.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                        {
+                                            <span class="badge bg-light text-dark border me-1" style="font-size:.65rem">@tag</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small">@(doc.ContentSizeBytes < 1024 ? $"{doc.ContentSizeBytes} B" : $"{doc.ContentSizeBytes/1024} KB")</div>
+                                <div class="text-muted small">@doc.UploadedAt.ToString("MMM d, yyyy")</div>
+                            </div>
+                        </div>
+                        <div class="content-preview">@(doc.Content.Length > 400 ? doc.Content[..400] + "..." : doc.Content)</div>
+                        <div class="mt-2">
+                            <form method="post" action="@Url.Action("DeleteDocument", "KnowledgeBase")" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@doc.Id" />
+                                <input type="hidden" name="sourceId" value="@Model.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Delete this document?')">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Right: source settings -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-0 pt-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>Source Settings</h6>
+            </div>
+            <div class="card-body">
+                <form method="post" action="@Url.Action("Source", "KnowledgeBase", new { id = Model.Id })">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Name</label>
+                        <input type="text" name="Name" class="form-control" value="@Model.Name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Description</label>
+                        <textarea name="Description" class="form-control" rows="2">@Model.Description</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Connector Type</label>
+                        <input type="text" class="form-control" value="@Model.ConnectorType" readonly />
+                    </div>
+                    <!-- Connector-specific fields based on type -->
+                    @if (Model.ConnectorType == "AzureBlob")
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Connection String</label>
+                            <input type="password" name="BlobConnectionString" class="form-control" value="@Model.BlobConnectionString" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Container Name</label>
+                            <input type="text" name="BlobContainerName" class="form-control" value="@Model.BlobContainerName" />
+                        </div>
+                    }
+                    @if (Model.ConnectorType == "SFTP")
+                    {
+                        <div class="row g-2 mb-3">
+                            <div class="col-8"><label class="form-label fw-semibold small">Host</label>
+                                <input type="text" name="SftpHost" class="form-control" value="@Model.SftpHost" /></div>
+                            <div class="col-4"><label class="form-label fw-semibold small">Port</label>
+                                <input type="number" name="SftpPort" class="form-control" value="@(Model.SftpPort ?? 22)" /></div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6"><label class="form-label fw-semibold small">Username</label>
+                                <input type="text" name="SftpUsername" class="form-control" value="@Model.SftpUsername" /></div>
+                            <div class="col-6"><label class="form-label fw-semibold small">Password</label>
+                                <input type="password" name="SftpPassword" class="form-control" value="@Model.SftpPassword" /></div>
+                        </div>
+                        <div class="mb-3"><label class="form-label fw-semibold small">Path</label>
+                            <input type="text" name="SftpPath" class="form-control" value="@Model.SftpPath" /></div>
+                    }
+                    @if (Model.ConnectorType == "SharePoint")
+                    {
+                        <div class="mb-3"><label class="form-label fw-semibold small">Site URL</label>
+                            <input type="url" name="SharePointSiteUrl" class="form-control" value="@Model.SharePointSiteUrl" /></div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6"><label class="form-label fw-semibold small">Client ID</label>
+                                <input type="text" name="SharePointClientId" class="form-control" value="@Model.SharePointClientId" /></div>
+                            <div class="col-6"><label class="form-label fw-semibold small">Client Secret</label>
+                                <input type="password" name="SharePointClientSecret" class="form-control" value="@Model.SharePointClientSecret" /></div>
+                        </div>
+                        <div class="mb-3"><label class="form-label fw-semibold small">Library Name</label>
+                            <input type="text" name="SharePointLibraryName" class="form-control" value="@Model.SharePointLibraryName" /></div>
+                    }
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="IsActive" class="form-check-input" id="isActive" value="true" @(Model.IsActive ? "checked" : "") />
+                        <label class="form-check-label small" for="isActive">Source is active (documents included in RAG retrieval)</label>
+                    </div>
+                    <input type="hidden" name="ConnectorType" value="@Model.ConnectorType" />
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-save me-1"></i>Save Settings</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-search me-2 text-info"></i>Test Retrieval</h6>
+                <p class="text-muted small mb-2">Test which documents are retrieved for a query.</p>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" id="testQuery" class="form-control" placeholder="e.g. identity verification process" />
+                    <button class="btn btn-outline-info" onclick="testRetrieval()">Search</button>
+                </div>
+                <div id="retrievalResults" class="small text-muted"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function testRetrieval() {
+        const q = document.getElementById('testQuery').value.trim();
+        if (!q) return;
+        const el = document.getElementById('retrievalResults');
+        el.innerHTML = '<span class="text-muted">Searching...</span>';
+        try {
+            const resp = await fetch('@Url.Content("~/api/knowledgebase/search")?q=' + encodeURIComponent(q) + '&topK=3', { credentials: 'include' });
+            const data = await resp.json();
+            if (!data.length) {
+                el.innerHTML = '<span class="text-muted">No results found.</span>';
+            } else {
+                el.innerHTML = data.map((r, i) => `<div class="border rounded p-2 mb-1 bg-light" style="font-size:.75rem"><strong>Result ${i+1}</strong><br><pre style="white-space:pre-wrap;margin:0">${r.substring(0,300)}${r.length>300?'...':''}</pre></div>`).join('');
+            }
+        } catch (e) {
+            el.innerHTML = '<span class="text-danger">Error: ' + e.message + '</span>';
+        }
+    }
+</script>
+}

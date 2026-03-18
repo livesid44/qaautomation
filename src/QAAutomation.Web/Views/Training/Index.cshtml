@@ -1,0 +1,174 @@
+@model List<TrainingPlanViewModel>
+@{
+    ViewData["Title"] = "Training Plans";
+    string? currentStatus = ViewBag.StatusFilter as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-mortarboard me-2 text-primary"></i>Training Need Identification</h4>
+        <p class="text-muted mb-0">Track improvement plans from audit observations to closure. Quality managers create plans, trainers deliver them, agents receive coaching.</p>
+    </div>
+    @if (User.IsInRole("Admin"))
+    {
+        <a href="@Url.Action("Create", "Training")" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>New Training Plan
+        </a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Status tabs -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item"><a class="nav-link @(currentStatus == null ? "active" : "")" href="@Url.Action("Index", "Training")">All <span class="badge bg-secondary ms-1">@Model.Count</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Draft" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Draft" })">Draft <span class="badge bg-light text-dark border ms-1">@Model.Count(p => p.Status == "Draft")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Active" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Active" })">Active <span class="badge bg-primary ms-1">@Model.Count(p => p.Status == "Active")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "InProgress" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "InProgress" })">In Progress <span class="badge bg-info text-dark ms-1">@Model.Count(p => p.Status == "InProgress")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Completed" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Completed" })">Completed <span class="badge bg-warning text-dark ms-1">@Model.Count(p => p.Status == "Completed")</span></a></li>
+    <li class="nav-item"><a class="nav-link @(currentStatus == "Closed" ? "active" : "")" href="@Url.Action("Index", "Training", new { status = "Closed" })">Closed <span class="badge bg-success ms-1">@Model.Count(p => p.Status == "Closed")</span></a></li>
+</ul>
+
+@if (!Model.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-mortarboard" style="font-size:3rem"></i>
+            <p class="mt-3">
+                @if (currentStatus != null)
+                {
+                    <span>No <strong>@currentStatus</strong> training plans.</span>
+                }
+                else if (User.IsInRole("Admin"))
+                {
+                    <span>No training plans yet. Create one from an <a href="@Url.Action("Index", "Audit")">Audit Record</a> or the <a href="@Url.Action("Index", "HumanReview")">Review Queue</a>, or start a standalone plan.</span>
+                }
+                else
+                {
+                    <span>No training plans assigned to you yet.</span>
+                }
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Title</th>
+                        <th>Agent</th>
+                        <th>Trainer</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Due Date</th>
+                        <th>Created By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var plan in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a href="@Url.Action("Detail", "Training", new { id = plan.Id })" class="fw-semibold text-decoration-none">@plan.Title</a>
+                                @if (plan.EvaluationResultId.HasValue || plan.HumanReviewItemId.HasValue)
+                                {
+                                    <div class="small text-muted">
+                                        @if (plan.EvaluationResultId.HasValue)
+                                        {
+                                            <a href="@Url.Action("Details", "Audit", new { id = plan.EvaluationResultId })" class="text-muted" target="_blank">
+                                                <i class="bi bi-link-45deg"></i> Audit #@plan.EvaluationResultId
+                                            </a>
+                                        }
+                                        @if (plan.HumanReviewItemId.HasValue)
+                                        {
+                                            <a href="@Url.Action("Review", "HumanReview", new { id = plan.HumanReviewItemId })" class="text-muted ms-2" target="_blank">
+                                                <i class="bi bi-link-45deg"></i> Review #@plan.HumanReviewItemId
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                            <td>@plan.AgentName</td>
+                            <td>@plan.TrainerName</td>
+                            <td>
+                                @{
+                                    var (badge, label) = plan.Status switch
+                                    {
+                                        "Draft" => ("bg-light text-dark border", "Draft"),
+                                        "Active" => ("bg-primary", "Active"),
+                                        "InProgress" => ("bg-info text-dark", "In Progress"),
+                                        "Completed" => ("bg-warning text-dark", "Completed"),
+                                        "Closed" => ("bg-success", "Closed"),
+                                        _ => ("bg-secondary", plan.Status)
+                                    };
+                                }
+                                <span class="badge @badge">@label</span>
+                            </td>
+                            <td>
+                                @if (plan.TotalItems > 0)
+                                {
+                                    var pct = (int)Math.Round((double)plan.CompletedItems / plan.TotalItems * 100);
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height:6px;min-width:60px">
+                                            <div class="progress-bar bg-success" style="width:@pct%"></div>
+                                        </div>
+                                        <span class="small text-muted">@plan.CompletedItems/@plan.TotalItems</span>
+                                    </div>
+                                }
+                            </td>
+                            <td class="small text-muted">
+                                @if (plan.DueDate.HasValue)
+                                {
+                                    var overdue = plan.DueDate.Value < DateTime.UtcNow && plan.Status is not "Closed";
+                                    <span class="@(overdue ? "text-danger fw-semibold" : "")">
+                                        @plan.DueDate.Value.ToString("MMM d, yyyy")
+                                        @if (overdue) { <i class="bi bi-exclamation-circle"></i> }
+                                    </span>
+                                }
+                                else { <span>—</span> }
+                            </td>
+                            <td class="small text-muted">@plan.CreatedBy</td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="@Url.Action("Detail", "Training", new { id = plan.Id })" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    @if (User.IsInRole("Admin") && plan.Status is not "Closed")
+                                    {
+                                        <a href="@Url.Action("Edit", "Training", new { id = plan.Id })" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" action="@Url.Action("Delete", "Training", new { id = plan.Id })" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Delete this training plan?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
