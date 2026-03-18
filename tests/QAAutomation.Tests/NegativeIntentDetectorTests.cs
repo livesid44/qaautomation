@@ -71,6 +71,48 @@ public class NegativeIntentDetectorTests
         Assert.False(NegativeIntentDetector.HasNegativeIntent(reasoning));
     }
 
+    // ── Customer-subject proximity — policy-aligned situations must NOT trigger ─
+
+    [Theory]
+    [InlineData("The creator did not meet the subscriber threshold required for the Silver Play Button.")]
+    [InlineData("The customer did not meet the eligibility criteria per current policy.")]
+    [InlineData("The caller did not meet the verification standard because of account status.")]
+    [InlineData("The creator's channel did not meet the 1000 subscriber minimum.")]
+    [InlineData("The agent correctly informed the creator that they did not meet eligibility criteria.")]
+    [InlineData("The subscriber did not meet the criteria; the agent communicated the denial clearly.")]
+    [InlineData("The user did not follow the required steps prior to contacting support.")]
+    public void HasNegativeIntent_CustomerSubjectNegation_ReturnsFalse(string reasoning)
+    {
+        // The negative phrase describes the customer's situation — not the agent's failure.
+        // These must NOT trigger a PASS→FAIL correction.
+        Assert.False(NegativeIntentDetector.HasNegativeIntent(reasoning));
+    }
+
+    [Fact]
+    public void HasNegativeIntent_AgentAndCustomerBothInWindow_CustomerCloserWins()
+    {
+        // Both "agent" and "creator" appear in the 60-char window before "did not meet",
+        // but "creator" is the closer (rightmost) word — last-occurrence ordering must
+        // select it, so the phrase is skipped and false is returned.
+        const string reasoning = "The agent noted: the creator did not meet the eligibility threshold.";
+        Assert.False(NegativeIntentDetector.HasNegativeIntent(reasoning));
+    }
+
+    // ── "Did not need to / not required to" — absence of action was correct ───
+
+    [Theory]
+    [InlineData("The agent did not need to escalate — the policy was clear.")]
+    [InlineData("The agent didn't need to offer a refund in this case.")]
+    [InlineData("The agent was not required to deliver a Reg Z disclosure for this call type.")]
+    [InlineData("Escalation was not required to resolve this particular matter.")]
+    [InlineData("The policy does not require the agent to offer a concession here.")]
+    [InlineData("A refund was not required by the applicable policy.")]
+    public void HasNegativeIntent_ActionNotRequired_ReturnsFalse(string reasoning)
+    {
+        // The agent's absence of action was intentionally correct per policy scope.
+        Assert.False(NegativeIntentDetector.HasNegativeIntent(reasoning));
+    }
+
     // ── Case insensitivity ────────────────────────────────────────────────────
 
     [Fact]
@@ -131,6 +173,29 @@ public class NegativeIntentScoringCorrectionTests
             "Button despite years of hard work.";
 
         Assert.True(NegativeIntentDetector.HasNegativeIntent(reasoning));
+    }
+
+    [Fact]
+    public void HasNegativeIntent_AgentFailureAndCreatorIneligibility_ReturnsTrue()
+    {
+        // Mixed reasoning: creator did not meet criteria (correct) BUT agent also failed
+        // on empathy — the agent failure must still be detected.
+        const string reasoning =
+            "The creator did not meet the eligibility threshold for the Silver Play Button. " +
+            "However, the agent did not demonstrate empathy when communicating this outcome.";
+
+        Assert.True(NegativeIntentDetector.HasNegativeIntent(reasoning));
+    }
+
+    [Fact]
+    public void HasNegativeIntent_CreatorIneligibilityAloneWithPolicyAlignment_ReturnsFalse()
+    {
+        // Reasoning describes only the customer's situation — no agent failure present.
+        const string reasoning =
+            "The creator did not meet the subscriber threshold required for the Silver Play " +
+            "Button. The denial aligns with the YouTube Partner Programme eligibility policy.";
+
+        Assert.False(NegativeIntentDetector.HasNegativeIntent(reasoning));
     }
 
     // ── Non-binary fields (MaxRating > 1) are NOT corrected ───────────────────
