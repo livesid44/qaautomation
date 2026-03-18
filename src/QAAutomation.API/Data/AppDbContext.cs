@@ -543,9 +543,14 @@ public class AppDbContext : DbContext
         // Seed sample evaluation (audit) records so the dashboard and Audit page show real data
         if (!await EvaluationResults.AnyAsync())
         {
-            var form = await EvaluationForms
+            // Locate the first evaluation form in the system (the default seed form) by
+            // finding the form associated with the first project's LOB, rather than relying
+            // on the project's display name.
+            var defaultProject = await Projects.OrderBy(p => p.Id).FirstOrDefaultAsync();
+            var form = defaultProject == null ? null : await EvaluationForms
                 .Include(f => f.Sections).ThenInclude(s => s.Fields)
-                .FirstOrDefaultAsync(f => f.Name.Contains("Capital One"));
+                .Include(f => f.Lob)
+                .FirstOrDefaultAsync(f => f.Lob != null && f.Lob.ProjectId == defaultProject.Id);
 
             if (form != null)
             {
@@ -822,7 +827,9 @@ public class AppDbContext : DbContext
         // Seed Knowledge Base
         if (!await KnowledgeSources.AnyAsync())
         {
-            var project = await Projects.FirstOrDefaultAsync(p => p.Name == "Capital One");
+            // Use the first project by creation order (the default seed project) rather than
+            // relying on the project's display name, so this works even if the name changes.
+            var project = await Projects.OrderBy(p => p.Id).FirstOrDefaultAsync();
             var source = new KnowledgeSource
             {
                 Name = "Capital One QA Policy Documents",
@@ -878,10 +885,13 @@ public class AppDbContext : DbContext
         // ── Project, LOB, parameters and evaluation form ───────────────────────
         // Guard: only run this block once, on first startup. All of the objects
         // below are created together; if the project exists they are already there.
+        // ytProject is declared here so the KB backfill block below can reuse it
+        // without a second name-based lookup.
+        Project? ytProject = null;
         if (!await Projects.AnyAsync(p => p.Name == "Youtube"))
         {
         // ── Project & LOB ──────────────────────────────────────────────────────
-        var ytProject = new Project
+        ytProject = new Project
         {
             Name = "Youtube",
             Description = "YouTube Creator Support Operations — Internal Quality Assurance",
@@ -1099,7 +1109,13 @@ public class AppDbContext : DbContext
         // ── YouTube IQA Knowledge Base (assessment guidelines for AI Audit) ────
         // This block runs every startup — guarded only by the source-level check —
         // so it backfills existing databases that were created before the KB was added.
-        var ytProjectForKb = await Projects.FirstOrDefaultAsync(p => p.Name == "Youtube");
+        // ytProject is set above when the project was just created; for pre-existing
+        // databases we locate the YouTube project via its unique LOB rather than by name.
+        var ytProjectForKb = ytProject
+            ?? await Lobs
+                   .Where(l => l.Name == "CSO")
+                   .Select(l => l.Project)
+                   .FirstOrDefaultAsync();
         if (ytProjectForKb != null && !await KnowledgeSources.AnyAsync(s => s.ProjectId == ytProjectForKb.Id))
         {
             var ytKbSource = new KnowledgeSource

@@ -171,11 +171,14 @@ static async Task MigrateExistingDataToDefaultProjectAsync(AppDbContext db, ILog
 {
     try
     {
-        // Find or create default project
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Name == "Capital One");
-        if (project == null) return; // seed hasn't run yet or already migrated
+        // Find the default project by creation order (first inserted) rather than by its
+        // display name, so this works even when the project is renamed or the seed content
+        // is customised for a different client.
+        var project = await db.Projects.OrderBy(p => p.Id).FirstOrDefaultAsync();
+        if (project == null) return; // seed hasn't run yet
 
-        var lob = await db.Lobs.FirstOrDefaultAsync(l => l.ProjectId == project.Id && l.Name == "Customer Support Call");
+        // Similarly, locate the first LOB for this project by creation order.
+        var lob = await db.Lobs.OrderBy(l => l.Id).FirstOrDefaultAsync(l => l.ProjectId == project.Id);
         if (lob == null) return;
 
         bool changed = false;
