@@ -875,9 +875,11 @@ public class AppDbContext : DbContext
     /// </summary>
     public async Task SeedYouTubeAsync()
     {
-        if (await Projects.AnyAsync(p => p.Name == "Youtube"))
-            return;
-
+        // ── Project, LOB, parameters and evaluation form ───────────────────────
+        // Guard: only run this block once, on first startup. All of the objects
+        // below are created together; if the project exists they are already there.
+        if (!await Projects.AnyAsync(p => p.Name == "Youtube"))
+        {
         // ── Project & LOB ──────────────────────────────────────────────────────
         var ytProject = new Project
         {
@@ -1092,9 +1094,13 @@ public class AppDbContext : DbContext
         };
         EvaluationForms.Add(ytForm);
         await SaveChangesAsync();
+        } // end if (!await Projects.AnyAsync(...))
 
         // ── YouTube IQA Knowledge Base (assessment guidelines for AI Audit) ────
-        if (!await KnowledgeSources.AnyAsync(s => s.ProjectId == ytProject.Id))
+        // This block runs every startup — guarded only by the source-level check —
+        // so it backfills existing databases that were created before the KB was added.
+        var ytProjectForKb = await Projects.FirstOrDefaultAsync(p => p.Name == "Youtube");
+        if (ytProjectForKb != null && !await KnowledgeSources.AnyAsync(s => s.ProjectId == ytProjectForKb.Id))
         {
             var ytKbSource = new KnowledgeSource
             {
@@ -1104,7 +1110,7 @@ public class AppDbContext : DbContext
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 LastSyncedAt = DateTime.UtcNow,
-                ProjectId = ytProject.Id,
+                ProjectId = ytProjectForKb.Id,
                 Documents = new List<KnowledgeDocument>
                 {
                     new()
