@@ -152,6 +152,7 @@ public class EvaluationFormsController : ControllerBase
             {
                 Id = f.Id,
                 Label = f.Label,
+                Description = f.Description,
                 FieldType = f.FieldType,
                 IsRequired = f.IsRequired,
                 Order = f.Order,

@@ -21,6 +21,9 @@ public class FormField
     /// <summary>Maximum rating value for Rating fields. Defaults to 5.</summary>
     public int MaxRating { get; set; } = 5;
 
+    /// <summary>Assessment guideline / description shown to evaluators on the audit form.</summary>
+    public string? Description { get; set; }
+
     public int SectionId { get; set; }
 
     public FormSection Section { get; set; } = null!;

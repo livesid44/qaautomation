@@ -140,6 +140,7 @@ using (var scope = app.Services.CreateScope())
         // string and the service guards against blank values before saving.
         ("AiConfigs",         "LanguageApiKey",      "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''"),
         ("AiConfigs",         "RagTopK",             "ALTER TABLE AiConfigs ADD COLUMN RagTopK INTEGER NULL DEFAULT 3"),
+        ("FormFields",        "Description",         "ALTER TABLE FormFields ADD COLUMN Description TEXT NULL"),
     })
     {
         if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly

@@ -103,13 +103,21 @@
                 {
                     var isCompliance = sec.Title.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
                     <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
-                        <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
-                            <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
-                            <h6 class="fw-bold mb-0">@sec.Title</h6>
-                            @if (isCompliance)
-                            {
-                                <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
-                            }
+                        <div class="card-header bg-white border-0 pt-3 d-flex align-items-start gap-2">
+                            <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary") mt-1"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0">
+                                    @sec.Title
+                                    @if (isCompliance)
+                                    {
+                                        <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
+                                    }
+                                </h6>
+                                @if (!string.IsNullOrEmpty(sec.Description))
+                                {
+                                    <div class="text-muted small mt-1">@sec.Description</div>
+                                }
+                            </div>
                         </div>
                         <div class="card-body">
                             @foreach (var field in sec.Fields.OrderBy(f => f.Id))
@@ -121,6 +129,10 @@
                                                 @field.Label
                                                 @if (field.IsRequired) { <span class="text-danger">*</span> }
                                             </div>
+                                            @if (!string.IsNullOrEmpty(field.Description))
+                                            {
+                                                <div class="text-muted small fst-italic mb-2">@field.Description</div>
+                                            }
                                             @if (field.MaxRating == 1)
                                             {
                                                 <div class="compliance-radio mt-2">

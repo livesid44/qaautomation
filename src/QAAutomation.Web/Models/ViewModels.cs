@@ -160,6 +160,7 @@ public class LegacyFormFieldViewModel
 {
     public int Id { get; set; }
     public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int MaxRating { get; set; }
     public bool IsRequired { get; set; }
     public int FieldType { get; set; } // 2 = Rating

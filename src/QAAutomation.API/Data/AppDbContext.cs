@@ -1034,9 +1034,9 @@ public class AppDbContext : DbContext
                     Order = 0,
                     Fields = new List<FormField>
                     {
-                        new() { Label = "Accuracy",               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
-                        new() { Label = "Tailoring",              FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
-                        new() { Label = "Obviation & Next Steps", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
+                        new() { Label = "Accuracy",               Description = "Did the creator receive an accurate and complete solution for all the informed issues?",                                                          FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
+                        new() { Label = "Tailoring",              Description = "Were the issues or expectations of the creator met with the right level of personalisation?",                                                    FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
+                        new() { Label = "Obviation & Next Steps", Description = "Has the creator been equipped with relevant obviation opportunities and next steps?",                                                            FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
                     }
                 },
                 new()
@@ -1046,11 +1046,11 @@ public class AppDbContext : DbContext
                     Order = 1,
                     Fields = new List<FormField>
                     {
-                        new() { Label = "Responsiveness",         FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
-                        new() { Label = "Internal Coordination",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
-                        new() { Label = "Workflows Adherence",    FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
-                        new() { Label = "Creator Feedback",       FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 3 },
-                        new() { Label = "CSAT Survey",            FieldType = FieldType.Rating, MaxRating = 1, IsRequired = false, Order = 4 },
+                        new() { Label = "Responsiveness",         Description = "Have we set and/or kept expectations with regards to timely and proactive follow-up communications?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
+                        new() { Label = "Internal Coordination",  Description = "Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
+                        new() { Label = "Workflows Adherence",    Description = "Did we minimise creator effort by following correct workflows?",                                                                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
+                        new() { Label = "Creator Feedback",       Description = "Was the creator reassured that their feedback was captured and addressed?",                                                                     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 3 },
+                        new() { Label = "CSAT Survey",            Description = "Was the creator appropriately asked to provide feedback through a CSAT survey?",                                                               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = false, Order = 4 },
                     }
                 },
                 new()
@@ -1060,9 +1060,9 @@ public class AppDbContext : DbContext
                     Order = 2,
                     Fields = new List<FormField>
                     {
-                        new() { Label = "Clarity",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
-                        new() { Label = "Empathy",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
-                        new() { Label = "Tone",     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                        new() { Label = "Clarity",  Description = "Has the creator received clear communication through the use of correct language and effective questioning?",                                                  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Empathy",  Description = "Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                        new() { Label = "Tone",     Description = "Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
                     }
                 },
                 new()
@@ -1072,8 +1072,8 @@ public class AppDbContext : DbContext
                     Order = 3,
                     Fields = new List<FormField>
                     {
-                        new() { Label = "Due Diligence", FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
-                        new() { Label = "Issue Tagging",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                        new() { Label = "Due Diligence", Description = "Did the agent complete all required due-diligence steps before responding or escalating?",                                                               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Issue Tagging", Description = "Was the case correctly tagged / categorised using Neo Categorization?",                                                                                  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
                     }
                 },
                 new()
@@ -1083,14 +1083,166 @@ public class AppDbContext : DbContext
                     Order = 4,
                     Fields = new List<FormField>
                     {
-                        new() { Label = "Authentication",     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
-                        new() { Label = "Keep YouTube Safe",  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
-                        new() { Label = "Policy",             FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                        new() { Label = "Authentication",     Description = "Did the agent follow the correct authentication process before discussing account or creator details?",                                              FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
+                        new() { Label = "Keep YouTube Safe",  Description = "Did the agent adhere to all policies that keep YouTube and its creators safe (trust & safety, content policy)?",                                   FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
+                        new() { Label = "Policy",             Description = "Did the agent correctly apply and communicate YouTube policies relevant to the creator's issue?",                                                   FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
                     }
                 },
             }
         };
         EvaluationForms.Add(ytForm);
         await SaveChangesAsync();
+
+        // ── YouTube IQA Knowledge Base (assessment guidelines for AI Audit) ────
+        if (!await KnowledgeSources.AnyAsync(s => s.ProjectId == ytProject.Id))
+        {
+            var ytKbSource = new KnowledgeSource
+            {
+                Name = "YouTube IQA Assessment Guidelines",
+                ConnectorType = "ManualUpload",
+                Description = "YouTube Creator Support Operations IQA framework — competency definitions, assessment guidelines, and scoring criteria used for quality evaluation.",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                LastSyncedAt = DateTime.UtcNow,
+                ProjectId = ytProject.Id,
+                Documents = new List<KnowledgeDocument>
+                {
+                    new()
+                    {
+                        Title = "YouTube CSO IQA — Assessment Guidelines",
+                        FileName = "YouTube_CSO_IQA_Assessment_Guidelines.pdf",
+                        Tags = "YouTube,IQA,Guidelines,Assessment,Quality",
+                        UploadedAt = DateTime.UtcNow,
+                        Content = @"YouTube Creator Support Operations — IQA Assessment Guidelines
+
+OVERVIEW
+========
+This document defines the assessment guidelines for all competencies evaluated in the YouTube CSO Internal Quality Assurance (IQA) framework. All competencies use a non-compensatory Pass / Fail scale. A PASS is awarded when the competency is fully met or not applicable (Yes / NA). A FAIL triggers an auto-fail for the relevant category.
+
+
+CREATOR CRITICAL — EFFECTIVENESS
+=================================
+Category Purpose: Have we helped the creator with their goal/issue?
+
+1. ACCURACY
+   Assessment Question: Did the creator receive an accurate and complete solution for all the informed issues?
+   PASS criteria: The agent provided a correct, complete answer that fully addressed every issue raised by the creator. No misinformation or omissions that would require the creator to contact YouTube again for the same matter.
+   FAIL criteria: The agent gave inaccurate information, addressed only part of the issue, or the creator was not given a usable resolution.
+
+2. TAILORING
+   Assessment Question: Were the issues or expectations of the creator met with the right level of personalisation?
+   PASS criteria: The agent demonstrated awareness of the creator's specific context (channel type, issue history, tone preference) and adapted the response accordingly. Generic, copy-paste responses are not sufficient when personalisation was possible.
+   FAIL criteria: Response was templated or generic in a situation where personalised support was clearly required.
+
+3. OBVIATION & NEXT STEPS
+   Assessment Question: Has the creator been equipped with relevant obviation opportunities and next steps?
+   PASS criteria: The agent proactively offered relevant self-service resources, explained preventive steps, or outlined clear next actions so the creator can avoid recurrence or knows what to do next.
+   FAIL criteria: Interaction closed without equipping the creator with next steps or relevant resources where these existed.
+
+
+CREATOR CRITICAL — EFFORT
+==========================
+Category Purpose: How much effort was it for the creator to get a resolution?
+
+4. RESPONSIVENESS
+   Assessment Question: Have we set and/or kept expectations with regards to timely and proactive follow-up communications?
+   PASS criteria: The agent acknowledged the creator's issue promptly, set clear timelines for resolution, and followed up proactively when delays occurred. No unexplained silences or missed deadlines.
+   FAIL criteria: Creator had to chase for updates, or expectations around timelines were not set or not met without communication.
+
+5. INTERNAL COORDINATION
+   Assessment Question: Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?
+   PASS criteria: Where escalation or consultation was required, the agent facilitated this seamlessly — creator was not asked to repeat information or contact other teams themselves.
+   FAIL criteria: Creator was bounced between teams, asked to re-explain their issue, or the agent failed to engage the right internal resource.
+
+6. WORKFLOWS ADHERENCE
+   Assessment Question: Did we minimise creator effort by following correct workflows?
+   PASS criteria: The agent followed all prescribed workflows (Neo case management, escalation paths, template use) correctly so the creator's case was handled efficiently without unnecessary loops.
+   FAIL criteria: Deviations from required workflows led to delays, rework, or additional creator effort.
+
+7. CREATOR FEEDBACK
+   Assessment Question: Was the creator reassured that their feedback was captured and addressed?
+   PASS criteria: Where the creator raised product feedback, platform issues, or suggestions, the agent acknowledged these, confirmed they would be logged, and set appropriate expectations.
+   FAIL criteria: Creator feedback was dismissed, ignored, or no acknowledgement was given that it would be captured.
+
+8. CSAT SURVEY
+   Assessment Question: Was the creator appropriately asked to provide feedback through a CSAT survey?
+   PASS criteria: The agent invited the creator to complete a CSAT survey in accordance with current guidelines (correct timing, correct channel, no coaching or influencing language).
+   FAIL criteria: Survey invitation was omitted, delivered at the wrong time, or the agent used language that could influence the creator's rating.
+
+
+CREATOR CRITICAL — ENGAGEMENT
+===============================
+Category Purpose: How did we make the creator feel during their interaction?
+
+9. CLARITY
+   Assessment Question: Has the creator received clear communication through the use of correct language and effective questioning?
+   PASS criteria: All written or verbal communication was clear, concise, and free of jargon. The agent used effective questioning to confirm understanding and avoid ambiguity.
+   FAIL criteria: Communication was unclear, used unexplained technical terms, or the agent failed to confirm understanding, leading to confusion.
+
+10. EMPATHY
+    Assessment Question: Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?
+    PASS criteria: The agent acknowledged the creator's situation, demonstrated genuine understanding of the urgency or emotional weight of the issue, and responded in a way that made the creator feel heard and valued.
+    FAIL criteria: The agent was dismissive, failed to acknowledge frustration or urgency, or responded in a way that felt robotic or uncaring.
+
+11. TONE
+    Assessment Question: Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?
+    PASS criteria: All communications were professional, warm, and consistent with YouTube's Tone & Voice guidelines throughout — including greetings, closings, and any difficult moments in the conversation.
+    FAIL criteria: Tone was inappropriate, inconsistent, or did not align with YouTube's brand guidelines (e.g., overly formal, casual, or passive-aggressive).
+
+
+BUSINESS CRITICAL
+==================
+Category Purpose: Non-compensatory business-critical competencies — failure in any one triggers an auto-fail for this category.
+
+12. DUE DILIGENCE
+    Assessment Question: Did the agent complete all required due-diligence steps before responding or escalating?
+    PASS criteria: The agent completed all mandatory checks (account verification, case history review, policy lookup) before providing a response or escalating the case.
+    FAIL criteria: The agent responded or escalated without completing required due-diligence checks, risking incorrect advice or security breaches.
+
+13. ISSUE TAGGING
+    Assessment Question: Was the case correctly tagged / categorised using Neo Categorization?
+    PASS criteria: The case was tagged with the correct primary and secondary categories in the Neo system, enabling accurate reporting and routing.
+    FAIL criteria: Case was tagged incorrectly, incompletely, or not tagged at all.
+
+
+COMPLIANCE CRITICAL
+====================
+Category Purpose: Non-compensatory compliance competencies — failure in any one triggers an auto-fail for this category.
+
+14. AUTHENTICATION
+    Assessment Question: Did the agent follow the correct authentication process before discussing account or creator details?
+    PASS criteria: The agent followed the prescribed authentication workflow in full before accessing or disclosing any account-specific information. For cases where authentication was not required, this competency is marked N/A (PASS).
+    FAIL criteria: The agent disclosed account information or took account actions without completing the authentication process.
+
+15. KEEP YOUTUBE SAFE
+    Assessment Question: Did the agent adhere to all policies that keep YouTube and its creators safe (trust & safety, content policy)?
+    PASS criteria: The agent complied fully with all YouTube Trust & Safety and Content Policy obligations — including correct escalation of policy violations, not engaging with harmful content, and protecting creator and user privacy.
+    FAIL criteria: The agent failed to escalate a T&S concern, shared information that could endanger a creator, or otherwise breached safety obligations.
+
+16. POLICY
+    Assessment Question: Did the agent correctly apply and communicate YouTube policies relevant to the creator's issue?
+    PASS criteria: The agent applied the correct YouTube policy to the creator's situation, communicated the policy clearly and accurately, and did not misrepresent or omit relevant policy details.
+    FAIL criteria: The agent applied the wrong policy, communicated a policy inaccurately, or failed to inform the creator of a policy directly relevant to their issue.
+
+
+SCORING SUMMARY
+===============
+Total competencies: 16
+Pass/Fail per competency (non-compensatory within each category).
+
+Auto-fail categories:
+  • Business Critical: Failure in Due Diligence OR Issue Tagging = auto-fail for this category.
+  • Compliance Critical: Failure in Authentication OR Keep YouTube Safe OR Policy = auto-fail for this category.
+
+Overall score = (number of PASS competencies / total assessed competencies) × 100%.
+A score of 100% is expected for Business Critical and Compliance Critical competencies.
+",
+                        ContentSizeBytes = 7200,
+                    }
+                }
+            };
+            KnowledgeSources.Add(ytKbSource);
+            await SaveChangesAsync();
+        }
     }
 }
