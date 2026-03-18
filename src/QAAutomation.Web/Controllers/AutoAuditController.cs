@@ -168,6 +168,15 @@ public class AutoAuditController : ProjectAwareController
         if (review.Sentiment != null && !string.IsNullOrWhiteSpace(review.Sentiment.OverallInsight))
             notes += $"\n[Sentiment] {review.Sentiment.OverallInsight}";
 
+        // Serialize structured AI data so it can be displayed in the saved audit detail view
+        string? sentimentJson = review.Sentiment != null
+            ? JsonSerializer.Serialize(review.Sentiment)
+            : null;
+        string? fieldReasoningJson = review.Fields.Any(f => !string.IsNullOrEmpty(f.Reasoning))
+            ? JsonSerializer.Serialize(review.Fields.Where(f => !string.IsNullOrEmpty(f.Reasoning))
+                .Select(f => new { fieldId = f.FieldId, reasoning = f.Reasoning }))
+            : null;
+
         var dto = new
         {
             formId = review.FormId,
@@ -176,6 +185,9 @@ public class AutoAuditController : ProjectAwareController
             callReference = review.CallReference,
             callDate = review.CallDate,
             notes,
+            overallReasoning = review.OverallReasoning,
+            sentimentJson,
+            fieldReasoningJson,
             scores
         };
 

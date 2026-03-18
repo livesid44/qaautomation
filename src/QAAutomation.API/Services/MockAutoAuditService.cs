@@ -19,6 +19,7 @@ public class MockAutoAuditService : IAutoAuditService
         AutoAuditRequestDto request,
         IEnumerable<AutoAuditFieldDefinition> fields,
         string formName,
+        int? projectId = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("MockAutoAuditService: Azure OpenAI not configured — returning simulated scores");

@@ -38,6 +38,7 @@ public class AutoAuditController : ControllerBase
         var form = await _db.EvaluationForms
             .Include(f => f.Sections)
                 .ThenInclude(s => s.Fields)
+            .Include(f => f.Lob)
             .FirstOrDefaultAsync(f => f.Id == request.FormId && f.IsActive);
 
         if (form == null)
@@ -71,7 +72,7 @@ public class AutoAuditController : ControllerBase
             return BadRequest("The selected form has no fields to score.");
 
         var result = await _auditService.AnalyzeTranscriptAsync(
-            request, fieldDefinitions, form.Name, HttpContext.RequestAborted);
+            request, fieldDefinitions, form.Name, form.Lob?.ProjectId, HttpContext.RequestAborted);
 
         return Ok(result);
     }

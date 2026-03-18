@@ -12,6 +12,9 @@ public class EvaluationResultDto
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
     public int? CallDurationSeconds { get; set; }
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
     public List<EvaluationScoreDto> Scores { get; set; } = new();
     public double TotalScore { get; set; }
     public double MaxPossibleScore { get; set; }
@@ -41,5 +44,8 @@ public class CreateEvaluationResultDto
     public string? AgentName { get; set; }
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
     public List<CreateEvaluationScoreDto> Scores { get; set; } = new();
 }

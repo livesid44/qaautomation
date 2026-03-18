@@ -141,6 +141,9 @@ using (var scope = app.Services.CreateScope())
         ("AiConfigs",         "LanguageApiKey",      "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''"),
         ("AiConfigs",         "RagTopK",             "ALTER TABLE AiConfigs ADD COLUMN RagTopK INTEGER NULL DEFAULT 3"),
         ("FormFields",        "Description",         "ALTER TABLE FormFields ADD COLUMN Description TEXT NULL"),
+        ("EvaluationResults", "OverallReasoning",    "ALTER TABLE EvaluationResults ADD COLUMN OverallReasoning TEXT NULL"),
+        ("EvaluationResults", "SentimentJson",       "ALTER TABLE EvaluationResults ADD COLUMN SentimentJson TEXT NULL"),
+        ("EvaluationResults", "FieldReasoningJson",  "ALTER TABLE EvaluationResults ADD COLUMN FieldReasoningJson TEXT NULL"),
     })
     {
         if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly

@@ -217,6 +217,19 @@ public class AuditViewModel
     public double MaxPossibleScore { get; set; }
     public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
     public List<AuditSectionViewModel> Sections { get; set; } = new();
+
+    // AI-generated data stored at audit-save time (null for manually-entered audits)
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
+
+    /// <summary>Deserialized sentiment — populated by ApiClient after fetching from the API.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SentimentViewModel? Sentiment { get; set; }
+
+    /// <summary>Map of FieldId → AI reasoning string — populated by ApiClient.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Dictionary<int, string> FieldReasonings { get; set; } = new();
 }
 
 public class NewAuditViewModel

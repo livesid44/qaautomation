@@ -26,12 +26,13 @@ public class RuntimeAutoAuditService : IAutoAuditService
         AutoAuditRequestDto request,
         IEnumerable<AutoAuditFieldDefinition> fields,
         string formName,
+        int? projectId = null,
         CancellationToken cancellationToken = default)
     {
         var cfg = await _aiConfig.GetAsync();
         return string.IsNullOrWhiteSpace(cfg.LlmEndpoint)
-            ? await _mock.AnalyzeTranscriptAsync(request, fields, formName, cancellationToken)
-            : await _real.AnalyzeTranscriptAsync(request, fields, formName, cancellationToken);
+            ? await _mock.AnalyzeTranscriptAsync(request, fields, formName, projectId, cancellationToken)
+            : await _real.AnalyzeTranscriptAsync(request, fields, formName, projectId, cancellationToken);
     }
 }
 

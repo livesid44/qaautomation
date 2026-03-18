@@ -82,6 +82,9 @@ public class EvaluationResultsController : ControllerBase
             AgentName = dto.AgentName,
             CallReference = dto.CallReference,
             CallDate = dto.CallDate,
+            OverallReasoning = dto.OverallReasoning,
+            SentimentJson = dto.SentimentJson,
+            FieldReasoningJson = dto.FieldReasoningJson,
             Scores = dto.Scores.Select(s => new EvaluationScore
             {
                 FieldId = s.FieldId,
@@ -147,6 +150,9 @@ public class EvaluationResultsController : ControllerBase
         CallReference = result.CallReference,
         CallDate = result.CallDate,
         CallDurationSeconds = result.CallDurationSeconds,
+        OverallReasoning = result.OverallReasoning,
+        SentimentJson = result.SentimentJson,
+        FieldReasoningJson = result.FieldReasoningJson,
         Scores = result.Scores.Select(s => new EvaluationScoreDto
         {
             Id = s.Id,

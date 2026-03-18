@@ -21,8 +21,9 @@ public interface IKnowledgeBaseService
     Task<bool> DeleteDocumentAsync(int id);
 
     // RAG retrieval
-    /// <summary>Returns up to topK most relevant document excerpts for the given query text.</summary>
-    Task<List<string>> RetrieveAsync(string query, int topK = 3, string? tags = null);
+    /// <summary>Returns up to topK most relevant document excerpts for the given query text,
+    /// scoped to the specified project when <paramref name="projectId"/> is provided.</summary>
+    Task<List<string>> RetrieveAsync(string query, int topK = 3, string? tags = null, int? projectId = null);
 }
 
 /// <summary>
@@ -150,7 +151,7 @@ public class KnowledgeBaseService : IKnowledgeBaseService
     /// Kept short enough to stay within typical context windows while still conveying the policy text.</summary>
     private const int RagSnippetLength = 600;
 
-    public async Task<List<string>> RetrieveAsync(string query, int topK = 3, string? tags = null)
+    public async Task<List<string>> RetrieveAsync(string query, int topK = 3, string? tags = null, int? projectId = null)
     {
         if (string.IsNullOrWhiteSpace(query)) return new List<string>();
 
@@ -160,6 +161,10 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         var docsQuery = _db.KnowledgeDocuments
             .Include(d => d.Source)
             .Where(d => d.Source.IsActive);
+
+        // Scope to the current project so tenants never see each other's KB documents
+        if (projectId.HasValue)
+            docsQuery = docsQuery.Where(d => d.Source.ProjectId == projectId.Value);
 
         var docs = await docsQuery.ToListAsync();
 

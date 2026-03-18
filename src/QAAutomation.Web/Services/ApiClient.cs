@@ -258,7 +258,12 @@ public class ApiClient
 
     public async Task<AuditViewModel?> GetAudit(int id)
     {
-        try { return await _http.GetFromJsonAsync<AuditViewModel>($"api/evaluationresults/{id}", _jsonOptions); }
+        try
+        {
+            var vm = await _http.GetFromJsonAsync<AuditViewModel>($"api/evaluationresults/{id}", _jsonOptions);
+            if (vm != null) DeserializeAuditAiData(vm);
+            return vm;
+        }
         catch (Exception ex) { _logger.LogError(ex, "GetAudit failed"); return null; }
     }
 
@@ -272,6 +277,35 @@ public class ApiClient
     {
         try { var r = await _http.PostAsJsonAsync("api/evaluationresults", dto); return r.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return false; }
+    }
+
+    /// <summary>Deserializes the JSON AI-data blobs stored on an AuditViewModel into their typed properties.</summary>
+    private void DeserializeAuditAiData(AuditViewModel vm)
+    {
+        if (!string.IsNullOrEmpty(vm.SentimentJson))
+        {
+            try { vm.Sentiment = System.Text.Json.JsonSerializer.Deserialize<SentimentViewModel>(vm.SentimentJson, _jsonOptions); }
+            catch { /* ignore malformed data */ }
+        }
+
+        if (!string.IsNullOrEmpty(vm.FieldReasoningJson))
+        {
+            try
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<FieldReasoningEntry>>(vm.FieldReasoningJson, _jsonOptions);
+                if (items != null)
+                    vm.FieldReasonings = items
+                        .Where(e => e.FieldId > 0)
+                        .ToDictionary(e => e.FieldId, e => e.Reasoning ?? "");
+            }
+            catch { /* ignore malformed data */ }
+        }
+    }
+
+    private sealed class FieldReasoningEntry
+    {
+        public int FieldId { get; set; }
+        public string? Reasoning { get; set; }
     }
 
     public async Task<bool> DeleteAudit(int id)

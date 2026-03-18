@@ -31,6 +31,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         AutoAuditRequestDto request,
         IEnumerable<AutoAuditFieldDefinition> fields,
         string formName,
+        int? projectId = null,
         CancellationToken cancellationToken = default)
     {
         var fieldList = fields.ToList();
@@ -60,7 +61,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             if (kbFields.Count > 0)
             {
                 var tasks = kbFields.Select(f =>
-                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK)
+                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK, null, projectId)
                        .ContinueWith(t => (f.FieldId, chunks: t.Result)));
                 var results = await Task.WhenAll(tasks);
                 foreach (var (fieldId, chunks) in results)

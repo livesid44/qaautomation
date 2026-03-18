@@ -134,6 +134,7 @@ public class CallPipelineService : ICallPipelineService
             .Include(j => j.Form)
                 .ThenInclude(f => f!.Sections)
                     .ThenInclude(s => s.Fields)
+            .Include(j => j.Form!.Lob)
             .FirstOrDefaultAsync(j => j.Id == jobId, ct);
 
         if (job is null)
@@ -281,7 +282,7 @@ public class CallPipelineService : ICallPipelineService
                 EvaluatedBy = $"pipeline:{job.Name}"
             };
 
-            var result = await _auditService.AnalyzeTranscriptAsync(auditRequest, fieldDefs, formName, ct);
+            var result = await _auditService.AnalyzeTranscriptAsync(auditRequest, fieldDefs, formName, job.Form?.Lob?.ProjectId, ct);
 
             // Persist EvaluationResult
             var evalResult = new EvaluationResult

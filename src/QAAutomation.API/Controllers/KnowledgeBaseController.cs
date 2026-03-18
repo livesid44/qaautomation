@@ -83,6 +83,6 @@ public class KnowledgeBaseController : ControllerBase
 
     [HttpGet("search")]
     [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<string>>> Search([FromQuery] string q, [FromQuery] int topK = 3) =>
-        Ok(await _svc.RetrieveAsync(q, topK));
+    public async Task<ActionResult<List<string>>> Search([FromQuery] string q, [FromQuery] int topK = 3, [FromQuery] int? projectId = null) =>
+        Ok(await _svc.RetrieveAsync(q, topK, null, projectId));
 }
