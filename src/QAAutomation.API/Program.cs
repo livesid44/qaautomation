@@ -62,7 +62,16 @@ builder.Services.AddHttpClient("speech")
     .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromMinutes(12)); // batch jobs can take a while
 builder.Services.AddScoped<AzureSpeechService>();
 builder.Services.AddScoped<MockAzureSpeechService>();
-builder.Services.AddScoped<IAzureSpeechService, RuntimeSpeechTranscriptionService>();
+
+// Google Gemini (LLM + sentiment) and Google Cloud Speech-to-Text
+builder.Services.AddHttpClient("gemini")
+    .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(120));
+builder.Services.AddScoped<GoogleGeminiAutoAuditService>();
+builder.Services.AddScoped<GoogleGeminiSentimentService>();
+builder.Services.AddScoped<GoogleSpeechService>();
+
+// IAzureSpeechService: runtime-selected (Azure or Google) based on AiConfig.SpeechProvider
+builder.Services.AddScoped<IAzureSpeechService, RuntimeSpeechService>();
 
 // AI services: runtime selection based on DB config (AiConfig.LlmEndpoint non-empty → real LLM)
 // Both real and mock are registered; a factory wrapper picks at request time.
@@ -155,6 +164,10 @@ using (var scope = app.Services.CreateScope())
         // Project-level PII/SPII protection settings
         ("Projects",          "PiiProtectionEnabled", "ALTER TABLE Projects ADD COLUMN PiiProtectionEnabled INTEGER NOT NULL DEFAULT 0"),
         ("Projects",          "PiiRedactionMode",     "ALTER TABLE Projects ADD COLUMN PiiRedactionMode TEXT NOT NULL DEFAULT 'Redact'"),
+        // Google provider fields (added alongside Google Gemini / Google STT support)
+        ("AiConfigs",         "GoogleApiKey",         "ALTER TABLE AiConfigs ADD COLUMN GoogleApiKey TEXT NOT NULL DEFAULT ''"),
+        ("AiConfigs",         "GoogleGeminiModel",    "ALTER TABLE AiConfigs ADD COLUMN GoogleGeminiModel TEXT NOT NULL DEFAULT 'gemini-1.5-pro'"),
+        ("AiConfigs",         "SpeechProvider",       "ALTER TABLE AiConfigs ADD COLUMN SpeechProvider TEXT NOT NULL DEFAULT 'Azure'"),
     })
     {
         if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly

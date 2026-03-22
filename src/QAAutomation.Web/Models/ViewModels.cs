@@ -353,13 +353,19 @@ public class AiSettingsViewModel
     public string LanguageApiKey { get; set; } = string.Empty;
     public int RagTopK { get; set; } = 3;
     // Speech-to-Text
+    public string SpeechProvider { get; set; } = "Azure";
     public string SpeechEndpoint { get; set; } = string.Empty;
     public string SpeechApiKey { get; set; } = string.Empty;
+    // Google (Gemini LLM + Cloud Speech-to-Text)
+    public string GoogleApiKey { get; set; } = string.Empty;
+    public string GoogleGeminiModel { get; set; } = "gemini-1.5-pro";
     public DateTime UpdatedAt { get; set; }
-    /// <summary>True when the LLM endpoint is configured and real AI will be used.</summary>
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint);
-    /// <summary>True when Azure Speech-to-Text is configured.</summary>
-    public bool IsSpeechConfigured => !string.IsNullOrWhiteSpace(SpeechEndpoint);
+    /// <summary>True when an LLM (Azure/OpenAI or Google) is configured.</summary>
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint) ||
+                                (LlmProvider == "Google" && !string.IsNullOrWhiteSpace(GoogleApiKey));
+    /// <summary>True when Speech-to-Text is configured.</summary>
+    public bool IsSpeechConfigured => (SpeechProvider == "Azure" && !string.IsNullOrWhiteSpace(SpeechEndpoint)) ||
+                                      (SpeechProvider == "Google" && !string.IsNullOrWhiteSpace(GoogleApiKey));
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

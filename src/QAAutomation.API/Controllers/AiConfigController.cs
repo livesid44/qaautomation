@@ -46,8 +46,11 @@ public class AiConfigController : ControllerBase
         LanguageEndpoint = cfg.LanguageEndpoint,
         LanguageApiKey = string.IsNullOrEmpty(cfg.LanguageApiKey) ? "" : "***",
         RagTopK = cfg.RagTopK,
+        SpeechProvider = cfg.SpeechProvider,
         SpeechEndpoint = cfg.SpeechEndpoint,
         SpeechApiKey = string.IsNullOrEmpty(cfg.SpeechApiKey) ? "" : "***",
+        GoogleApiKey = string.IsNullOrEmpty(cfg.GoogleApiKey) ? "" : "***",
+        GoogleGeminiModel = cfg.GoogleGeminiModel,
         UpdatedAt = cfg.UpdatedAt
     };
 }

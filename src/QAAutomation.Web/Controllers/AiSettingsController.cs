@@ -31,10 +31,12 @@ public class AiSettingsController : Controller
         ViewData["LlmKeyIsSet"] = settings.LlmApiKey == "***";
         ViewData["LangKeyIsSet"] = settings.LanguageApiKey == "***";
         ViewData["SpeechKeyIsSet"] = settings.SpeechApiKey == "***";
+        ViewData["GoogleKeyIsSet"] = settings.GoogleApiKey == "***";
         // Never display masked keys — show blank so admin knows they can enter a new value
         if (settings.LlmApiKey == "***") settings.LlmApiKey = "";
         if (settings.LanguageApiKey == "***") settings.LanguageApiKey = "";
         if (settings.SpeechApiKey == "***") settings.SpeechApiKey = "";
+        if (settings.GoogleApiKey == "***") settings.GoogleApiKey = "";
         ViewData["ApiBaseUrl"] = _api.BaseUrl;
         return View(settings);
     }
