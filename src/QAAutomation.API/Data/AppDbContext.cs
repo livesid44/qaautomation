@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<HumanReviewItem> HumanReviewItems => Set<HumanReviewItem>();
     public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
     public DbSet<TrainingPlanItem> TrainingPlanItems => Set<TrainingPlanItem>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -286,6 +287,23 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ItemType).HasMaxLength(30);
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.CompletedBy).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Outcome).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Actor).HasMaxLength(200);
+            entity.Property(e => e.PiiTypesDetected).HasMaxLength(500);
+            entity.Property(e => e.HttpMethod).HasMaxLength(10);
+            entity.Property(e => e.Endpoint).HasMaxLength(1000);
+            entity.Property(e => e.Provider).HasMaxLength(100);
+            entity.Property(e => e.Details).HasMaxLength(2000);
+            // Primary query pattern: tenant + time descending
+            entity.HasIndex(e => new { e.ProjectId, e.OccurredAt });
+            entity.HasIndex(e => e.Category);
         });
     }
 

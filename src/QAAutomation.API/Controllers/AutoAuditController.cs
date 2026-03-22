@@ -13,11 +13,13 @@ public class AutoAuditController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IAutoAuditService _auditService;
+    private readonly IAuditLogService _auditLog;
 
-    public AutoAuditController(AppDbContext db, IAutoAuditService auditService)
+    public AutoAuditController(AppDbContext db, IAutoAuditService auditService, IAuditLogService auditLog)
     {
         _db = db;
         _auditService = auditService;
+        _auditLog = auditLog;
     }
 
     /// <summary>
@@ -73,6 +75,7 @@ public class AutoAuditController : ControllerBase
 
         // ── PII / SPII protection (tenant-level) ─────────────────────────────
         // Resolve the project for this form and apply PII protection if configured.
+        var actor = request.EvaluatedBy;
         if (form.Lob?.ProjectId is int projectId)
         {
             var project = await _db.Projects.FindAsync(projectId);
@@ -84,6 +87,10 @@ public class AutoAuditController : ControllerBase
                     if (PiiRedactionService.ContainsPii(request.Transcript))
                     {
                         var types = PiiRedactionService.DetectTypes(request.Transcript);
+                        await _auditLog.LogPiiEventAsync(
+                            projectId, "PiiBlocked", "Blocked", types, actor,
+                            $"Form: {form.Name}; CallRef: {request.CallReference}",
+                            HttpContext.RequestAborted);
                         return BadRequest(
                             $"PII/SPII protection is enabled for this project with mode 'Block'. " +
                             $"Detected sensitive data type(s): {string.Join(", ", types)}. " +
@@ -93,8 +100,27 @@ public class AutoAuditController : ControllerBase
                 else // "Redact" (default)
                 {
                     // Soft redact: replace PII tokens with labelled placeholders
-                    request.Transcript = PiiRedactionService.Redact(request.Transcript);
+                    var originalTranscript = request.Transcript;
+                    request.Transcript = PiiRedactionService.Redact(originalTranscript);
+                    if (request.Transcript != originalTranscript)
+                    {
+                        // Only log when actual redaction occurred
+                        var types = PiiRedactionService.DetectTypes(originalTranscript);
+                        await _auditLog.LogPiiEventAsync(
+                            projectId, "PiiRedacted", "Redacted", types, actor,
+                            $"Form: {form.Name}; CallRef: {request.CallReference}",
+                            HttpContext.RequestAborted);
+                    }
                 }
+            }
+            else if (PiiRedactionService.ContainsPii(request.Transcript))
+            {
+                // PII protection is OFF but PII was present — log as informational detection
+                var types = PiiRedactionService.DetectTypes(request.Transcript);
+                await _auditLog.LogPiiEventAsync(
+                    projectId, "PiiDetected", "Detected", types, actor,
+                    $"Form: {form.Name}; CallRef: {request.CallReference}; Protection mode: Disabled",
+                    HttpContext.RequestAborted);
             }
         }
 

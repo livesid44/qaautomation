@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using QAAutomation.API.DTOs;
@@ -16,17 +17,20 @@ public class GoogleGeminiAutoAuditService : IAutoAuditService
     private readonly IAiConfigService _aiConfig;
     private readonly IKnowledgeBaseService _kb;
     private readonly IHttpClientFactory _httpFactory;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<GoogleGeminiAutoAuditService> _logger;
 
     public GoogleGeminiAutoAuditService(
         IAiConfigService aiConfig,
         IKnowledgeBaseService kb,
         IHttpClientFactory httpFactory,
+        IAuditLogService auditLog,
         ILogger<GoogleGeminiAutoAuditService> logger)
     {
         _aiConfig = aiConfig;
         _kb = kb;
         _httpFactory = httpFactory;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -52,6 +56,8 @@ public class GoogleGeminiAutoAuditService : IAutoAuditService
             IsAiGenerated = true
         };
 
+        var endpoint = $"{GeminiHttpHelper.BaseUrl}{cfg.GoogleGeminiModel}:generateContent";
+        var sw = Stopwatch.StartNew();
         try
         {
             // Retrieve KB context concurrently for KnowledgeBased fields
@@ -76,13 +82,27 @@ public class GoogleGeminiAutoAuditService : IAutoAuditService
                 systemPrompt, userPrompt, cfg.LlmTemperature, cancellationToken);
 
             ParseGeminiResponse(jsonText, fieldList, response);
+            sw.Stop();
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Success", "GoogleGemini",
+                endpoint, "POST", 200, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {cfg.GoogleGeminiModel}; CallRef: {request.CallReference}",
+                cancellationToken);
         }
         catch (Exception ex)
         {
+            sw.Stop();
             _logger.LogError(ex, "Google Gemini auto-audit analysis failed for form {FormId}", request.FormId);
             response.AnalysisError = $"Google Gemini analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
             FillNeutralScores(fieldList, response);
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Failure", "GoogleGemini",
+                endpoint, "POST", null, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {cfg.GoogleGeminiModel}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                cancellationToken);
         }
 
         return response;

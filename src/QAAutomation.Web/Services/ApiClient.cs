@@ -565,6 +565,36 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
     }
 
+    // ── Audit Log ─────────────────────────────────────────────────────────────
+
+    public async Task<AuditLogPageViewModel?> GetAuditLogs(
+        int? projectId,
+        string? category = null,
+        string? eventType = null,
+        string? outcome = null,
+        string? from = null,
+        string? to = null,
+        int page = 1,
+        int pageSize = 50)
+    {
+        var qs = new List<string>();
+        if (projectId.HasValue) qs.Add($"projectId={projectId.Value}");
+        if (!string.IsNullOrWhiteSpace(category)) qs.Add($"category={Uri.EscapeDataString(category)}");
+        if (!string.IsNullOrWhiteSpace(eventType)) qs.Add($"eventType={Uri.EscapeDataString(eventType)}");
+        if (!string.IsNullOrWhiteSpace(outcome)) qs.Add($"outcome={Uri.EscapeDataString(outcome)}");
+        if (!string.IsNullOrWhiteSpace(from)) qs.Add($"from={Uri.EscapeDataString(from)}");
+        if (!string.IsNullOrWhiteSpace(to)) qs.Add($"to={Uri.EscapeDataString(to)}");
+        qs.Add($"page={page}");
+        qs.Add($"pageSize={pageSize}");
+        var url = "api/auditlog?" + string.Join("&", qs);
+        try
+        {
+            var page_dto = await _http.GetFromJsonAsync<AuditLogPageViewModel>(url, _jsonOptions);
+            return page_dto;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetAuditLogs failed"); return null; }
+    }
+
     // ── Call Pipeline ─────────────────────────────────────────────────────────
 
     public async Task<List<CallPipelineJobViewModel>> GetPipelineJobs(int? projectId = null)

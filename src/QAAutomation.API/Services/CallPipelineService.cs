@@ -35,6 +35,7 @@ public class CallPipelineService : ICallPipelineService
     private readonly IAutoAuditService _auditService;
     private readonly IAzureSpeechService _speechService;
     private readonly IHttpClientFactory _httpFactory;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<CallPipelineService> _logger;
 
     // Maximum transcript length fed to the LLM (same cap as the interactive UI)
@@ -45,12 +46,14 @@ public class CallPipelineService : ICallPipelineService
         IAutoAuditService auditService,
         IAzureSpeechService speechService,
         IHttpClientFactory httpFactory,
+        IAuditLogService auditLog,
         ILogger<CallPipelineService> logger)
     {
         _db = db;
         _auditService = auditService;
         _speechService = speechService;
         _httpFactory = httpFactory;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -350,7 +353,32 @@ public class CallPipelineService : ICallPipelineService
         if (string.IsNullOrWhiteSpace(audioUrl)) return null;
 
         _logger.LogInformation("Transcribing audio: {Url} (job {JobId})", audioUrl, job.Id);
-        return await _speechService.TranscribeAudioUrlAsync(audioUrl, ct);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string? result = null;
+        try
+        {
+            result = await _speechService.TranscribeAudioUrlAsync(audioUrl, ct);
+            sw.Stop();
+            await _auditLog.LogExternalApiCallAsync(
+                job.Form?.Lob?.ProjectId, "SpeechTranscription",
+                string.IsNullOrWhiteSpace(result) ? "Failure" : "Success",
+                "SpeechService", audioUrl, "POST", null, sw.ElapsedMilliseconds,
+                actor: $"pipeline:{job.Name}",
+                details: $"Job: {job.Id}; Item: {item.Id}; Ref: {item.CallReference}",
+                ct: ct);
+        }
+        catch
+        {
+            sw.Stop();
+            await _auditLog.LogExternalApiCallAsync(
+                job.Form?.Lob?.ProjectId, "SpeechTranscription", "Failure",
+                "SpeechService", audioUrl, "POST", null, sw.ElapsedMilliseconds,
+                actor: $"pipeline:{job.Name}",
+                details: $"Job: {job.Id}; Item: {item.Id}",
+                ct: ct);
+            throw;
+        }
+        return result;
     }
 
     /// <summary>
@@ -366,14 +394,52 @@ public class CallPipelineService : ICallPipelineService
     /// </summary>
     private async Task<string> FetchTranscriptAsync(CallPipelineJob job, CallPipelineItem item, CancellationToken ct)
     {
-        return job.SourceType switch
+        var eventType = job.SourceType switch
         {
-            "BatchUrl" => await FetchUrlAsync(item.SourceReference ?? string.Empty, ct),
-            "SFTP" => await FetchSftpAsync(job, item, ct),
-            "SharePoint" => await FetchSharePointAsync(job, item, ct),
-            "Verint" or "NICE" or "Ozonetel" => await FetchRecordingPlatformAsync(job, item, ct),
-            _ => string.Empty
+            "BatchUrl"   => "UrlFetch",
+            "SFTP"       => "SftpFetch",
+            "SharePoint" => "SharePointFetch",
+            "Verint"     => "VerintFetch",
+            "NICE"       => "NiceFetch",
+            "Ozonetel"   => "OzonetelFetch",
+            _            => "ExternalFetch"
         };
+        var endpoint = job.SourceType == "BatchUrl"
+            ? item.SourceReference
+            : job.SharePointSiteUrl ?? job.SftpHost ?? job.SourceType;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var transcript = job.SourceType switch
+            {
+                "BatchUrl"   => await FetchUrlAsync(item.SourceReference ?? string.Empty, ct),
+                "SFTP"       => await FetchSftpAsync(job, item, ct),
+                "SharePoint" => await FetchSharePointAsync(job, item, ct),
+                "Verint" or "NICE" or "Ozonetel" => await FetchRecordingPlatformAsync(job, item, ct),
+                _            => string.Empty
+            };
+            sw.Stop();
+            await _auditLog.LogExternalApiCallAsync(
+                job.Form?.Lob?.ProjectId, eventType,
+                string.IsNullOrWhiteSpace(transcript) ? "Failure" : "Success",
+                job.SourceType, endpoint, "GET", null, sw.ElapsedMilliseconds,
+                actor: $"pipeline:{job.Name}",
+                details: $"Job: {job.Id}; Item: {item.Id}; Ref: {item.SourceReference}",
+                ct: ct);
+            return transcript;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            await _auditLog.LogExternalApiCallAsync(
+                job.Form?.Lob?.ProjectId, eventType, "Failure",
+                job.SourceType, endpoint, "GET", null, sw.ElapsedMilliseconds,
+                actor: $"pipeline:{job.Name}",
+                details: $"Job: {job.Id}; Item: {item.Id}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                ct: ct);
+            throw;
+        }
     }
 
     /// <summary>

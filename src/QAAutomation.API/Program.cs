@@ -34,6 +34,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connStr);
 });
 
+// DbContextFactory needed by AuditLogService (writes audit entries in independent scopes)
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connStr))
+        connStr = $"Data Source={Path.Combine(builder.Environment.ContentRootPath, "qa_automation.db")}";
+    options.UseSqlite(connStr);
+}, ServiceLifetime.Scoped);
+
+// Audit logging — captures PII/SPII events and external API calls per tenant
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

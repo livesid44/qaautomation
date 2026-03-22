@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using QAAutomation.API.DTOs;
 
@@ -14,15 +15,18 @@ public class GoogleGeminiSentimentService : ISentimentService
 {
     private readonly IAiConfigService _aiConfig;
     private readonly IHttpClientFactory _httpFactory;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<GoogleGeminiSentimentService> _logger;
 
     public GoogleGeminiSentimentService(
         IAiConfigService aiConfig,
         IHttpClientFactory httpFactory,
+        IAuditLogService auditLog,
         ILogger<GoogleGeminiSentimentService> logger)
     {
         _aiConfig = aiConfig;
         _httpFactory = httpFactory;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -32,7 +36,9 @@ public class GoogleGeminiSentimentService : ISentimentService
     {
         var cfg = await _aiConfig.GetAsync();
         var response = new SentimentAnalysisResponseDto { IsAiGenerated = true };
+        var endpoint = $"{GeminiHttpHelper.BaseUrl}{cfg.GoogleGeminiModel}:generateContent";
 
+        var sw = Stopwatch.StartNew();
         try
         {
             var jsonText = await GeminiHttpHelper.CallAsync(
@@ -45,13 +51,27 @@ public class GoogleGeminiSentimentService : ISentimentService
                 cancellationToken);
 
             ParseResponse(jsonText, response);
+            sw.Stop();
+
+            await _auditLog.LogExternalApiCallAsync(
+                request.ProjectId, "LlmSentiment", "Success", "GoogleGemini",
+                endpoint, "POST", 200, sw.ElapsedMilliseconds,
+                details: $"Model: {cfg.GoogleGeminiModel}",
+                ct: cancellationToken);
         }
         catch (Exception ex)
         {
+            sw.Stop();
             _logger.LogError(ex, "Google Gemini sentiment analysis failed");
             response.AnalysisError = $"Google Gemini analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
             FillDefaults(response);
+
+            await _auditLog.LogExternalApiCallAsync(
+                request.ProjectId, "LlmSentiment", "Failure", "GoogleGemini",
+                endpoint, "POST", null, sw.ElapsedMilliseconds,
+                details: $"Model: {cfg.GoogleGeminiModel}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                ct: cancellationToken);
         }
 
         return response;

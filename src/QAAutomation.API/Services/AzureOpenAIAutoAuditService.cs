@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using OpenAI.Chat;
@@ -15,15 +16,18 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
 {
     private readonly IAiConfigService _aiConfig;
     private readonly IKnowledgeBaseService _kb;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<AzureOpenAIAutoAuditService> _logger;
 
     public AzureOpenAIAutoAuditService(
         IAiConfigService aiConfig,
         IKnowledgeBaseService kb,
+        IAuditLogService auditLog,
         ILogger<AzureOpenAIAutoAuditService> logger)
     {
         _aiConfig = aiConfig;
         _kb = kb;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -51,6 +55,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             IsAiGenerated = true
         };
 
+        var sw = Stopwatch.StartNew();
         try
         {
             var chatClient = AzureOpenAIHelper.CreateClient(endpoint, apiKey, deployment);
@@ -84,13 +89,27 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
                 options, cancellationToken);
 
             ParseLlmResponse(completion.Value.Content[0].Text, fieldList, response);
+            sw.Stop();
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Success", "AzureOpenAI",
+                endpoint, "POST", 200, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {deployment}; CallRef: {request.CallReference}",
+                cancellationToken);
         }
         catch (Exception ex)
         {
+            sw.Stop();
             _logger.LogError(ex, "Azure OpenAI auto-audit analysis failed for form {FormId}", request.FormId);
             response.AnalysisError = $"Azure OpenAI analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
             FillNeutralScores(fieldList, response);
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Failure", "AzureOpenAI",
+                endpoint, "POST", null, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {deployment}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                cancellationToken);
         }
 
         return response;

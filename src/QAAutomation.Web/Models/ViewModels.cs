@@ -564,6 +564,42 @@ public class FailureReasonViewModel
     public double AvgScoreInFailedAudits { get; set; }
 }
 
+// ── Audit Log ViewModels ────────────────────────────────────────────────────
+
+public class AuditLogEntryViewModel
+{
+    public int Id { get; set; }
+    public int? ProjectId { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public string Outcome { get; set; } = string.Empty;
+    public string? Actor { get; set; }
+    public string? PiiTypesDetected { get; set; }
+    public string? HttpMethod { get; set; }
+    public string? Endpoint { get; set; }
+    public int? HttpStatusCode { get; set; }
+    public long? DurationMs { get; set; }
+    public string? Provider { get; set; }
+    public string? Details { get; set; }
+    public DateTime OccurredAt { get; set; }
+}
+
+public class AuditLogPageViewModel
+{
+    public List<AuditLogEntryViewModel> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+
+    // Filter state (for form repopulation)
+    public string? FilterCategory { get; set; }
+    public string? FilterEventType { get; set; }
+    public string? FilterOutcome { get; set; }
+    public string? FilterFrom { get; set; }
+    public string? FilterTo { get; set; }
+}
+
 // ── Call Pipeline ViewModels ────────────────────────────────────────────────
 
 public class CallPipelineJobViewModel
