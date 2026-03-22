@@ -15,4 +15,11 @@ public class AnalyticsController : ProjectAwareController
         var vm = await _api.GetAnalytics(pid);
         return View(vm ?? new Models.AnalyticsViewModel());
     }
+
+    public async Task<IActionResult> Explainability()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var vm = await _api.GetExplainabilityAnalytics(pid);
+        return View(vm ?? new Models.ExplainabilityViewModel());
+    }
 }

@@ -511,6 +511,59 @@ public class CallTypeScoreViewModel
     public int AuditCount { get; set; }
 }
 
+// ── Explainability Analytics ViewModels ────────────────────────────────────────
+
+public class ExplainabilityViewModel
+{
+    public int TotalAudits { get; set; }
+    public int TotalReviewed { get; set; }
+    public double AiHitlAgreementRate { get; set; }
+    public List<DecisionDriverViewModel> DecisionDrivers { get; set; } = new();
+    public List<SignalUsageViewModel> SignalUsage { get; set; } = new();
+    public List<HitlAgreementViewModel> HitlAgreement { get; set; } = new();
+    public List<FailureReasonViewModel> FailureReasons { get; set; } = new();
+}
+
+public class DecisionDriverViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int LowScoreCount { get; set; }
+    public int HighScoreCount { get; set; }
+    public int TotalScoredCount { get; set; }
+    public double ScoreVariability { get; set; }
+    public bool IsRiskArea { get; set; }
+}
+
+public class SignalUsageViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int TimesScored { get; set; }
+    public int TimesFullScore { get; set; }
+    public int TimesMissed { get; set; }
+    public double FullScoreRate { get; set; }
+    public double MissRate { get; set; }
+}
+
+public class HitlAgreementViewModel
+{
+    public string ReviewVerdict { get; set; } = string.Empty;
+    public string PolicyName { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public double Percentage { get; set; }
+}
+
+public class FailureReasonViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int FailedAuditCount { get; set; }
+    public double ContributionPercent { get; set; }
+    public double AvgScoreInFailedAudits { get; set; }
+}
+
 // ── Call Pipeline ViewModels ────────────────────────────────────────────────
 
 public class CallPipelineJobViewModel

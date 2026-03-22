@@ -558,6 +558,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAnalytics failed"); return null; }
     }
 
+    public async Task<ExplainabilityViewModel?> GetExplainabilityAnalytics(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/explainability?projectId={projectId.Value}" : "api/analytics/explainability";
+        try { return await _http.GetFromJsonAsync<ExplainabilityViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
+    }
+
     // ── Call Pipeline ─────────────────────────────────────────────────────────
 
     public async Task<List<CallPipelineJobViewModel>> GetPipelineJobs(int? projectId = null)
