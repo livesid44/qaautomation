@@ -152,6 +152,9 @@ using (var scope = app.Services.CreateScope())
         ("EvaluationResults", "OverallReasoning",    "ALTER TABLE EvaluationResults ADD COLUMN OverallReasoning TEXT NULL"),
         ("EvaluationResults", "SentimentJson",       "ALTER TABLE EvaluationResults ADD COLUMN SentimentJson TEXT NULL"),
         ("EvaluationResults", "FieldReasoningJson",  "ALTER TABLE EvaluationResults ADD COLUMN FieldReasoningJson TEXT NULL"),
+        // Project-level PII/SPII protection settings
+        ("Projects",          "PiiProtectionEnabled", "ALTER TABLE Projects ADD COLUMN PiiProtectionEnabled INTEGER NOT NULL DEFAULT 0"),
+        ("Projects",          "PiiRedactionMode",     "ALTER TABLE Projects ADD COLUMN PiiRedactionMode TEXT NOT NULL DEFAULT 'Redact'"),
     })
     {
         if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly

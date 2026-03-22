@@ -71,6 +71,33 @@ public class AutoAuditController : ControllerBase
         if (fieldDefinitions.Count == 0)
             return BadRequest("The selected form has no fields to score.");
 
+        // ── PII / SPII protection (tenant-level) ─────────────────────────────
+        // Resolve the project for this form and apply PII protection if configured.
+        if (form.Lob?.ProjectId is int projectId)
+        {
+            var project = await _db.Projects.FindAsync(projectId);
+            if (project is { PiiProtectionEnabled: true })
+            {
+                if (project.PiiRedactionMode == "Block")
+                {
+                    // Hard block: refuse the request when any PII is detected
+                    if (PiiRedactionService.ContainsPii(request.Transcript))
+                    {
+                        var types = PiiRedactionService.DetectTypes(request.Transcript);
+                        return BadRequest(
+                            $"PII/SPII protection is enabled for this project with mode 'Block'. " +
+                            $"Detected sensitive data type(s): {string.Join(", ", types)}. " +
+                            "Please remove PII from the transcript before submitting for AI analysis.");
+                    }
+                }
+                else // "Redact" (default)
+                {
+                    // Soft redact: replace PII tokens with labelled placeholders
+                    request.Transcript = PiiRedactionService.Redact(request.Transcript);
+                }
+            }
+        }
+
         var result = await _auditService.AnalyzeTranscriptAsync(
             request, fieldDefinitions, form.Name, form.Lob?.ProjectId, HttpContext.RequestAborted);
 

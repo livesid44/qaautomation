@@ -23,7 +23,9 @@ public class ProjectsController : ControllerBase
         {
             Id = p.Id, Name = p.Name, Description = p.Description,
             IsActive = p.IsActive, CreatedAt = p.CreatedAt,
-            LobCount = p.Lobs.Count(l => l.IsActive)
+            LobCount = p.Lobs.Count(l => l.IsActive),
+            PiiProtectionEnabled = p.PiiProtectionEnabled,
+            PiiRedactionMode = p.PiiRedactionMode
         }));
     }
 
@@ -36,7 +38,9 @@ public class ProjectsController : ControllerBase
         {
             Id = p.Id, Name = p.Name, Description = p.Description,
             IsActive = p.IsActive, CreatedAt = p.CreatedAt,
-            LobCount = p.Lobs.Count(l => l.IsActive)
+            LobCount = p.Lobs.Count(l => l.IsActive),
+            PiiProtectionEnabled = p.PiiProtectionEnabled,
+            PiiRedactionMode = p.PiiRedactionMode
         });
     }
 
@@ -51,7 +55,7 @@ public class ProjectsController : ControllerBase
         _db.Projects.Add(project);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = project.Id },
-            new ProjectDto { Id = project.Id, Name = project.Name, Description = project.Description, IsActive = project.IsActive, CreatedAt = project.CreatedAt });
+            new ProjectDto { Id = project.Id, Name = project.Name, Description = project.Description, IsActive = project.IsActive, CreatedAt = project.CreatedAt, PiiProtectionEnabled = project.PiiProtectionEnabled, PiiRedactionMode = project.PiiRedactionMode });
     }
 
     [HttpPut("{id}")]
@@ -62,6 +66,8 @@ public class ProjectsController : ControllerBase
         project.Name = dto.Name;
         project.Description = dto.Description;
         project.IsActive = dto.IsActive;
+        project.PiiProtectionEnabled = dto.PiiProtectionEnabled;
+        project.PiiRedactionMode = string.IsNullOrWhiteSpace(dto.PiiRedactionMode) ? "Redact" : dto.PiiRedactionMode;
         await _db.SaveChangesAsync();
         return NoContent();
     }

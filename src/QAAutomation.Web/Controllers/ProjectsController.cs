@@ -48,9 +48,10 @@ public class ProjectsController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, string name, string? description, bool isActive)
+    public async Task<IActionResult> Edit(int id, string name, string? description, bool isActive,
+        bool piiProtectionEnabled = false, string piiRedactionMode = "Redact")
     {
-        await _api.UpdateProject(id, new { name, description, isActive });
+        await _api.UpdateProject(id, new { name, description, isActive, piiProtectionEnabled, piiRedactionMode });
         TempData["Success"] = "Project saved.";
         return RedirectToAction(nameof(Edit), new { id });
     }

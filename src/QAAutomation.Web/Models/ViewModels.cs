@@ -431,6 +431,8 @@ public class ProjectViewModel
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public int LobCount { get; set; }
+    public bool PiiProtectionEnabled { get; set; }
+    public string PiiRedactionMode { get; set; } = "Redact";
 }
 
 public class LobViewModel
