@@ -189,15 +189,8 @@ CREATE TABLE dbo.EvaluationResults
     FieldReasoningJson   NVARCHAR(MAX) NULL,
 
     CONSTRAINT PK_EvaluationResults PRIMARY KEY (Id),
-    CONSTRAINT FK_EvalResults_Form FOREIGN KEY (FormId) REFERENCES dbo.EvaluationForms (Id) ON DELETE RESTRICT  -- EF: Restrict
+    CONSTRAINT FK_EvalResults_Form FOREIGN KEY (FormId) REFERENCES dbo.EvaluationForms (Id) ON DELETE NO ACTION
 );
-GO
-
--- Add the RESTRICT-equivalent FK (SQL Server uses NO ACTION for restrict semantics)
-ALTER TABLE dbo.EvaluationResults
-    DROP CONSTRAINT FK_EvalResults_Form;
-ALTER TABLE dbo.EvaluationResults
-    ADD CONSTRAINT FK_EvalResults_Form FOREIGN KEY (FormId) REFERENCES dbo.EvaluationForms (Id) ON DELETE NO ACTION;
 GO
 
 -- ── EvaluationScores ──────────────────────────────────────────────────────────
@@ -602,7 +595,6 @@ GO
 -- =============================================================================
 
 -- ── 5.1  AiConfigs (singleton) ────────────────────────────────────────────────
-SET IDENTITY_INSERT dbo.AiConfigs OFF;   -- Id is not identity; insert directly
 INSERT INTO dbo.AiConfigs
     (Id, LlmProvider, LlmEndpoint, LlmApiKey, LlmDeployment, LlmTemperature,
      SentimentProvider, LanguageEndpoint, LanguageApiKey, RagTopK,
