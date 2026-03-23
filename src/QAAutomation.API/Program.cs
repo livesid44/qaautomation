@@ -175,7 +175,16 @@ using (var scope = app.Services.CreateScope())
             if (sqlServer)
             {
                 // INFORMATION_SCHEMA is available on all SQL Server / Azure SQL versions.
-                // Use parameterized query to guard against any future dynamic input.
+                // If the TABLE itself does not exist (e.g. freshly created by EnsureCreated()),
+                // return true so we skip the ALTER TABLE — EnsureCreated() already created the
+                // table with all current model columns and no further migration is needed.
+                // Use parameterized queries to guard against any future dynamic input.
+                cmd.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @t";
+                var ptbl = cmd.CreateParameter(); ptbl.ParameterName = "@t"; ptbl.Value = table; cmd.Parameters.Add(ptbl);
+                var tableCount = (int)(cmd.ExecuteScalar() ?? 0);
+                if (tableCount == 0) return true; // table absent → EnsureCreated owns it; skip ALTER
+
+                cmd.Parameters.Clear();
                 cmd.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @t AND COLUMN_NAME = @c";
                 var pt = cmd.CreateParameter(); pt.ParameterName = "@t"; pt.Value = table; cmd.Parameters.Add(pt);
                 var pc = cmd.CreateParameter(); pc.ParameterName = "@c"; pc.Value = column; cmd.Parameters.Add(pc);
