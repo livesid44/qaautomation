@@ -6,6 +6,23 @@ using System.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Database provider detection ───────────────────────────────────────────────
+// If DefaultConnection is empty or looks like a SQLite path, use SQLite.
+// Any connection string containing SQL Server keywords (Server=, Initial Catalog=,
+// database=, Trusted_Connection=) is treated as SQL Server.
+static bool IsSqlServerConnectionString(string? connStr) =>
+    !string.IsNullOrWhiteSpace(connStr) &&
+    (connStr.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+     connStr.Contains("Initial Catalog=", StringComparison.OrdinalIgnoreCase) ||
+     connStr.Contains("database=", StringComparison.OrdinalIgnoreCase) ||
+     connStr.Contains("Trusted_Connection=", StringComparison.OrdinalIgnoreCase) ||
+     connStr.Contains("TrustServerCertificate=", StringComparison.OrdinalIgnoreCase));
+
+static string ResolveSqliteConnectionString(string? connStr, string contentRootPath) =>
+    string.IsNullOrEmpty(connStr)
+        ? $"Data Source={Path.Combine(contentRootPath, "qa_automation.db")}"
+        : connStr;
+
 builder.Services.AddControllers(options =>
 {
     // The Web layer sends empty strings (or null after ASP.NET Core converts empty form
@@ -26,21 +43,21 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    // Build an absolute path so the DB file is always in the project/content-root
-    // directory regardless of the working directory (VS, dotnet run, IIS Express, etc.).
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrEmpty(connStr))
-        connStr = $"Data Source={Path.Combine(builder.Environment.ContentRootPath, "qa_automation.db")}";
-    options.UseSqlite(connStr);
+    if (IsSqlServerConnectionString(connStr))
+        options.UseSqlServer(connStr);
+    else
+        options.UseSqlite(ResolveSqliteConnectionString(connStr, builder.Environment.ContentRootPath));
 });
 
 // DbContextFactory needed by AuditLogService (writes audit entries in independent scopes)
 builder.Services.AddDbContextFactory<AppDbContext>(options =>
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (string.IsNullOrEmpty(connStr))
-        connStr = $"Data Source={Path.Combine(builder.Environment.ContentRootPath, "qa_automation.db")}";
-    options.UseSqlite(connStr);
+    if (IsSqlServerConnectionString(connStr))
+        options.UseSqlServer(connStr);
+    else
+        options.UseSqlite(ResolveSqliteConnectionString(connStr, builder.Environment.ContentRootPath));
 }, ServiceLifetime.Scoped);
 
 // Audit logging — captures PII/SPII events and external API calls per tenant
@@ -107,31 +124,42 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Robust schema creation: EnsureCreated() bails out when any tables already exist,
-    // leaving partial/legacy databases with missing tables. Instead we generate the full
-    // schema DDL and apply each statement with IF NOT EXISTS so existing tables/indexes
-    // are preserved and any missing ones are created.
-    var createScript = db.Database.GenerateCreateScript();
-    foreach (var rawStmt in createScript.Split(";\n", StringSplitOptions.RemoveEmptyEntries))
+    // Detect the actual provider used by the registered DbContext (not from config),
+    // so that test factories that swap in SQLite in-memory are handled correctly.
+    var isSqlServer = db.Database.ProviderName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true;
+
+    if (isSqlServer)
     {
-        var stmt = rawStmt.Trim();
-        if (string.IsNullOrWhiteSpace(stmt)) continue;
-        if (stmt.StartsWith("CREATE TABLE ", StringComparison.OrdinalIgnoreCase))
-            stmt = "CREATE TABLE IF NOT EXISTS " + stmt["CREATE TABLE ".Length..];
-        else if (stmt.StartsWith("CREATE UNIQUE INDEX ", StringComparison.OrdinalIgnoreCase))
-            stmt = "CREATE UNIQUE INDEX IF NOT EXISTS " + stmt["CREATE UNIQUE INDEX ".Length..];
-        else if (stmt.StartsWith("CREATE INDEX ", StringComparison.OrdinalIgnoreCase))
-            stmt = "CREATE INDEX IF NOT EXISTS " + stmt["CREATE INDEX ".Length..];
-        const int MaxLoggedStatementLength = 80;
-        try { db.Database.ExecuteSqlRaw(stmt); }
-        catch (Exception ex) { logger.LogDebug(ex, "Schema init skipped for: {Stmt}", stmt[..Math.Min(MaxLoggedStatementLength, stmt.Length)]); }
+        // SQL Server: EnsureCreated creates all tables that don't yet exist without
+        // touching ones that do, so it is safe to call on an existing database.
+        db.Database.EnsureCreated();
+    }
+    else
+    {
+        // SQLite: generate the full schema DDL and apply each statement with IF NOT EXISTS
+        // so existing tables/indexes are preserved and any missing ones are created.
+        var createScript = db.Database.GenerateCreateScript();
+        foreach (var rawStmt in createScript.Split(";\n", StringSplitOptions.RemoveEmptyEntries))
+        {
+            var stmt = rawStmt.Trim();
+            if (string.IsNullOrWhiteSpace(stmt)) continue;
+            if (stmt.StartsWith("CREATE TABLE ", StringComparison.OrdinalIgnoreCase))
+                stmt = "CREATE TABLE IF NOT EXISTS " + stmt["CREATE TABLE ".Length..];
+            else if (stmt.StartsWith("CREATE UNIQUE INDEX ", StringComparison.OrdinalIgnoreCase))
+                stmt = "CREATE UNIQUE INDEX IF NOT EXISTS " + stmt["CREATE UNIQUE INDEX ".Length..];
+            else if (stmt.StartsWith("CREATE INDEX ", StringComparison.OrdinalIgnoreCase))
+                stmt = "CREATE INDEX IF NOT EXISTS " + stmt["CREATE INDEX ".Length..];
+            const int MaxLoggedStatementLength = 80;
+            try { db.Database.ExecuteSqlRaw(stmt); }
+            catch (Exception ex) { logger.LogDebug(ex, "Schema init skipped for: {Stmt}", stmt[..Math.Min(MaxLoggedStatementLength, stmt.Length)]); }
+        }
     }
 
     // Column-level migrations for tables that existed before new columns were added.
     // We check existence first so EF Core never logs a "failed DbCommand" for expected skips.
     // table/column names are compile-time constants — validated to be alphanumeric+underscore
     // to prevent any possibility of SQL injection even if the list were ever changed.
-    static bool ColumnExists(AppDbContext ctx, string table, string column)
+    static bool ColumnExists(AppDbContext ctx, string table, string column, bool sqlServer)
     {
         // Allowlist: only alphanumeric and underscore (all our table/column names qualify)
         if (!System.Text.RegularExpressions.Regex.IsMatch(table, @"^\w+$") ||
@@ -144,48 +172,66 @@ using (var scope = app.Services.CreateScope())
         try
         {
             using var cmd = conn.CreateCommand();
-            // SQLite PRAGMA doesn't support parameterized identifiers; names are allowlisted above.
-            cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name='{column}'";
-            return (long)(cmd.ExecuteScalar() ?? 0L) > 0;
+            if (sqlServer)
+            {
+                // INFORMATION_SCHEMA is available on all SQL Server / Azure SQL versions.
+                // Use parameterized query to guard against any future dynamic input.
+                cmd.CommandText = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @t AND COLUMN_NAME = @c";
+                var pt = cmd.CreateParameter(); pt.ParameterName = "@t"; pt.Value = table; cmd.Parameters.Add(pt);
+                var pc = cmd.CreateParameter(); pc.ParameterName = "@c"; pc.Value = column; cmd.Parameters.Add(pc);
+                return (int)(cmd.ExecuteScalar() ?? 0) > 0;
+            }
+            else
+            {
+                // SQLite PRAGMA doesn't support parameterized identifiers; names are allowlisted above.
+                cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name='{column}'";
+                return (long)(cmd.ExecuteScalar() ?? 0L) > 0;
+            }
         }
         finally { if (openedByUs) conn.Close(); }
     }
 
-    foreach (var (table, column, sql) in new (string, string, string)[] {
-        ("EvaluationResults", "AgentName",          "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL"),
-        ("EvaluationResults", "CallReference",       "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL"),
-        ("EvaluationResults", "CallDate",            "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL"),
-        ("Parameters",        "EvaluationType",      "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'"),
-        ("Parameters",        "ProjectId",           "ALTER TABLE Parameters ADD COLUMN ProjectId INTEGER NULL"),
-        ("ParameterClubs",    "ProjectId",           "ALTER TABLE ParameterClubs ADD COLUMN ProjectId INTEGER NULL"),
-        ("RatingCriteria",    "ProjectId",           "ALTER TABLE RatingCriteria ADD COLUMN ProjectId INTEGER NULL"),
-        ("KnowledgeSources",  "ProjectId",           "ALTER TABLE KnowledgeSources ADD COLUMN ProjectId INTEGER NULL"),
-        ("EvaluationForms",   "LobId",               "ALTER TABLE EvaluationForms ADD COLUMN LobId INTEGER NULL"),
-        // AiConfigs columns added after initial release
-        ("AiConfigs",         "LlmDeployment",       "ALTER TABLE AiConfigs ADD COLUMN LlmDeployment TEXT NULL DEFAULT 'gpt-4o'"),
-        ("AiConfigs",         "LlmTemperature",      "ALTER TABLE AiConfigs ADD COLUMN LlmTemperature REAL NULL DEFAULT 0.1"),
-        ("AiConfigs",         "SentimentProvider",   "ALTER TABLE AiConfigs ADD COLUMN SentimentProvider TEXT NULL DEFAULT 'AzureOpenAI'"),
-        ("AiConfigs",         "LanguageEndpoint",    "ALTER TABLE AiConfigs ADD COLUMN LanguageEndpoint TEXT NOT NULL DEFAULT ''"),
+    // Column migration definitions: (table, column, sqliteSql, sqlServerSql)
+    // SQL Server uses NVARCHAR/INT/FLOAT/BIT instead of SQLite TEXT/INTEGER/REAL.
+    // SQL Server ALTER TABLE does not support the COLUMN keyword.
+    var columnMigrations = new (string Table, string Column, string SqliteSql, string SqlServerSql)[]
+    {
+        ("EvaluationResults", "AgentName",           "ALTER TABLE EvaluationResults ADD COLUMN AgentName TEXT NULL",                        "ALTER TABLE EvaluationResults ADD AgentName NVARCHAR(200) NULL"),
+        ("EvaluationResults", "CallReference",        "ALTER TABLE EvaluationResults ADD COLUMN CallReference TEXT NULL",                   "ALTER TABLE EvaluationResults ADD CallReference NVARCHAR(100) NULL"),
+        ("EvaluationResults", "CallDate",             "ALTER TABLE EvaluationResults ADD COLUMN CallDate TEXT NULL",                        "ALTER TABLE EvaluationResults ADD CallDate DATETIME2 NULL"),
+        ("Parameters",        "EvaluationType",       "ALTER TABLE Parameters ADD COLUMN EvaluationType TEXT NOT NULL DEFAULT 'LLM'",        "ALTER TABLE Parameters ADD EvaluationType NVARCHAR(50) NOT NULL DEFAULT 'LLM'"),
+        ("Parameters",        "ProjectId",            "ALTER TABLE Parameters ADD COLUMN ProjectId INTEGER NULL",                           "ALTER TABLE Parameters ADD ProjectId INT NULL"),
+        ("ParameterClubs",    "ProjectId",            "ALTER TABLE ParameterClubs ADD COLUMN ProjectId INTEGER NULL",                       "ALTER TABLE ParameterClubs ADD ProjectId INT NULL"),
+        ("RatingCriteria",    "ProjectId",            "ALTER TABLE RatingCriteria ADD COLUMN ProjectId INTEGER NULL",                       "ALTER TABLE RatingCriteria ADD ProjectId INT NULL"),
+        ("KnowledgeSources",  "ProjectId",            "ALTER TABLE KnowledgeSources ADD COLUMN ProjectId INTEGER NULL",                     "ALTER TABLE KnowledgeSources ADD ProjectId INT NULL"),
+        ("EvaluationForms",   "LobId",                "ALTER TABLE EvaluationForms ADD COLUMN LobId INTEGER NULL",                         "ALTER TABLE EvaluationForms ADD LobId INT NULL"),
+        ("AiConfigs",         "LlmDeployment",        "ALTER TABLE AiConfigs ADD COLUMN LlmDeployment TEXT NULL DEFAULT 'gpt-4o'",          "ALTER TABLE AiConfigs ADD LlmDeployment NVARCHAR(200) NULL DEFAULT 'gpt-4o'"),
+        ("AiConfigs",         "LlmTemperature",       "ALTER TABLE AiConfigs ADD COLUMN LlmTemperature REAL NULL DEFAULT 0.1",              "ALTER TABLE AiConfigs ADD LlmTemperature FLOAT NULL DEFAULT 0.1"),
+        ("AiConfigs",         "SentimentProvider",    "ALTER TABLE AiConfigs ADD COLUMN SentimentProvider TEXT NULL DEFAULT 'AzureOpenAI'", "ALTER TABLE AiConfigs ADD SentimentProvider NVARCHAR(50) NULL DEFAULT 'AzureOpenAI'"),
+        ("AiConfigs",         "LanguageEndpoint",     "ALTER TABLE AiConfigs ADD COLUMN LanguageEndpoint TEXT NOT NULL DEFAULT ''",         "ALTER TABLE AiConfigs ADD LanguageEndpoint NVARCHAR(500) NOT NULL DEFAULT ''"),
         // API key columns use empty-string default (not NULL) because the C# model uses non-nullable
         // string and the service guards against blank values before saving.
-        ("AiConfigs",         "LanguageApiKey",      "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''"),
-        ("AiConfigs",         "RagTopK",             "ALTER TABLE AiConfigs ADD COLUMN RagTopK INTEGER NULL DEFAULT 3"),
-        ("FormFields",        "Description",         "ALTER TABLE FormFields ADD COLUMN Description TEXT NULL"),
-        ("EvaluationResults", "OverallReasoning",    "ALTER TABLE EvaluationResults ADD COLUMN OverallReasoning TEXT NULL"),
-        ("EvaluationResults", "SentimentJson",       "ALTER TABLE EvaluationResults ADD COLUMN SentimentJson TEXT NULL"),
-        ("EvaluationResults", "FieldReasoningJson",  "ALTER TABLE EvaluationResults ADD COLUMN FieldReasoningJson TEXT NULL"),
+        ("AiConfigs",         "LanguageApiKey",       "ALTER TABLE AiConfigs ADD COLUMN LanguageApiKey TEXT NOT NULL DEFAULT ''",           "ALTER TABLE AiConfigs ADD LanguageApiKey NVARCHAR(500) NOT NULL DEFAULT ''"),
+        ("AiConfigs",         "RagTopK",              "ALTER TABLE AiConfigs ADD COLUMN RagTopK INTEGER NULL DEFAULT 3",                    "ALTER TABLE AiConfigs ADD RagTopK INT NULL DEFAULT 3"),
+        ("FormFields",        "Description",          "ALTER TABLE FormFields ADD COLUMN Description TEXT NULL",                            "ALTER TABLE FormFields ADD Description NVARCHAR(MAX) NULL"),
+        ("EvaluationResults", "OverallReasoning",     "ALTER TABLE EvaluationResults ADD COLUMN OverallReasoning TEXT NULL",                "ALTER TABLE EvaluationResults ADD OverallReasoning NVARCHAR(MAX) NULL"),
+        ("EvaluationResults", "SentimentJson",        "ALTER TABLE EvaluationResults ADD COLUMN SentimentJson TEXT NULL",                   "ALTER TABLE EvaluationResults ADD SentimentJson NVARCHAR(MAX) NULL"),
+        ("EvaluationResults", "FieldReasoningJson",   "ALTER TABLE EvaluationResults ADD COLUMN FieldReasoningJson TEXT NULL",              "ALTER TABLE EvaluationResults ADD FieldReasoningJson NVARCHAR(MAX) NULL"),
         // Project-level PII/SPII protection settings
-        ("Projects",          "PiiProtectionEnabled", "ALTER TABLE Projects ADD COLUMN PiiProtectionEnabled INTEGER NOT NULL DEFAULT 0"),
-        ("Projects",          "PiiRedactionMode",     "ALTER TABLE Projects ADD COLUMN PiiRedactionMode TEXT NOT NULL DEFAULT 'Redact'"),
+        ("Projects",          "PiiProtectionEnabled", "ALTER TABLE Projects ADD COLUMN PiiProtectionEnabled INTEGER NOT NULL DEFAULT 0",    "ALTER TABLE Projects ADD PiiProtectionEnabled BIT NOT NULL DEFAULT 0"),
+        ("Projects",          "PiiRedactionMode",     "ALTER TABLE Projects ADD COLUMN PiiRedactionMode TEXT NOT NULL DEFAULT 'Redact'",    "ALTER TABLE Projects ADD PiiRedactionMode NVARCHAR(20) NOT NULL DEFAULT 'Redact'"),
         // Google provider fields (added alongside Google Gemini / Google STT support)
-        ("AiConfigs",         "GoogleApiKey",         "ALTER TABLE AiConfigs ADD COLUMN GoogleApiKey TEXT NOT NULL DEFAULT ''"),
-        ("AiConfigs",         "GoogleGeminiModel",    "ALTER TABLE AiConfigs ADD COLUMN GoogleGeminiModel TEXT NOT NULL DEFAULT 'gemini-1.5-pro'"),
-        ("AiConfigs",         "SpeechProvider",       "ALTER TABLE AiConfigs ADD COLUMN SpeechProvider TEXT NOT NULL DEFAULT 'Azure'"),
-    })
+        ("AiConfigs",         "GoogleApiKey",         "ALTER TABLE AiConfigs ADD COLUMN GoogleApiKey TEXT NOT NULL DEFAULT ''",             "ALTER TABLE AiConfigs ADD GoogleApiKey NVARCHAR(500) NOT NULL DEFAULT ''"),
+        ("AiConfigs",         "GoogleGeminiModel",    "ALTER TABLE AiConfigs ADD COLUMN GoogleGeminiModel TEXT NOT NULL DEFAULT 'gemini-1.5-pro'", "ALTER TABLE AiConfigs ADD GoogleGeminiModel NVARCHAR(100) NOT NULL DEFAULT 'gemini-1.5-pro'"),
+        ("AiConfigs",         "SpeechProvider",       "ALTER TABLE AiConfigs ADD COLUMN SpeechProvider TEXT NOT NULL DEFAULT 'Azure'",      "ALTER TABLE AiConfigs ADD SpeechProvider NVARCHAR(50) NOT NULL DEFAULT 'Azure'"),
+    };
+
+    foreach (var (table, column, sqliteSql, sqlServerSql) in columnMigrations)
     {
-        if (ColumnExists(db, table, column)) continue; // already up-to-date, skip cleanly
-        try { db.Database.ExecuteSqlRaw(sql); }
-        catch (Exception ex) { logger.LogWarning(ex, "Column migration failed: {Sql}", sql); }
+        if (ColumnExists(db, table, column, isSqlServer)) continue; // already up-to-date, skip cleanly
+        var migrationSql = isSqlServer ? sqlServerSql : sqliteSql;
+        try { db.Database.ExecuteSqlRaw(migrationSql); }
+        catch (Exception ex) { logger.LogWarning(ex, "Column migration failed: {Sql}", migrationSql); }
     }
     await db.SeedAsync();
     await db.SeedYouTubeAsync();

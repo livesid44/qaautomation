@@ -1,7 +1,10 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
+using QAAutomation.API.Data;
 using QAAutomation.API.DTOs;
 using QAAutomation.API.Models;
 
@@ -21,16 +24,19 @@ public class InsightsChatService
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<InsightsChatService> _logger;
+    private readonly AppDbContext _db;
 
     public InsightsChatService(
         IAiConfigService aiConfig,
         IConfiguration config,
         IWebHostEnvironment env,
+        AppDbContext db,
         ILogger<InsightsChatService> logger)
     {
         _aiConfig = aiConfig;
         _config = config;
         _env = env;
+        _db = db;
         _logger = logger;
     }
 
@@ -46,6 +52,7 @@ public class InsightsChatService
         // Clamp to a safe non-negative integer; this value is interpolated directly
         // into the tenant-scoped CTE SQL, so it must never contain non-numeric characters.
         var projectId = Math.Max(0, req.ProjectId ?? 0);
+        var isSqlServer = _db.Database.ProviderName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true;
 
         // ── Step 1: NL → SQL via LLM ─────────────────────────────────────────
         string rawLlmSql;
@@ -56,7 +63,7 @@ public class InsightsChatService
 
             var messages = new List<ChatMessage>
             {
-                new SystemChatMessage(BuildSqlSystemPrompt(projectId)),
+                new SystemChatMessage(BuildSqlSystemPrompt(projectId, isSqlServer)),
                 new UserChatMessage(req.Question)
             };
 
@@ -71,7 +78,7 @@ public class InsightsChatService
         }
 
         // ── Step 2: Extract & validate the SELECT ────────────────────────────
-        var selectSql = ExtractSelectSql(rawLlmSql);
+        var selectSql = ExtractSelectSql(rawLlmSql, isSqlServer);
         if (string.IsNullOrWhiteSpace(selectSql))
             return new InsightsChatResponseDto
             {
@@ -81,12 +88,12 @@ public class InsightsChatService
             };
 
         // ── Step 3: Wrap in tenant-scoped CTEs and execute ───────────────────
-        var fullSql = BuildTenantScopedQuery(selectSql, projectId);
+        var fullSql = BuildTenantScopedQuery(selectSql, projectId, isSqlServer);
         List<string> columns;
         List<List<object?>> rows;
         try
         {
-            (columns, rows) = ExecuteQuery(fullSql);
+            (columns, rows) = ExecuteQuery(fullSql, _db.Database.GetDbConnection().ConnectionString, isSqlServer);
         }
         catch (Exception ex)
         {
@@ -115,9 +122,9 @@ public class InsightsChatService
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static string BuildSqlSystemPrompt(int projectId) => $"""
+    private static string BuildSqlSystemPrompt(int projectId, bool isSqlServer) => $"""
         You are a SQL expert for an AI-driven QA (quality assurance) call-centre platform.
-        Your job is to convert a natural-language question into a single SQLite SELECT statement.
+        Your job is to convert a natural-language question into a single {(isSqlServer ? "T-SQL" : "SQLite")} SELECT statement.
 
         The database is already filtered for the current tenant (ProjectId = {projectId}) via
         these pre-defined CTEs you MUST use instead of the raw tables:
@@ -139,16 +146,16 @@ public class InsightsChatService
           HumanReviewItems (Id, EvaluationResultId, ReviewedBy, Status, Notes, ReviewedAt)
 
         Rules:
-        1. Write ONLY a SELECT statement — never INSERT / UPDATE / DELETE / DROP / CREATE / PRAGMA.
+        1. Write ONLY a SELECT statement — never INSERT / UPDATE / DELETE / DROP / CREATE / {(isSqlServer ? "EXEC" : "PRAGMA")}.
         2. Always query from the Tenant* CTEs, not the raw underlying tables.
-        3. If the question asks for trends over time, GROUP BY strftime('%Y-%m-%d', ...) on date columns.
+        3. If the question asks for trends over time, GROUP BY {(isSqlServer ? "CONVERT(DATE, <col>)" : "strftime('%Y-%m-%d', <col>)")} on date columns.
         4. Use clear readable column aliases (e.g. "Agent Name", "Avg Score %", "Audit Count").
         5. For percentage scores: ROUND(SUM(NumericValue) * 100.0 / SUM(MaxRating), 1) from TenantScores
            joined to FormFields on FieldId — MaxRating > 0 only.
         6. Return ONLY raw SQL — no markdown fences, no explanation, no comments.
         """;
 
-    private static string ExtractSelectSql(string llmOutput)
+    private static string ExtractSelectSql(string llmOutput, bool isSqlServer)
     {
         // Strip markdown code fences if present
         var cleaned = Regex.Replace(llmOutput, @"```[\w]*\n?", "", RegexOptions.Multiline)
@@ -159,9 +166,10 @@ public class InsightsChatService
 
         var sql = cleaned[selectIdx..].Trim();
 
-        // Reject any dangerous statements
+        // Reject any dangerous statements — block both SQLite and T-SQL dangerous keywords.
+        // Note: xp_cmdshell and similar SQL Server extended procs are blocked via the EXEC/EXECUTE guard.
         var upper = sql.ToUpperInvariant();
-        if (Regex.IsMatch(upper, @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX)\b"))
+        if (Regex.IsMatch(upper, @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX|EXEC|EXECUTE|OPENROWSET|BULK|TRUNCATE|XP_CMDSHELL|SP_EXECUTESQL)\b"))
             return string.Empty;
 
         return sql;
@@ -173,72 +181,123 @@ public class InsightsChatService
     /// The <paramref name="projectId"/> value is a C# <c>int</c> and is validated
     /// to be non-negative before reaching this method, so string interpolation is safe.
     /// </summary>
-    private static string BuildTenantScopedQuery(string selectSql, int projectId)
+    private static string BuildTenantScopedQuery(string selectSql, int projectId, bool isSqlServer)
     {
         // Guard: projectId must be a non-negative integer — no user-controlled string reaches here.
         if (projectId < 0) projectId = 0;
-        // Outer LIMIT caps runaway queries; LLM-generated LIMIT inside is still respected
-        return $"""
-            WITH
-            TenantLobs AS (
-                SELECT * FROM Lobs WHERE ProjectId = {projectId}
-            ),
-            TenantForms AS (
-                SELECT ef.* FROM EvaluationForms ef
-                WHERE ef.LobId IN (SELECT Id FROM TenantLobs)
-            ),
-            TenantResults AS (
-                SELECT er.* FROM EvaluationResults er
-                WHERE er.FormId IN (SELECT Id FROM TenantForms)
-            ),
-            TenantScores AS (
-                SELECT es.* FROM EvaluationScores es
-                WHERE es.ResultId IN (SELECT Id FROM TenantResults)
-            ),
-            TenantTraining AS (
-                SELECT * FROM TrainingPlans WHERE ProjectId = {projectId}
-            ),
-            TenantPipeline AS (
-                SELECT * FROM CallPipelineJobs WHERE ProjectId = {projectId}
-            ),
-            UserQuery AS (
-                {selectSql}
-            )
-            SELECT * FROM UserQuery
-            LIMIT 500
-            """;
+
+        // SQL Server uses TOP N in the outer SELECT; SQLite uses LIMIT N at the end.
+        // Outer row cap prevents runaway queries; LLM-generated LIMIT/TOP inside is still respected.
+        if (isSqlServer)
+        {
+            return $"""
+                WITH
+                TenantLobs AS (
+                    SELECT * FROM Lobs WHERE ProjectId = {projectId}
+                ),
+                TenantForms AS (
+                    SELECT ef.* FROM EvaluationForms ef
+                    WHERE ef.LobId IN (SELECT Id FROM TenantLobs)
+                ),
+                TenantResults AS (
+                    SELECT er.* FROM EvaluationResults er
+                    WHERE er.FormId IN (SELECT Id FROM TenantForms)
+                ),
+                TenantScores AS (
+                    SELECT es.* FROM EvaluationScores es
+                    WHERE es.ResultId IN (SELECT Id FROM TenantResults)
+                ),
+                TenantTraining AS (
+                    SELECT * FROM TrainingPlans WHERE ProjectId = {projectId}
+                ),
+                TenantPipeline AS (
+                    SELECT * FROM CallPipelineJobs WHERE ProjectId = {projectId}
+                ),
+                UserQuery AS (
+                    {selectSql}
+                )
+                SELECT TOP 500 * FROM UserQuery
+                """;
+        }
+        else
+        {
+            return $"""
+                WITH
+                TenantLobs AS (
+                    SELECT * FROM Lobs WHERE ProjectId = {projectId}
+                ),
+                TenantForms AS (
+                    SELECT ef.* FROM EvaluationForms ef
+                    WHERE ef.LobId IN (SELECT Id FROM TenantLobs)
+                ),
+                TenantResults AS (
+                    SELECT er.* FROM EvaluationResults er
+                    WHERE er.FormId IN (SELECT Id FROM TenantForms)
+                ),
+                TenantScores AS (
+                    SELECT es.* FROM EvaluationScores es
+                    WHERE es.ResultId IN (SELECT Id FROM TenantResults)
+                ),
+                TenantTraining AS (
+                    SELECT * FROM TrainingPlans WHERE ProjectId = {projectId}
+                ),
+                TenantPipeline AS (
+                    SELECT * FROM CallPipelineJobs WHERE ProjectId = {projectId}
+                ),
+                UserQuery AS (
+                    {selectSql}
+                )
+                SELECT * FROM UserQuery
+                LIMIT 500
+                """;
+        }
     }
 
-    private (List<string> columns, List<List<object?>> rows) ExecuteQuery(string sql)
+    private (List<string> columns, List<List<object?>> rows) ExecuteQuery(string sql, string? connStr, bool isSqlServer)
     {
-        var connStr = _config.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrEmpty(connStr))
-            connStr = $"Data Source={Path.Combine(_env.ContentRootPath, "qa_automation.db")}";
-
-        // Ensure read-only access; append ;Mode=ReadOnly if not already present
-        if (!connStr.Contains("Mode=", StringComparison.OrdinalIgnoreCase))
-            connStr = connStr.TrimEnd(';') + ";Mode=ReadOnly";
-
         var columns = new List<string>();
         var rows = new List<List<object?>>();
 
-        using var conn = new SqliteConnection(connStr);
-        conn.Open();
-
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        cmd.CommandTimeout = 30;
-
-        using var reader = cmd.ExecuteReader();
-        for (var i = 0; i < reader.FieldCount; i++)
-            columns.Add(reader.GetName(i));
-
-        while (reader.Read())
+        if (isSqlServer)
         {
-            var row = new List<object?>();
+            using var conn = new SqlConnection(connStr);
+            conn.Open();
+            using var cmd = new SqlCommand(sql, conn) { CommandTimeout = 30 };
+            using var reader = cmd.ExecuteReader();
             for (var i = 0; i < reader.FieldCount; i++)
-                row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
-            rows.Add(row);
+                columns.Add(reader.GetName(i));
+            while (reader.Read())
+            {
+                var row = new List<object?>();
+                for (var i = 0; i < reader.FieldCount; i++)
+                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                rows.Add(row);
+            }
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(connStr))
+                connStr = $"Data Source={Path.Combine(_env.ContentRootPath, "qa_automation.db")}";
+
+            // Ensure read-only access; append ;Mode=ReadOnly if not already present (SQLite only)
+            if (!connStr.Contains("Mode=", StringComparison.OrdinalIgnoreCase))
+                connStr = connStr.TrimEnd(';') + ";Mode=ReadOnly";
+
+            using var conn = new SqliteConnection(connStr);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            cmd.CommandTimeout = 30;
+            using var reader = cmd.ExecuteReader();
+            for (var i = 0; i < reader.FieldCount; i++)
+                columns.Add(reader.GetName(i));
+            while (reader.Read())
+            {
+                var row = new List<object?>();
+                for (var i = 0; i < reader.FieldCount; i++)
+                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                rows.Add(row);
+            }
         }
 
         return (columns, rows);
