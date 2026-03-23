@@ -8,6 +8,8 @@ public class ProjectDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public int LobCount { get; set; }
+    public bool PiiProtectionEnabled { get; set; }
+    public string PiiRedactionMode { get; set; } = "Redact";
 }
 
 public class CreateProjectDto
@@ -21,6 +23,8 @@ public class UpdateProjectDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsActive { get; set; }
+    public bool PiiProtectionEnabled { get; set; }
+    public string PiiRedactionMode { get; set; } = "Redact";
 }
 
 public class LobDto

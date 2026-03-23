@@ -131,6 +131,25 @@ public class KnowledgeBaseController : ProjectAwareController
         return RedirectToAction(nameof(Source), new { id = model.SourceId });
     }
 
+    // ── Add document from URL ─────────────────────────────────────────────────
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddFromUrl(KnowledgeUrlFetchViewModel model)
+    {
+        if (string.IsNullOrWhiteSpace(model.Url))
+        {
+            TempData["Error"] = "Please enter a valid URL.";
+            return RedirectToAction(nameof(Source), new { id = model.SourceId });
+        }
+
+        var (ok, error) = await _api.FetchUrlDocument(model);
+        TempData[ok ? "Success" : "Error"] = ok
+            ? $"Content imported from '{model.Url}'."
+            : $"Could not import URL: {error}";
+        return RedirectToAction(nameof(Source), new { id = model.SourceId });
+    }
+
     // ── Delete document ───────────────────────────────────────────────────────
 
     [HttpPost]

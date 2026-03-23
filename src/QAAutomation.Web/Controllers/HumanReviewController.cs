@@ -11,7 +11,7 @@ namespace QAAutomation.Web.Controllers;
 /// Admins can also access this and manually enqueue items.
 /// </summary>
 [Authorize(Roles = "Admin,QA")]
-public class HumanReviewController : Controller
+public class HumanReviewController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -28,7 +28,8 @@ public class HumanReviewController : Controller
         if (!User.IsInRole("Admin"))
             assignedFilter = User.Identity?.Name;
 
-        var items = await _api.GetReviewQueue(status: status, assignedTo: assignedFilter);
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var items = await _api.GetReviewQueue(status: status, assignedTo: assignedFilter, projectId: pid);
         ViewBag.StatusFilter = status;
         return View(items);
     }
@@ -45,6 +46,10 @@ public class HumanReviewController : Controller
         if (item.Status == "Pending")
             await _api.StartReview(id, User.Identity?.Name ?? "qa");
 
+        // Load the full audit record so the view can render per-field scores,
+        // sentiment analysis, and coaching recommendations (same as Audit/Detail).
+        var audit = await _api.GetAudit(item.EvaluationResultId);
+
         var vm = new SubmitReviewViewModel
         {
             ReviewItemId = id,
@@ -52,6 +57,7 @@ public class HumanReviewController : Controller
         };
 
         ViewBag.Item = item;
+        ViewBag.Audit = audit;
         return View(vm);
     }
 
@@ -62,7 +68,9 @@ public class HumanReviewController : Controller
         if (!ModelState.IsValid)
         {
             var item = await _api.GetReviewItem(model.ReviewItemId);
+            var audit = item != null ? await _api.GetAudit(item.EvaluationResultId) : null;
             ViewBag.Item = item;
+            ViewBag.Audit = audit;
             return View(model);
         }
 
@@ -78,7 +86,9 @@ public class HumanReviewController : Controller
         {
             ModelState.AddModelError("", "Failed to submit review. Please try again.");
             var item = await _api.GetReviewItem(model.ReviewItemId);
+            var audit = item != null ? await _api.GetAudit(item.EvaluationResultId) : null;
             ViewBag.Item = item;
+            ViewBag.Audit = audit;
             return View(model);
         }
 

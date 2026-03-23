@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using OpenAI.Chat;
@@ -15,15 +16,18 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
 {
     private readonly IAiConfigService _aiConfig;
     private readonly IKnowledgeBaseService _kb;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<AzureOpenAIAutoAuditService> _logger;
 
     public AzureOpenAIAutoAuditService(
         IAiConfigService aiConfig,
         IKnowledgeBaseService kb,
+        IAuditLogService auditLog,
         ILogger<AzureOpenAIAutoAuditService> logger)
     {
         _aiConfig = aiConfig;
         _kb = kb;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -31,6 +35,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         AutoAuditRequestDto request,
         IEnumerable<AutoAuditFieldDefinition> fields,
         string formName,
+        int? projectId = null,
         CancellationToken cancellationToken = default)
     {
         var fieldList = fields.ToList();
@@ -50,6 +55,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             IsAiGenerated = true
         };
 
+        var sw = Stopwatch.StartNew();
         try
         {
             var chatClient = AzureOpenAIHelper.CreateClient(endpoint, apiKey, deployment);
@@ -60,7 +66,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
             if (kbFields.Count > 0)
             {
                 var tasks = kbFields.Select(f =>
-                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK)
+                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK, null, projectId)
                        .ContinueWith(t => (f.FieldId, chunks: t.Result)));
                 var results = await Task.WhenAll(tasks);
                 foreach (var (fieldId, chunks) in results)
@@ -83,13 +89,27 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
                 options, cancellationToken);
 
             ParseLlmResponse(completion.Value.Content[0].Text, fieldList, response);
+            sw.Stop();
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Success", "AzureOpenAI",
+                endpoint, "POST", 200, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {deployment}; CallRef: {request.CallReference}",
+                cancellationToken);
         }
         catch (Exception ex)
         {
+            sw.Stop();
             _logger.LogError(ex, "Azure OpenAI auto-audit analysis failed for form {FormId}", request.FormId);
             response.AnalysisError = $"Azure OpenAI analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
             FillNeutralScores(fieldList, response);
+
+            await _auditLog.LogExternalApiCallAsync(
+                projectId, "LlmAudit", "Failure", "AzureOpenAI",
+                endpoint, "POST", null, sw.ElapsedMilliseconds, request.EvaluatedBy,
+                $"Form: {formName}; Model: {deployment}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                cancellationToken);
         }
 
         return response;
@@ -105,6 +125,7 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
         sb.AppendLine("SCORING RULES:");
         sb.AppendLine("- For fields with MaxRating=5: score 1 (Unacceptable), 2 (Needs Improvement), 3 (Meets Standard), 4 (Exceeds Standard), 5 (Outstanding)");
         sb.AppendLine("- For fields with MaxRating=1: score 0 (FAIL) or 1 (PASS) — these are binary compliance checks");
+        sb.AppendLine("- CRITICAL: your score MUST be consistent with your reasoning. If your reasoning states the agent did NOT demonstrate a behaviour, the score must be 0 (FAIL), not 1 (PASS).");
         sb.AppendLine("- Be evidence-based: cite specific moments in the transcript for your reasoning");
         if (kbContextMap != null && kbContextMap.Count > 0)
         {
@@ -213,13 +234,23 @@ public class AzureOpenAIAutoAuditService : IAutoAuditService
 
                 var reasoning = scoreEl.TryGetProperty("reasoning", out var rEl) ? rEl.GetString() ?? "" : "";
 
+                // Negative-intent correction: when the LLM's own reasoning describes what the agent
+                // *failed* to do but still returned PASS (1), override to FAIL (0).
+                // SuggestedScore preserves the raw LLM value for reviewer transparency.
+                var suggestedScore = score;
+                if (field.MaxRating == 1 && score == 1 && NegativeIntentDetector.HasNegativeIntent(reasoning))
+                {
+                    score = 0;
+                    reasoning += " [Score corrected PASS→FAIL: reasoning indicates agent did not perform this behaviour.]";
+                }
+
                 response.Fields.Add(new AutoAuditFieldScoreDto
                 {
                     FieldId = fieldId,
                     FieldLabel = field.Label,
                     SectionTitle = field.SectionTitle,
                     MaxRating = field.MaxRating,
-                    SuggestedScore = score,
+                    SuggestedScore = suggestedScore,
                     FinalScore = score,
                     Reasoning = reasoning
                 });

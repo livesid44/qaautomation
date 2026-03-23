@@ -1,6 +1,7 @@
 @model List<KnowledgeSourceViewModel>
 @{
     ViewData["Title"] = "Knowledge Base";
+    var activeSources = Model.Where(s => s.IsActive).ToList();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -8,9 +9,19 @@
         <h4 class="fw-bold mb-1"><i class="bi bi-database me-2 text-success"></i>Knowledge Base</h4>
         <p class="text-muted mb-0">Manage process documentation for Knowledge-Based QA evaluation. Documents are retrieved via RAG when scoring.</p>
     </div>
-    <a href="@Url.Action("Create", "KnowledgeBase")" class="btn btn-success">
-        <i class="bi bi-plus-lg me-1"></i>Add Source
-    </a>
+    <div class="d-flex gap-2">
+        @if (activeSources.Any())
+        {
+            <button type="button" class="btn btn-outline-primary"
+                    onclick="openImportUrlModal(null)"
+                    title="Fetch text from a web page and store it as a knowledge document">
+                <i class="bi bi-link-45deg me-1"></i>Import from URL
+            </button>
+        }
+        <a href="@Url.Action("Create", "KnowledgeBase")" class="btn btn-success">
+            <i class="bi bi-plus-lg me-1"></i>Add Source
+        </a>
+    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -85,6 +96,14 @@ else
                         <a href="@Url.Action("Source", "KnowledgeBase", new { id = src.Id })" class="btn btn-sm btn-outline-primary flex-fill">
                             <i class="bi bi-folder2-open me-1"></i>Manage
                         </a>
+                        @if (src.IsActive)
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="openImportUrlModal(@src.Id)"
+                                    title="Import a web page into this source">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                        }
                         <form method="post" action="@Url.Action("DeleteSource", "KnowledgeBase")" class="d-inline">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@src.Id" />
@@ -106,3 +125,76 @@ else
     marked as <strong>KnowledgeBased</strong>. Go to <a href="@Url.Action("Index", "Parameters")">Parameters</a> to set evaluation type per parameter,
     and <a href="@Url.Action("Index", "AiSettings")">AI Settings</a> to configure Top-K chunks.
 </div>
+
+@* ── Import from URL modal ────────────────────────────────────────────────── *@
+@if (activeSources.Any())
+{
+    <div class="modal fade" id="importUrlModal" tabindex="-1" aria-labelledby="importUrlModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="importUrlModalLabel">
+                        <i class="bi bi-link-45deg me-2 text-primary"></i>Import from URL
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="@Url.Action("AddFromUrl", "KnowledgeBase")">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body pt-2">
+                        <p class="text-muted small mb-3">
+                            Paste any publicly accessible web page URL. The server will fetch the page,
+                            strip navigation/ads, and save the readable text as a knowledge document.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Knowledge Source *</label>
+                            <select name="SourceId" id="modalSourceId" class="form-select" required>
+                                <option value="">— select a source —</option>
+                                @foreach (var src in activeSources)
+                                {
+                                    <option value="@src.Id">@src.Name</option>
+                                }
+                            </select>
+                            <div class="form-text">Content will be stored inside this source.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Web URL *</label>
+                            <input type="url" name="Url" id="modalUrl" class="form-control" required
+                                   placeholder="https://support.google.com/youtube/answer/72851" />
+                            <div class="form-text">Must be a publicly accessible <code>http://</code> or <code>https://</code> page.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Document Title <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="text" name="Title" class="form-control"
+                                   placeholder="Defaults to the URL when left blank" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Tags <span class="text-muted fw-normal">(comma-separated, optional)</span></label>
+                            <input type="text" name="Tags" class="form-control"
+                                   placeholder="policy, eligibility, youtube" />
+                            <div class="form-text">Tags help filter which documents are retrieved for specific parameters.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-cloud-download me-1"></i>Import
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    function openImportUrlModal(sourceId) {
+        const modal = new bootstrap.Modal(document.getElementById('importUrlModal'));
+        if (sourceId) {
+            const sel = document.getElementById('modalSourceId');
+            if (sel) sel.value = sourceId;
+        }
+        modal.show();
+    }
+</script>
+}

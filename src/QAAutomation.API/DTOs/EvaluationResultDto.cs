@@ -12,6 +12,9 @@ public class EvaluationResultDto
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
     public int? CallDurationSeconds { get; set; }
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
     public List<EvaluationScoreDto> Scores { get; set; } = new();
     public double TotalScore { get; set; }
     public double MaxPossibleScore { get; set; }
@@ -21,6 +24,10 @@ public class EvaluationResultDto
 public class EvaluationResultSectionDto
 {
     public string Title { get; set; } = string.Empty;
+    /// <summary>Effective section score (0 when SectionAutoFail triggers).</summary>
+    public double SectionScore { get; set; }
+    public double SectionMax { get; set; }
+    public double SectionScorePercent => SectionMax > 0 ? Math.Round(SectionScore / SectionMax * 100, 1) : 0;
     public List<EvaluationResultFieldScoreDto> Fields { get; set; } = new();
 }
 
@@ -41,5 +48,8 @@ public class CreateEvaluationResultDto
     public string? AgentName { get; set; }
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
     public List<CreateEvaluationScoreDto> Scores { get; set; } = new();
 }

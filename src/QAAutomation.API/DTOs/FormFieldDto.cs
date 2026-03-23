@@ -6,6 +6,7 @@ public class FormFieldDto
 {
     public int Id { get; set; }
     public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public FieldType FieldType { get; set; }
     public bool IsRequired { get; set; }
     public int Order { get; set; }
@@ -17,6 +18,7 @@ public class FormFieldDto
 public class CreateFormFieldDto
 {
     public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public FieldType FieldType { get; set; }
     public bool IsRequired { get; set; }
     public int Order { get; set; }
@@ -27,6 +29,7 @@ public class CreateFormFieldDto
 public class UpdateFormFieldDto
 {
     public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public FieldType FieldType { get; set; }
     public bool IsRequired { get; set; }
     public int Order { get; set; }

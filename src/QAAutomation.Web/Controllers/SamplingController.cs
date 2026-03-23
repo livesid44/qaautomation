@@ -11,7 +11,7 @@ namespace QAAutomation.Web.Controllers;
 /// AI-audited calls should be sent to the human review queue.
 /// </summary>
 [Authorize(Roles = "Admin")]
-public class SamplingController : Controller
+public class SamplingController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -22,7 +22,8 @@ public class SamplingController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var policies = await _api.GetSamplingPolicies();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var policies = await _api.GetSamplingPolicies(pid);
         return View(policies);
     }
 
@@ -44,6 +45,7 @@ public class SamplingController : Controller
         {
             name = model.Name,
             description = model.Description,
+            projectId = CurrentProjectId > 0 ? (int?)CurrentProjectId : null,
             callTypeFilter = model.CallTypeFilter,
             minDurationSeconds = model.MinDurationSeconds,
             maxDurationSeconds = model.MaxDurationSeconds,
@@ -101,6 +103,7 @@ public class SamplingController : Controller
         {
             name = model.Name,
             description = model.Description,
+            projectId = CurrentProjectId > 0 ? (int?)CurrentProjectId : null,
             callTypeFilter = model.CallTypeFilter,
             minDurationSeconds = model.MinDurationSeconds,
             maxDurationSeconds = model.MaxDurationSeconds,

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
@@ -10,8 +9,7 @@ namespace QAAutomation.Web.Controllers;
 /// Controller for the automated audit module: transcript upload,
 /// LLM-powered scoring review, and audit record creation.
 /// </summary>
-[Authorize]
-public class AutoAuditController : Controller
+public class AutoAuditController : ProjectAwareController
 {
     private readonly ApiClient _api;
     private readonly ILogger<AutoAuditController> _logger;
@@ -29,7 +27,8 @@ public class AutoAuditController : Controller
     [HttpGet]
     public async Task<IActionResult> Upload(int? formId)
     {
-        var forms = await _api.GetLegacyForms();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var forms = await _api.GetLegacyForms(pid);
         ViewBag.Forms = forms;
         var selectedId = formId ?? forms.FirstOrDefault()?.Id ?? 0;
         return View(new AutoAuditUploadViewModel
@@ -60,7 +59,8 @@ public class AutoAuditController : Controller
 
         if (string.IsNullOrWhiteSpace(transcript))
         {
-            var forms = await _api.GetLegacyForms();
+            var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+            var forms = await _api.GetLegacyForms(pid);
             ViewBag.Forms = forms;
             ModelState.AddModelError("", "Please provide a transcript — either upload a file or paste the text.");
             return View(model);
@@ -96,7 +96,8 @@ public class AutoAuditController : Controller
 
         if (review == null)
         {
-            var forms = await _api.GetLegacyForms();
+            var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+            var forms = await _api.GetLegacyForms(pid);
             ViewBag.Forms = forms;
             ModelState.AddModelError("", "The analysis service returned an error. Please try again.");
             return View(model);
@@ -167,6 +168,15 @@ public class AutoAuditController : Controller
         if (review.Sentiment != null && !string.IsNullOrWhiteSpace(review.Sentiment.OverallInsight))
             notes += $"\n[Sentiment] {review.Sentiment.OverallInsight}";
 
+        // Serialize structured AI data so it can be displayed in the saved audit detail view
+        string? sentimentJson = review.Sentiment != null
+            ? JsonSerializer.Serialize(review.Sentiment)
+            : null;
+        string? fieldReasoningJson = review.Fields.Any(f => !string.IsNullOrEmpty(f.Reasoning))
+            ? JsonSerializer.Serialize(review.Fields.Where(f => !string.IsNullOrEmpty(f.Reasoning))
+                .Select(f => new { fieldId = f.FieldId, reasoning = f.Reasoning }))
+            : null;
+
         var dto = new
         {
             formId = review.FormId,
@@ -175,6 +185,9 @@ public class AutoAuditController : Controller
             callReference = review.CallReference,
             callDate = review.CallDate,
             notes,
+            overallReasoning = review.OverallReasoning,
+            sentimentJson,
+            fieldReasoningJson,
             scores
         };
 

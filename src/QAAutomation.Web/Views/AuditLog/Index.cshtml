@@ -1,0 +1,283 @@
+@model QAAutomation.Web.Models.AuditLogPageViewModel
+@{
+    ViewData["Title"] = "Audit Logs";
+    bool hasData = Model.Items.Count > 0;
+}
+@section Styles {
+<style>
+    .badge-pii      { background:#dc3545; color:#fff; }
+    .badge-api      { background:#0d6efd; color:#fff; }
+    .badge-success  { background:#198754; color:#fff; }
+    .badge-failure  { background:#dc3545; color:#fff; }
+    .badge-redacted { background:#ffc107; color:#212529; }
+    .badge-blocked  { background:#6f42c1; color:#fff; }
+    .badge-detected { background:#fd7e14; color:#fff; }
+    .endpoint-cell  { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .detail-cell    { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .filter-bar     { background:#f8f9fa; border-radius:8px; padding:1rem 1.25rem; }
+    .section-accent { border-left:4px solid #0d6efd; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-journal-text me-2 text-primary"></i>Audit Logs</h4>
+        <p class="text-muted mb-0">
+            PII/SPII protection events and external API calls — tenant-scoped, immutable records.
+        </p>
+    </div>
+    <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalCount record@(Model.TotalCount != 1 ? "s" : "")</span>
+</div>
+
+<!-- ── Filter bar ──────────────────────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm section-accent mb-4">
+    <div class="card-body filter-bar">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-sm-6 col-md-3 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Category</label>
+                <select name="category" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    @if (Model.FilterCategory == "PiiEvent") { <option value="PiiEvent" selected>PII Event</option> } else { <option value="PiiEvent">PII Event</option> }
+                    @if (Model.FilterCategory == "ExternalApiCall") { <option value="ExternalApiCall" selected>External API Call</option> } else { <option value="ExternalApiCall">External API Call</option> }
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-3 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Event Type</label>
+                <select name="eventType" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    <optgroup label="PII Events">
+                        @if (Model.FilterEventType == "PiiDetected") { <option value="PiiDetected" selected>PII Detected</option> } else { <option value="PiiDetected">PII Detected</option> }
+                        @if (Model.FilterEventType == "PiiRedacted") { <option value="PiiRedacted" selected>PII Redacted</option> } else { <option value="PiiRedacted">PII Redacted</option> }
+                        @if (Model.FilterEventType == "PiiBlocked") { <option value="PiiBlocked" selected>PII Blocked</option> } else { <option value="PiiBlocked">PII Blocked</option> }
+                    </optgroup>
+                    <optgroup label="External API Calls">
+                        @if (Model.FilterEventType == "LlmAudit") { <option value="LlmAudit" selected>LLM Audit</option> } else { <option value="LlmAudit">LLM Audit</option> }
+                        @if (Model.FilterEventType == "LlmSentiment") { <option value="LlmSentiment" selected>LLM Sentiment</option> } else { <option value="LlmSentiment">LLM Sentiment</option> }
+                        @if (Model.FilterEventType == "SpeechTranscription") { <option value="SpeechTranscription" selected>Speech Transcription</option> } else { <option value="SpeechTranscription">Speech Transcription</option> }
+                        @if (Model.FilterEventType == "UrlFetch") { <option value="UrlFetch" selected>URL Fetch</option> } else { <option value="UrlFetch">URL Fetch</option> }
+                        @if (Model.FilterEventType == "SftpFetch") { <option value="SftpFetch" selected>SFTP Fetch</option> } else { <option value="SftpFetch">SFTP Fetch</option> }
+                        @if (Model.FilterEventType == "SharePointFetch") { <option value="SharePointFetch" selected>SharePoint Fetch</option> } else { <option value="SharePointFetch">SharePoint Fetch</option> }
+                        @if (Model.FilterEventType == "VerintFetch") { <option value="VerintFetch" selected>Verint Fetch</option> } else { <option value="VerintFetch">Verint Fetch</option> }
+                        @if (Model.FilterEventType == "NiceFetch") { <option value="NiceFetch" selected>NICE Fetch</option> } else { <option value="NiceFetch">NICE Fetch</option> }
+                        @if (Model.FilterEventType == "OzonetelFetch") { <option value="OzonetelFetch" selected>Ozonetel Fetch</option> } else { <option value="OzonetelFetch">Ozonetel Fetch</option> }
+                    </optgroup>
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-2 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Outcome</label>
+                <select name="outcome" class="form-select form-select-sm">
+                    <option value="">All</option>
+                    @if (Model.FilterOutcome == "Success") { <option value="Success" selected>Success</option> } else { <option value="Success">Success</option> }
+                    @if (Model.FilterOutcome == "Failure") { <option value="Failure" selected>Failure</option> } else { <option value="Failure">Failure</option> }
+                    @if (Model.FilterOutcome == "Redacted") { <option value="Redacted" selected>Redacted</option> } else { <option value="Redacted">Redacted</option> }
+                    @if (Model.FilterOutcome == "Blocked") { <option value="Blocked" selected>Blocked</option> } else { <option value="Blocked">Blocked</option> }
+                    @if (Model.FilterOutcome == "Detected") { <option value="Detected" selected>Detected</option> } else { <option value="Detected">Detected</option> }
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-2 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">From date</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="@Model.FilterFrom" />
+            </div>
+            <div class="col-sm-6 col-md-2 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">To date</label>
+                <input type="date" name="to" class="form-control form-control-sm" value="@Model.FilterTo" />
+            </div>
+            <div class="col-sm-6 col-md-auto">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-funnel me-1"></i>Filter
+                </button>
+            </div>
+            <div class="col-sm-6 col-md-auto">
+                <a href="@Url.Action("Index", "AuditLog")" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-x-circle me-1"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Legend ────────────────────────────────────────────────────────────────── -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <span class="badge badge-pii">PiiEvent</span> <span class="text-muted small me-2">PII/SPII protection trigger</span>
+    <span class="badge badge-api">ExternalApiCall</span> <span class="text-muted small me-2">Outbound LLM / speech / connector call</span>
+    <span class="badge badge-success">Success</span>
+    <span class="badge badge-failure">Failure</span>
+    <span class="badge badge-redacted">Redacted</span>
+    <span class="badge badge-blocked">Blocked</span>
+    <span class="badge badge-detected" style="background:#fd7e14">Detected</span>
+</div>
+
+<!-- ── Table ─────────────────────────────────────────────────────────────────── -->
+@if (!hasData)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No audit log entries found for the selected filters.
+        Entries are created automatically when PII/SPII protection triggers or when external API calls are made.
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp (UTC)</th>
+                            <th>Category</th>
+                            <th>Event Type</th>
+                            <th>Outcome</th>
+                            <th>Actor</th>
+                            <th>Provider / Source</th>
+                            <th>PII Types</th>
+                            <th>Endpoint</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end">Duration</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.Items)
+                        {
+                            var categoryBadge = entry.Category == "PiiEvent" ? "badge-pii" : "badge-api";
+                            var outcomeBadge = entry.Outcome switch
+                            {
+                                "Success"  => "badge-success",
+                                "Failure"  => "badge-failure",
+                                "Redacted" => "badge-redacted",
+                                "Blocked"  => "badge-blocked",
+                                _          => "badge-detected"
+                            };
+                            <tr>
+                                <td class="text-nowrap text-muted">@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>
+                                    <span class="badge @categoryBadge">@entry.Category</span>
+                                </td>
+                                <td class="fw-semibold text-nowrap">@entry.EventType</td>
+                                <td>
+                                    <span class="badge @outcomeBadge">@entry.Outcome</span>
+                                </td>
+                                <td class="text-muted">@(entry.Actor ?? "—")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(entry.Provider))
+                                    {
+                                        <span class="badge bg-secondary">@entry.Provider</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(entry.PiiTypesDetected))
+                                    {
+                                        foreach (var t in entry.PiiTypesDetected.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <span class="badge badge-pii me-1 mb-1" style="font-size:.6rem">@t.Trim()</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="endpoint-cell" title="@entry.Endpoint">
+                                    @if (!string.IsNullOrEmpty(entry.Endpoint))
+                                    {
+                                        <span class="text-muted">@entry.Endpoint</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (entry.HttpStatusCode.HasValue)
+                                    {
+                                        var statusColor = entry.HttpStatusCode >= 200 && entry.HttpStatusCode < 300
+                                            ? "success" : "danger";
+                                        <span class="badge bg-@statusColor">@entry.HttpStatusCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    @if (entry.DurationMs.HasValue)
+                                    {
+                                        <span class="text-muted">@entry.DurationMs ms</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="detail-cell" title="@entry.Details">
+                                    <span class="text-muted">@(entry.Details ?? "—")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Pagination ────────────────────────────────────────────────────────── -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-3 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                Showing @((Model.Page - 1) * Model.PageSize + 1)–@(Math.Min(Model.Page * Model.PageSize, Model.TotalCount))
+                of @Model.TotalCount
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                @{
+                    var qParams = new Dictionary<string, string?> {
+                        ["category"]  = Model.FilterCategory,
+                        ["eventType"] = Model.FilterEventType,
+                        ["outcome"]   = Model.FilterOutcome,
+                        ["from"]      = Model.FilterFrom,
+                        ["to"]        = Model.FilterTo,
+                        ["pageSize"]  = Model.PageSize.ToString()
+                    };
+
+                    string PageUrl(int p)
+                    {
+                        var qs = string.Join("&",
+                            qParams.Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
+                                   .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value!)}"));
+                        return Url.Action("Index", "AuditLog") + $"?page={p}" + (qs.Length > 0 ? "&" + qs : "");
+                    }
+                }
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@PageUrl(Model.Page - 1)">&laquo;</a>
+                </li>
+                @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                {
+                    <li class="page-item @(p == Model.Page ? "active" : "")">
+                        <a class="page-link" href="@PageUrl(p)">@p</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="@PageUrl(Model.Page + 1)">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    }
+
+    <!-- ── Legal note ────────────────────────────────────────────────────────── -->
+    <div class="card border-0 shadow-sm bg-light mt-4">
+        <div class="card-body d-flex gap-3 small">
+            <i class="bi bi-shield-lock-fill fs-4 text-primary mt-1"></i>
+            <div class="text-muted">
+                <div class="fw-semibold text-dark mb-1">Compliance &amp; Legal Defensibility</div>
+                Every entry is written atomically to the database and is never modified after creation.
+                PII types are recorded (e.g. EMAIL, SSN) but the raw PII values are never stored.
+                Endpoints are sanitised to remove any query-string credentials before storage.
+                Records are scoped to your current tenant project and can be exported for compliance evidence.
+            </div>
+        </div>
+    </div>
+}

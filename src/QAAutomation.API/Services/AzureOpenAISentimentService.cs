@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using OpenAI.Chat;
@@ -12,11 +13,13 @@ namespace QAAutomation.API.Services;
 public class AzureOpenAISentimentService : ISentimentService
 {
     private readonly IAiConfigService _aiConfig;
+    private readonly IAuditLogService _auditLog;
     private readonly ILogger<AzureOpenAISentimentService> _logger;
 
-    public AzureOpenAISentimentService(IAiConfigService aiConfig, ILogger<AzureOpenAISentimentService> logger)
+    public AzureOpenAISentimentService(IAiConfigService aiConfig, IAuditLogService auditLog, ILogger<AzureOpenAISentimentService> logger)
     {
         _aiConfig = aiConfig;
+        _auditLog = auditLog;
         _logger = logger;
     }
 
@@ -30,6 +33,7 @@ public class AzureOpenAISentimentService : ISentimentService
 
         var response = new SentimentAnalysisResponseDto { IsAiGenerated = true };
 
+        var sw = Stopwatch.StartNew();
         try
         {
             var chatClient = AzureOpenAIHelper.CreateClient(endpoint, apiKey, deployment);
@@ -46,13 +50,27 @@ public class AzureOpenAISentimentService : ISentimentService
                 options, cancellationToken);
 
             ParseLlmResponse(completion.Value.Content[0].Text, response);
+            sw.Stop();
+
+            await _auditLog.LogExternalApiCallAsync(
+                request.ProjectId, "LlmSentiment", "Success", "AzureOpenAI",
+                endpoint, "POST", 200, sw.ElapsedMilliseconds,
+                details: $"Model: {deployment}",
+                ct: cancellationToken);
         }
         catch (Exception ex)
         {
+            sw.Stop();
             _logger.LogError(ex, "Azure OpenAI sentiment analysis failed");
             response.AnalysisError = $"Azure OpenAI analysis failed: {ex.Message}";
             response.IsAiGenerated = false;
             FillDefaults(response);
+
+            await _auditLog.LogExternalApiCallAsync(
+                request.ProjectId, "LlmSentiment", "Failure", "AzureOpenAI",
+                endpoint, "POST", null, sw.ElapsedMilliseconds,
+                details: $"Model: {deployment}; Error: {ex.Message[..Math.Min(200, ex.Message.Length)]}",
+                ct: cancellationToken);
         }
 
         return response;

@@ -1,0 +1,629 @@
+@model QAAutomation.Web.Models.ExplainabilityViewModel
+@{
+    ViewData["Title"] = "Explainability Analytics";
+    var insights = ViewBag.Insights as QAAutomation.Web.Models.ExplainabilityInsightsViewModel
+                   ?? new QAAutomation.Web.Models.ExplainabilityInsightsViewModel();
+
+    bool hasData = Model.TotalAudits > 0;
+
+    // Serialise decision-driver chart data for Chart.js
+    var ddLabels  = System.Text.Json.JsonSerializer.Serialize(Model.DecisionDrivers.Take(12).Select(d => d.ParameterLabel));
+    var ddAvg     = System.Text.Json.JsonSerializer.Serialize(Model.DecisionDrivers.Take(12).Select(d => d.AvgScorePercent));
+    var ddLow     = System.Text.Json.JsonSerializer.Serialize(Model.DecisionDrivers.Take(12).Select(d => d.LowScoreCount));
+    var ddHigh    = System.Text.Json.JsonSerializer.Serialize(Model.DecisionDrivers.Take(12).Select(d => d.HighScoreCount));
+
+    // Signal usage chart data
+    var suLabels  = System.Text.Json.JsonSerializer.Serialize(Model.SignalUsage.Take(12).Select(s => s.ParameterLabel));
+    var suFull    = System.Text.Json.JsonSerializer.Serialize(Model.SignalUsage.Take(12).Select(s => s.FullScoreRate));
+    var suMiss    = System.Text.Json.JsonSerializer.Serialize(Model.SignalUsage.Take(12).Select(s => s.MissRate));
+
+    // HITL agreement chart data (aggregate by verdict across all policies)
+    var hitlVerdicts = Model.HitlAgreement
+        .GroupBy(h => h.ReviewVerdict)
+        .Select(g => new { Verdict = g.Key, Count = g.Sum(x => x.Count) })
+        .OrderBy(x => x.Verdict)
+        .ToList();
+    var hitlLabels = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Verdict));
+    var hitlCounts = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Count));
+}
+@section Styles {
+<style>
+    .risk-badge { background:#dc3545; color:#fff; font-size:.65rem; padding:2px 6px; border-radius:4px; }
+    .ok-badge   { background:#198754; color:#fff; font-size:.65rem; padding:2px 6px; border-radius:4px; }
+    .driver-bar { height:6px; border-radius:3px; }
+    .signal-bar { height:8px; border-radius:4px; }
+    .section-accent { border-left:4px solid #0d6efd; }
+    .section-accent-warn { border-left:4px solid #ffc107; }
+    .section-accent-danger { border-left:4px solid #dc3545; }
+    .section-accent-success { border-left:4px solid #198754; }
+    .evidence-box { background:#f8f9fa; border-left:3px solid #6c757d; padding:8px 12px; border-radius:0 6px 6px 0; font-size:.85rem; }
+    .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
+    .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-shield-check me-2 text-primary"></i>Explainability Analytics
+        </h4>
+        <p class="text-muted mb-0">
+            Why decisions were made · which policies and signals drove outcomes · legal defensibility evidence
+        </p>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
+        <a href="@Url.Action("Index", "Analytics")" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-bar-chart-line me-1"></i>Dashboard
+        </a>
+    </div>
+</div>
+
+@if (!hasData)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>No audit records found. Submit some audits to see explainability analytics.
+    </div>
+}
+else
+{
+    <!-- ── KPI summary row ──────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="bi bi-clipboard2-check fs-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold">@Model.TotalAudits</div>
+                        <div class="text-muted small">Total Audits Analysed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                        <i class="bi bi-person-check fs-4 text-success"></i>
+                    </div>
+                    <div>
+                        @{
+                            var agreeColor = Model.AiHitlAgreementRate >= 80 ? "text-success"
+                                           : Model.AiHitlAgreementRate >= 60 ? "text-warning" : "text-danger";
+                        }
+                        <div class="fs-2 fw-bold @agreeColor">@Model.AiHitlAgreementRate<small class="fs-6 text-muted">%</small></div>
+                        <div class="text-muted small">AI–Human Agreement Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                        <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold text-danger">@Model.DecisionDrivers.Count(d => d.IsRiskArea)</div>
+                        <div class="text-muted small">Risk-Area Parameters</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="bi bi-person-x fs-4 text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold text-warning">@Model.TotalReviewed</div>
+                        <div class="text-muted small">HITL Reviews Completed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 1: Decision Drivers chart + HITL doughnut ───────────────── -->
+    @if (!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight))
+    {
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Decision Drivers</div>
+            <p>@insights.DecisionDriversInsight</p>
+        </div>
+    }
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm section-accent h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-bullseye me-2 text-primary"></i>Decision Drivers — Parameter Impact</h6>
+                    <small class="text-muted">Average score % and pass/fail counts per evaluation parameter. Low-scoring parameters most frequently drove failures.</small>
+                </div>
+                <div class="card-body">
+                    <canvas id="decisionDriverChart" height="110"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm section-accent-success h-100">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-person-check me-2 text-success"></i>AI vs Human Agreement</h6>
+                    <small class="text-muted">Human-in-the-loop verdict distribution — required for legal defensibility.</small>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    @if (Model.TotalReviewed == 0)
+                    {
+                        <div class="text-muted text-center my-auto">No HITL reviews yet.</div>
+                    }
+                    else
+                    {
+                        <canvas id="hitlChart" height="180"></canvas>
+                        <div class="mt-3 small text-center text-muted">
+                            @Model.TotalReviewed review@(Model.TotalReviewed != 1 ? "s" : "") completed
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 2: Signal Usage chart ────────────────────────────────────── -->
+    @if (!string.IsNullOrWhiteSpace(insights.SignalUsageInsight))
+    {
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Signal Utilisation</div>
+            <p>@insights.SignalUsageInsight</p>
+        </div>
+    }
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm section-accent-warn">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-reception-4 me-2 text-warning"></i>Signal Utilisation — Full-Score vs Missed Rate</h6>
+                    <small class="text-muted">
+                        Shows which evaluation signals (parameters) were fully satisfied and which were most often missed (scored 0).
+                        High miss rates indicate training gaps or criteria that are hard to meet.
+                    </small>
+                </div>
+                <div class="card-body" style="overflow-x:auto">
+                    <canvas id="signalUsageChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Decision Drivers detail table ────────────────────────────────── -->
+    @if (Model.DecisionDrivers.Any())
+    {
+        <div class="card border-0 shadow-sm section-accent mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-table me-2 text-primary"></i>Decision Drivers — Full Breakdown
+                </h6>
+                <small class="text-muted">
+                    Why each audit decision was reached. "Low Score Count" = times this parameter fell below 60 % of max.
+                    High variability indicates inconsistent scoring on this criterion.
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Section</th>
+                                <th>Parameter / Signal</th>
+                                <th class="text-center">Audits</th>
+                                <th>Avg Score</th>
+                                <th class="text-center">Low (&lt;60%)</th>
+                                <th class="text-center">High (≥80%)</th>
+                                <th class="text-center">Variability</th>
+                                <th>Score Bar</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var d in Model.DecisionDrivers)
+                            {
+                                var color = d.AvgScorePercent >= 80 ? "success"
+                                          : d.AvgScorePercent >= 60 ? "warning" : "danger";
+                                <tr class="@(d.IsRiskArea ? "table-danger table-danger bg-opacity-10" : "")">
+                                    <td class="text-muted small">@d.SectionTitle</td>
+                                    <td class="fw-semibold">@d.ParameterLabel</td>
+                                    <td class="text-center">@d.TotalScoredCount</td>
+                                    <td><span class="badge bg-@color">@d.AvgScorePercent%</span></td>
+                                    <td class="text-center">
+                                        @if (d.LowScoreCount > 0)
+                                        {
+                                            <span class="badge bg-danger">@d.LowScoreCount</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">0</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">@d.HighScoreCount</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if (d.ScoreVariability > 20)
+                                        {
+                                            <span class="badge bg-warning text-dark" title="High variability — inconsistent scoring">@d.ScoreVariability%</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">@d.ScoreVariability%</span>
+                                        }
+                                    </td>
+                                    <td style="min-width:120px">
+                                        <div class="progress driver-bar">
+                                            <div class="progress-bar bg-@color" style="width:@d.AvgScorePercent%"></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (d.IsRiskArea)
+                                        {
+                                            <span class="risk-badge"><i class="bi bi-exclamation-triangle-fill me-1"></i>Risk Area</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="ok-badge"><i class="bi bi-check-lg me-1"></i>OK</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Failure Reasons detail table ─────────────────────────────────── -->
+    @if (Model.FailureReasons.Any())
+    {
+        @if (!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight))
+        {
+            <div class="ai-insight-box mb-2">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Failure Reasons</div>
+                <p>@insights.FailureReasonsInsight</p>
+            </div>
+        }
+        <div class="card border-0 shadow-sm section-accent-danger mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-x-circle me-2 text-danger"></i>Failure Reason Analysis
+                </h6>
+                <small class="text-muted">
+                    Which parameters most often contributed to audit failures (overall score &lt; 60 %).
+                    Use this to prioritise coaching and training interventions — required for legal defensibility.
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Section</th>
+                                <th>Parameter / Signal</th>
+                                <th class="text-center">Failed Audits Affected</th>
+                                <th>Contribution to Failures</th>
+                                <th>Avg Score in Failed Audits</th>
+                                <th>Evidence Bar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var f in Model.FailureReasons)
+                            {
+                                var contribColor = f.ContributionPercent >= 60 ? "danger"
+                                                 : f.ContributionPercent >= 30 ? "warning" : "secondary";
+                                <tr>
+                                    <td class="text-muted small">@f.SectionTitle</td>
+                                    <td class="fw-semibold">@f.ParameterLabel</td>
+                                    <td class="text-center"><span class="badge bg-danger">@f.FailedAuditCount</span></td>
+                                    <td>
+                                        <span class="badge bg-@contribColor">@f.ContributionPercent%</span>
+                                        <small class="text-muted ms-1">of all failures</small>
+                                    </td>
+                                    <td>
+                                        <span class="text-danger fw-semibold">@f.AvgScoreInFailedAudits%</span>
+                                        <small class="text-muted ms-1">avg</small>
+                                    </td>
+                                    <td style="min-width:120px">
+                                        <div class="progress driver-bar">
+                                            <div class="progress-bar bg-danger" style="width:@f.ContributionPercent%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── HITL Agreement detail table ──────────────────────────────────── -->
+    @if (Model.HitlAgreement.Any())
+    {
+        @if (!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight))
+        {
+            <div class="ai-insight-box mb-2">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — AI vs Human Agreement</div>
+                <p>@insights.HitlAgreementInsight</p>
+            </div>
+        }
+        <div class="card border-0 shadow-sm section-accent-success mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-person-badge me-2 text-success"></i>HITL Agreement — Policy &amp; Verdict Detail
+                </h6>
+                <small class="text-muted">
+                    Human reviewer verdicts broken down by sampling policy.
+                    Disagree verdicts indicate areas where AI decisions were challenged — critical for trust and audits.
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sampling Policy</th>
+                                <th>Human Verdict</th>
+                                <th class="text-center">Count</th>
+                                <th>Share of Reviewed</th>
+                                <th>Share Bar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in Model.HitlAgreement)
+                            {
+                                var verdictBadge = h.ReviewVerdict == "Agree" ? "bg-success"
+                                                 : h.ReviewVerdict == "Disagree" ? "bg-danger"
+                                                 : "bg-warning text-dark";
+                                var barColor = h.ReviewVerdict == "Agree" ? "success"
+                                             : h.ReviewVerdict == "Disagree" ? "danger" : "warning";
+                                <tr>
+                                    <td class="text-muted small">@h.PolicyName</td>
+                                    <td><span class="badge @verdictBadge">@h.ReviewVerdict</span></td>
+                                    <td class="text-center fw-semibold">@h.Count</td>
+                                    <td class="fw-semibold">@h.Percentage%</td>
+                                    <td style="min-width:120px">
+                                        <div class="progress signal-bar">
+                                            <div class="progress-bar bg-@barColor" style="width:@h.Percentage%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @if (Model.TotalReviewed > 0)
+            {
+                <div class="card-footer bg-white border-0 small text-muted py-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Based on @Model.TotalReviewed reviewed item@(Model.TotalReviewed != 1 ? "s" : "").
+                    AI–human agreement rate: <strong>@Model.AiHitlAgreementRate%</strong>
+                    (verdicts of "Agree" / total reviewed).
+                </div>
+            }
+        </div>
+    }
+
+    <!-- ── Signal Usage detail table ────────────────────────────────────── -->
+    @if (Model.SignalUsage.Any())
+    {
+        <div class="card border-0 shadow-sm section-accent-warn mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold mb-0">
+                    <i class="bi bi-reception-4 me-2 text-warning"></i>Signal Utilisation — Full Detail
+                </h6>
+                <small class="text-muted">
+                    For each parameter: how often it achieved full marks, how often it scored zero, and the overall miss rate.
+                    High miss rates flag criteria that are systematically under-fulfilled.
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Section</th>
+                                <th>Parameter / Signal</th>
+                                <th class="text-center">Times Scored</th>
+                                <th class="text-center">Full Score</th>
+                                <th class="text-center">Missed (0)</th>
+                                <th>Full-Score Rate</th>
+                                <th>Miss Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.SignalUsage)
+                            {
+                                var missColor = s.MissRate >= 40 ? "danger"
+                                             : s.MissRate >= 20 ? "warning" : "success";
+                                <tr class="@(s.MissRate >= 40 ? "table-warning bg-opacity-50" : "")">
+                                    <td class="text-muted small">@s.SectionTitle</td>
+                                    <td class="fw-semibold">@s.ParameterLabel</td>
+                                    <td class="text-center">@s.TimesScored</td>
+                                    <td class="text-center"><span class="badge bg-success">@s.TimesFullScore</span></td>
+                                    <td class="text-center">
+                                        @if (s.TimesMissed > 0)
+                                        {
+                                            <span class="badge bg-danger">@s.TimesMissed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">0</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">@s.FullScoreRate%</span>
+                                        <div class="progress signal-bar mt-1" style="max-width:80px">
+                                            <div class="progress-bar bg-success" style="width:@s.FullScoreRate%"></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@missColor">@s.MissRate%</span>
+                                        <div class="progress signal-bar mt-1" style="max-width:80px">
+                                            <div class="progress-bar bg-@missColor" style="width:@s.MissRate%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Legal defensibility note ──────────────────────────────────────── -->
+    <div class="card border-0 shadow-sm bg-light mb-2">
+        <div class="card-body d-flex gap-3">
+            <i class="bi bi-shield-lock-fill fs-4 text-primary mt-1"></i>
+            <div class="small text-muted">
+                <div class="fw-semibold text-dark mb-1">Audit Trail &amp; Legal Defensibility</div>
+                This Explainability report is generated in real-time from stored evaluation records.
+                Every scored parameter, AI reasoning string, human verdict, and sampling policy reference
+                is persisted in the database and can be exported for compliance evidence.
+                AI-generated reasoning is stored per-field inside each audit record and can be viewed
+                on the <a href="@Url.Action("Index", "Audit")">Audit Records</a> page.
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const gridColor = 'rgba(0,0,0,0.06)';
+
+    // ── Decision Driver grouped bar chart ──────────────────────────────────
+    const ddLabels = @Html.Raw(ddLabels);
+    const ddAvg    = @Html.Raw(ddAvg);
+    const ddLow    = @Html.Raw(ddLow);
+    const ddHigh   = @Html.Raw(ddHigh);
+    if (ddLabels.length) {
+        const ddColors = ddAvg.map(v => v >= 80 ? '#198754' : v >= 60 ? '#ffc107' : '#dc3545');
+        new Chart(document.getElementById('decisionDriverChart'), {
+            type: 'bar',
+            data: {
+                labels: ddLabels,
+                datasets: [
+                    {
+                        label: 'Avg Score %',
+                        data: ddAvg,
+                        backgroundColor: ddColors,
+                        borderRadius: 4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Low Score Count',
+                        data: ddLow,
+                        backgroundColor: 'rgba(220,53,69,0.3)',
+                        borderColor: '#dc3545',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'High Score Count',
+                        data: ddHigh,
+                        backgroundColor: 'rgba(25,135,84,0.3)',
+                        borderColor: '#198754',
+                        borderWidth: 1,
+                        borderRadius: 3,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y:  { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } },
+                    y1: { beginAtZero: true, position: 'right', title: { display: true, text: 'Audit Count' }, grid: { drawOnChartArea: false } },
+                    x:  { grid: { color: gridColor }, ticks: { maxRotation: 40 } }
+                }
+            }
+        });
+    }
+
+    // ── HITL agreement doughnut chart ──────────────────────────────────────
+    const hitlLabels = @Html.Raw(hitlLabels);
+    const hitlCounts = @Html.Raw(hitlCounts);
+    if (hitlLabels.length) {
+        const verdictColors = hitlLabels.map(v =>
+            v === 'Agree' ? '#198754' : v === 'Disagree' ? '#dc3545' : '#ffc107');
+        new Chart(document.getElementById('hitlChart'), {
+            type: 'doughnut',
+            data: {
+                labels: hitlLabels,
+                datasets: [{
+                    data: hitlCounts,
+                    backgroundColor: verdictColors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.raw} review${ctx.raw !== 1 ? 's' : ''}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Signal usage stacked bar chart ─────────────────────────────────────
+    const suLabels = @Html.Raw(suLabels);
+    const suFull   = @Html.Raw(suFull);
+    const suMiss   = @Html.Raw(suMiss);
+    if (suLabels.length) {
+        const suH = Math.max(280, suLabels.length * 30);
+        document.getElementById('signalUsageChart').style.height = suH + 'px';
+        new Chart(document.getElementById('signalUsageChart'), {
+            type: 'bar',
+            data: {
+                labels: suLabels,
+                datasets: [
+                    {
+                        label: 'Full-Score Rate %',
+                        data: suFull,
+                        backgroundColor: 'rgba(25,135,84,0.7)',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Miss Rate %',
+                        data: suMiss,
+                        backgroundColor: 'rgba(220,53,69,0.65)',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: '%' }, grid: { color: gridColor } },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+})();
+</script>
+}

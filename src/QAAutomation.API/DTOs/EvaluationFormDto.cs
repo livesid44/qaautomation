@@ -1,3 +1,5 @@
+using QAAutomation.API.Models;
+
 namespace QAAutomation.API.DTOs;
 
 public class EvaluationFormDto
@@ -12,6 +14,7 @@ public class EvaluationFormDto
     public string? LobName { get; set; }
     public int? ProjectId { get; set; }
     public string? ProjectName { get; set; }
+    public ScoringMethod ScoringMethod { get; set; } = ScoringMethod.Generic;
     public List<FormSectionDto> Sections { get; set; } = new();
 }
 

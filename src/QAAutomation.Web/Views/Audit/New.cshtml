@@ -103,13 +103,21 @@
                 {
                     var isCompliance = sec.Title.Contains("Compliance", StringComparison.OrdinalIgnoreCase);
                     <div class="card border-0 shadow-sm mb-4 section-card @(isCompliance ? "compliance-section" : "")">
-                        <div class="card-header bg-white border-0 pt-3 d-flex align-items-center gap-2">
-                            <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary")"></i>
-                            <h6 class="fw-bold mb-0">@sec.Title</h6>
-                            @if (isCompliance)
-                            {
-                                <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
-                            }
+                        <div class="card-header bg-white border-0 pt-3 d-flex align-items-start gap-2">
+                            <i class="bi @(isCompliance ? "bi-shield-exclamation text-danger" : "bi-list-check text-primary") mt-1"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0">
+                                    @sec.Title
+                                    @if (isCompliance)
+                                    {
+                                        <span class="badge bg-danger ms-1">Auto-Fail Risk</span>
+                                    }
+                                </h6>
+                                @if (!string.IsNullOrEmpty(sec.Description))
+                                {
+                                    <div class="text-muted small mt-1">@sec.Description</div>
+                                }
+                            </div>
                         </div>
                         <div class="card-body">
                             @foreach (var field in sec.Fields.OrderBy(f => f.Id))
@@ -121,6 +129,10 @@
                                                 @field.Label
                                                 @if (field.IsRequired) { <span class="text-danger">*</span> }
                                             </div>
+                                            @if (!string.IsNullOrEmpty(field.Description))
+                                            {
+                                                <div class="text-muted small fst-italic mb-2">@field.Description</div>
+                                            }
                                             @if (field.MaxRating == 1)
                                             {
                                                 <div class="compliance-radio mt-2">
@@ -206,7 +218,10 @@
                         {
                             <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
                                 <span class="small fw-semibold">@sec.Title</span>
-                                <span class="small text-muted" id="sec_@sec.Id">0/@sec.Fields.Sum(f => f.MaxRating)</span>
+                                <span class="small" id="sec_@sec.Id">
+                                    <span class="text-muted">0/@sec.Fields.Sum(f => f.MaxRating)</span>
+                                    <span class="badge bg-secondary ms-1" id="secpct_@sec.Id">0%</span>
+                                </span>
                             </div>
                         }
                     </div>
@@ -254,6 +269,7 @@ else
 
     const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
     const totalMax = @totalMax;
+    const scoringMethod = @(selectedForm?.ScoringMethod ?? 0); // 0=Generic, 1=SectionAutoFail
 
     function updateScore(input) {
         const fieldId = parseInt(input.dataset.fieldId);
@@ -274,13 +290,25 @@ else
     }
 
     function updatePreview() {
-        let total = 0, sectionScores = {};
+        // Build raw section scores
+        const sectionRaw = {};
         for (const [fid, fd] of Object.entries(fieldData)) {
             if (fd.score !== null) {
-                total += fd.score;
-                sectionScores[fd.sectionId] = (sectionScores[fd.sectionId] || 0) + fd.score;
+                if (!sectionRaw[fd.sectionId]) sectionRaw[fd.sectionId] = { sum: 0, hasZero: false };
+                sectionRaw[fd.sectionId].sum += fd.score;
+                if (fd.score === 0) sectionRaw[fd.sectionId].hasZero = true;
             }
         }
+
+        // Apply scoring method: SectionAutoFail zeros entire section on any 0
+        let total = 0;
+        const sectionEffective = {};
+        for (const [sid, data] of Object.entries(sectionRaw)) {
+            const effective = (scoringMethod === 1 && data.hasZero) ? 0 : data.sum;
+            sectionEffective[sid] = effective;
+            total += effective;
+        }
+
         const pct = totalMax > 0 ? (total / totalMax * 100) : 0;
         document.getElementById('totalPct').textContent = pct.toFixed(0) + '%';
         document.getElementById('totalRaw').textContent = total + ' / ' + totalMax + ' points';
@@ -292,8 +320,18 @@ else
         status.className = 'badge fs-6 px-3 py-2 ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning text-dark' : 'bg-danger');
 
         for (const [sid, max] of Object.entries(sectionMaxes)) {
-            const el = document.getElementById('sec_' + sid);
-            if (el) el.textContent = (sectionScores[sid] || 0) + '/' + max;
+            const raw = sectionRaw[sid]?.sum ?? 0;
+            const effective = sectionEffective[sid] ?? 0;
+            const secPct = max > 0 ? Math.round(effective / max * 100) : 0;
+            const rawEl = document.getElementById('sec_' + sid);
+            if (rawEl) {
+                rawEl.querySelector('span.text-muted').textContent = raw + '/' + max;
+            }
+            const pctEl = document.getElementById('secpct_' + sid);
+            if (pctEl) {
+                pctEl.textContent = secPct + '%';
+                pctEl.className = 'badge ms-1 ' + (secPct >= 80 ? 'bg-success' : secPct === 0 ? 'bg-danger' : 'bg-warning text-dark');
+            }
         }
     }
 

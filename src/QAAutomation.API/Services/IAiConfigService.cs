@@ -48,9 +48,13 @@ public class DbAiConfigService : IAiConfigService
         if (!string.IsNullOrEmpty(dto.LanguageApiKey) && dto.LanguageApiKey != "***")
             cfg.LanguageApiKey = dto.LanguageApiKey;
         cfg.RagTopK = dto.RagTopK;
+        cfg.SpeechProvider = dto.SpeechProvider ?? cfg.SpeechProvider;
         cfg.SpeechEndpoint = dto.SpeechEndpoint ?? string.Empty;
         if (!string.IsNullOrEmpty(dto.SpeechApiKey) && dto.SpeechApiKey != "***")
             cfg.SpeechApiKey = dto.SpeechApiKey;
+        if (!string.IsNullOrEmpty(dto.GoogleApiKey) && dto.GoogleApiKey != "***")
+            cfg.GoogleApiKey = dto.GoogleApiKey;
+        cfg.GoogleGeminiModel = string.IsNullOrWhiteSpace(dto.GoogleGeminiModel) ? cfg.GoogleGeminiModel : dto.GoogleGeminiModel;
         cfg.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return cfg;

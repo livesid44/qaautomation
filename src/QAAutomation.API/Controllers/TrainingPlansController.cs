@@ -52,7 +52,9 @@ public class TrainingPlansController : ControllerBase
             query = query.Where(p => p.TrainerUsername == trainerUsername);
 
         if (projectId.HasValue)
-            query = query.Where(p => p.ProjectId == null || p.ProjectId == projectId.Value);
+            // Strictly filter to the requested project — null-project plans are excluded
+            // when a tenant is selected to prevent cross-tenant data leakage.
+            query = query.Where(p => p.ProjectId == projectId.Value);
 
         var plans = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
         return Ok(plans.Select(ToDto));

@@ -258,7 +258,12 @@ public class ApiClient
 
     public async Task<AuditViewModel?> GetAudit(int id)
     {
-        try { return await _http.GetFromJsonAsync<AuditViewModel>($"api/evaluationresults/{id}", _jsonOptions); }
+        try
+        {
+            var vm = await _http.GetFromJsonAsync<AuditViewModel>($"api/evaluationresults/{id}", _jsonOptions);
+            if (vm != null) DeserializeAuditAiData(vm);
+            return vm;
+        }
         catch (Exception ex) { _logger.LogError(ex, "GetAudit failed"); return null; }
     }
 
@@ -274,6 +279,35 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return false; }
     }
 
+    /// <summary>Deserializes the JSON AI-data blobs stored on an AuditViewModel into their typed properties.</summary>
+    private void DeserializeAuditAiData(AuditViewModel vm)
+    {
+        if (!string.IsNullOrEmpty(vm.SentimentJson))
+        {
+            try { vm.Sentiment = System.Text.Json.JsonSerializer.Deserialize<SentimentViewModel>(vm.SentimentJson, _jsonOptions); }
+            catch { /* ignore malformed data */ }
+        }
+
+        if (!string.IsNullOrEmpty(vm.FieldReasoningJson))
+        {
+            try
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<FieldReasoningEntry>>(vm.FieldReasoningJson, _jsonOptions);
+                if (items != null)
+                    vm.FieldReasonings = items
+                        .Where(e => e.FieldId > 0)
+                        .ToDictionary(e => e.FieldId, e => e.Reasoning ?? "");
+            }
+            catch { /* ignore malformed data */ }
+        }
+    }
+
+    private sealed class FieldReasoningEntry
+    {
+        public int FieldId { get; set; }
+        public string? Reasoning { get; set; }
+    }
+
     public async Task<bool> DeleteAudit(int id)
     {
         try { var r = await _http.DeleteAsync($"api/evaluationresults/{id}"); return r.IsSuccessStatusCode; }
@@ -281,9 +315,10 @@ public class ApiClient
     }
 
     // Legacy forms (EvaluationForms with sections and FormFields)
-    public async Task<List<LegacyFormViewModel>> GetLegacyForms()
+    public async Task<List<LegacyFormViewModel>> GetLegacyForms(int? projectId = null)
     {
-        try { return await _http.GetFromJsonAsync<List<LegacyFormViewModel>>("api/evaluationforms", _jsonOptions) ?? new(); }
+        var url = projectId.HasValue ? $"api/evaluationforms?projectId={projectId}" : "api/evaluationforms";
+        try { return await _http.GetFromJsonAsync<List<LegacyFormViewModel>>(url, _jsonOptions) ?? new(); }
         catch (Exception ex) { _logger.LogError(ex, "GetLegacyForms failed"); return new(); }
     }
 
@@ -347,6 +382,17 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "SaveAiSettings failed"); return false; }
     }
 
+    public async Task<LlmTestResultViewModel?> TestLlmConnectionAsync()
+    {
+        try
+        {
+            var resp = await _http.PostAsync("api/aiconfig/test", null);
+            if (!resp.IsSuccessStatusCode) return null;
+            return await resp.Content.ReadFromJsonAsync<LlmTestResultViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "TestLlmConnection failed"); return null; }
+    }
+
     // Knowledge Base sources
     public async Task<List<KnowledgeSourceViewModel>> GetKnowledgeSources(int? projectId = null)
     {
@@ -396,6 +442,26 @@ public class ApiClient
     {
         try { var resp = await _http.PostAsJsonAsync("api/knowledgebase/documents", dto); return resp.IsSuccessStatusCode; }
         catch (Exception ex) { _logger.LogError(ex, "AddKnowledgeDocument failed"); return false; }
+    }
+
+    /// <summary>
+    /// Asks the API to fetch a public URL and store its content as a knowledge document.
+    /// Returns null on failure; on success returns the error message from the API if the URL cannot be fetched.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> FetchUrlDocument(KnowledgeUrlFetchViewModel dto)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync("api/knowledgebase/fetch-url", dto);
+            if (resp.IsSuccessStatusCode) return (true, null);
+            var body = await resp.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrWhiteSpace(body) ? "Failed to fetch URL." : body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "FetchUrlDocument failed");
+            return (false, ex.Message);
+        }
     }
 
     public async Task<bool> DeleteKnowledgeDocument(int id)
@@ -503,6 +569,57 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAnalytics failed"); return null; }
     }
 
+    public async Task<ExplainabilityViewModel?> GetExplainabilityAnalytics(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/explainability?projectId={projectId.Value}" : "api/analytics/explainability";
+        try { return await _http.GetFromJsonAsync<ExplainabilityViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
+    }
+
+    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/explainability/insights?projectId={projectId.Value}" : "api/analytics/explainability/insights";
+        try { return await _http.GetFromJsonAsync<ExplainabilityInsightsViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityInsights failed"); return null; }
+    }
+
+    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/insights?projectId={projectId.Value}" : "api/analytics/insights";
+        try { return await _http.GetFromJsonAsync<AnalyticsInsightsViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
+    }
+
+    // ── Audit Log ─────────────────────────────────────────────────────────────
+
+    public async Task<AuditLogPageViewModel?> GetAuditLogs(
+        int? projectId,
+        string? category = null,
+        string? eventType = null,
+        string? outcome = null,
+        string? from = null,
+        string? to = null,
+        int page = 1,
+        int pageSize = 50)
+    {
+        var qs = new List<string>();
+        if (projectId.HasValue) qs.Add($"projectId={projectId.Value}");
+        if (!string.IsNullOrWhiteSpace(category)) qs.Add($"category={Uri.EscapeDataString(category)}");
+        if (!string.IsNullOrWhiteSpace(eventType)) qs.Add($"eventType={Uri.EscapeDataString(eventType)}");
+        if (!string.IsNullOrWhiteSpace(outcome)) qs.Add($"outcome={Uri.EscapeDataString(outcome)}");
+        if (!string.IsNullOrWhiteSpace(from)) qs.Add($"from={Uri.EscapeDataString(from)}");
+        if (!string.IsNullOrWhiteSpace(to)) qs.Add($"to={Uri.EscapeDataString(to)}");
+        qs.Add($"page={page}");
+        qs.Add($"pageSize={pageSize}");
+        var url = "api/auditlog?" + string.Join("&", qs);
+        try
+        {
+            var page_dto = await _http.GetFromJsonAsync<AuditLogPageViewModel>(url, _jsonOptions);
+            return page_dto;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "GetAuditLogs failed"); return null; }
+    }
+
     // ── Call Pipeline ─────────────────────────────────────────────────────────
 
     public async Task<List<CallPipelineJobViewModel>> GetPipelineJobs(int? projectId = null)
@@ -527,6 +644,39 @@ public class ApiClient
             return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
         }
         catch (Exception ex) { _logger.LogError(ex, "CreateBatchUrlPipelineJob failed"); return null; }
+    }
+
+    public async Task<(CallPipelineJobViewModel? Job, string? Error)> UploadTranscriptFile(
+        Stream fileStream, string fileName, string name, int formId, int? projectId)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            // Sanitise fileName: strip non-ASCII and control characters to prevent
+            // Content-Disposition header injection (CWE-116 / CodeQL xss alert)
+            var safeFileName = System.Text.RegularExpressions.Regex.Replace(
+                fileName, @"[^\x20-\x7E]", "_");
+            content.Add(new StreamContent(fileStream), "file", safeFileName);
+            content.Add(new StringContent(name), "name");
+            content.Add(new StringContent(formId.ToString()), "formId");
+            if (projectId.HasValue)
+                content.Add(new StringContent(projectId.Value.ToString()), "projectId");
+            content.Add(new StringContent("web"), "submittedBy");
+
+            var r = await _http.PostAsync("api/callpipeline/upload-file", content);
+            if (!r.IsSuccessStatusCode)
+            {
+                var body = await r.Content.ReadAsStringAsync();
+                return (null, body);
+            }
+            var job = await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+            return (job, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "UploadTranscriptFile failed");
+            return (null, ex.Message);
+        }
     }
 
     public async Task<CallPipelineJobViewModel?> CreateConnectorPipelineJob(object dto)

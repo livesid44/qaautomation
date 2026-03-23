@@ -160,6 +160,7 @@ public class LegacyFormFieldViewModel
 {
     public int Id { get; set; }
     public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int MaxRating { get; set; }
     public bool IsRequired { get; set; }
     public int FieldType { get; set; } // 2 = Rating
@@ -181,6 +182,8 @@ public class LegacyFormViewModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsActive { get; set; }
+    /// <summary>Scoring method: 0 = Generic, 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public List<LegacySectionViewModel> Sections { get; set; } = new();
 }
 
@@ -216,6 +219,19 @@ public class AuditViewModel
     public double MaxPossibleScore { get; set; }
     public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
     public List<AuditSectionViewModel> Sections { get; set; } = new();
+
+    // AI-generated data stored at audit-save time (null for manually-entered audits)
+    public string? OverallReasoning { get; set; }
+    public string? SentimentJson { get; set; }
+    public string? FieldReasoningJson { get; set; }
+
+    /// <summary>Deserialized sentiment — populated by ApiClient after fetching from the API.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SentimentViewModel? Sentiment { get; set; }
+
+    /// <summary>Map of FieldId → AI reasoning string — populated by ApiClient.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Dictionary<int, string> FieldReasonings { get; set; } = new();
 }
 
 public class NewAuditViewModel
@@ -273,6 +289,8 @@ public class AutoAuditReviewViewModel
     public bool IsAiGenerated { get; set; }
     public string? AnalysisError { get; set; }
     public List<AutoAuditFieldReviewViewModel> Fields { get; set; } = new();
+    /// <summary>Scoring method: 0 = Generic, 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public double TotalScore => Fields.Sum(f => f.FinalScore);
     public double MaxPossibleScore => Fields.Sum(f => f.MaxRating);
     public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;
@@ -339,18 +357,31 @@ public class AiSettingsViewModel
     public string LanguageApiKey { get; set; } = string.Empty;
     public int RagTopK { get; set; } = 3;
     // Speech-to-Text
+    public string SpeechProvider { get; set; } = "Azure";
     public string SpeechEndpoint { get; set; } = string.Empty;
     public string SpeechApiKey { get; set; } = string.Empty;
+    // Google (Gemini LLM + Cloud Speech-to-Text)
+    public string GoogleApiKey { get; set; } = string.Empty;
+    public string GoogleGeminiModel { get; set; } = "gemini-1.5-pro";
     public DateTime UpdatedAt { get; set; }
-    /// <summary>True when the LLM endpoint is configured and real AI will be used.</summary>
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint);
-    /// <summary>True when Azure Speech-to-Text is configured.</summary>
-    public bool IsSpeechConfigured => !string.IsNullOrWhiteSpace(SpeechEndpoint);
+    /// <summary>True when an LLM (Azure/OpenAI or Google) is configured.</summary>
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(LlmEndpoint) ||
+                                (LlmProvider == "Google" && !string.IsNullOrWhiteSpace(GoogleApiKey));
+    /// <summary>True when Speech-to-Text is configured.</summary>
+    public bool IsSpeechConfigured => (SpeechProvider == "Azure" && !string.IsNullOrWhiteSpace(SpeechEndpoint)) ||
+                                      (SpeechProvider == "Google" && !string.IsNullOrWhiteSpace(GoogleApiKey));
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Knowledge Base view models
 // ──────────────────────────────────────────────────────────────────────────────
+
+public class LlmTestResultViewModel
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public long LatencyMs { get; set; }
+}
 
 public class KnowledgeSourceViewModel
 {
@@ -397,6 +428,14 @@ public class KnowledgeDocumentUploadViewModel
     public string? TextContent { get; set; }
 }
 
+public class KnowledgeUrlFetchViewModel
+{
+    [Required] public int SourceId { get; set; }
+    [Required, Url] public string Url { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public string? Tags { get; set; }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Multi-tenancy: Project & LOB view models
 // ──────────────────────────────────────────────────────────────────────────────
@@ -409,6 +448,8 @@ public class ProjectViewModel
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public int LobCount { get; set; }
+    public bool PiiProtectionEnabled { get; set; }
+    public string PiiRedactionMode { get; set; } = "Redact";
 }
 
 public class LobViewModel
@@ -450,6 +491,8 @@ public class AnalyticsViewModel
     public List<AgentScoreViewModel> AgentScores { get; set; } = new();
     public List<ParameterTrendViewModel> ParameterTrends { get; set; } = new();
     public List<CallTypeScoreViewModel> CallTypeScores { get; set; } = new();
+    public List<AgentDailyTrendViewModel> AgentDailyTrends { get; set; } = new();
+    public List<SectionDailyTrendViewModel> SectionDailyTrends { get; set; } = new();
 }
 
 public class DailyScoreViewModel
@@ -479,6 +522,135 @@ public class CallTypeScoreViewModel
     public string FormName { get; set; } = string.Empty;
     public double AvgScorePercent { get; set; }
     public int AuditCount { get; set; }
+}
+
+public class AgentDailyTrendViewModel
+{
+    public string AgentName { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+public class SectionDailyTrendViewModel
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int ScoredCount { get; set; }
+}
+
+/// <summary>
+/// AI-generated natural-language insights for the main Analytics Dashboard.
+/// All fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class AnalyticsInsightsViewModel
+{
+    public string? DailyTrendInsight { get; set; }
+    public string? AgentPerformanceInsight { get; set; }
+    public string? ParameterInsight { get; set; }
+    public string? CallTypeInsight { get; set; }
+}
+
+// ── Explainability Analytics ViewModels ────────────────────────────────────────
+
+public class ExplainabilityViewModel
+{
+    public int TotalAudits { get; set; }
+    public int TotalReviewed { get; set; }
+    public double AiHitlAgreementRate { get; set; }
+    public List<DecisionDriverViewModel> DecisionDrivers { get; set; } = new();
+    public List<SignalUsageViewModel> SignalUsage { get; set; } = new();
+    public List<HitlAgreementViewModel> HitlAgreement { get; set; } = new();
+    public List<FailureReasonViewModel> FailureReasons { get; set; } = new();
+}
+
+/// <summary>
+/// AI-generated natural-language insights for each section of the Explainability page.
+/// All fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class ExplainabilityInsightsViewModel
+{
+    public string? DecisionDriversInsight { get; set; }
+    public string? HitlAgreementInsight { get; set; }
+    public string? SignalUsageInsight { get; set; }
+    public string? FailureReasonsInsight { get; set; }
+}
+
+public class DecisionDriverViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int LowScoreCount { get; set; }
+    public int HighScoreCount { get; set; }
+    public int TotalScoredCount { get; set; }
+    public double ScoreVariability { get; set; }
+    public bool IsRiskArea { get; set; }
+}
+
+public class SignalUsageViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int TimesScored { get; set; }
+    public int TimesFullScore { get; set; }
+    public int TimesMissed { get; set; }
+    public double FullScoreRate { get; set; }
+    public double MissRate { get; set; }
+}
+
+public class HitlAgreementViewModel
+{
+    public string ReviewVerdict { get; set; } = string.Empty;
+    public string PolicyName { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public double Percentage { get; set; }
+}
+
+public class FailureReasonViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int FailedAuditCount { get; set; }
+    public double ContributionPercent { get; set; }
+    public double AvgScoreInFailedAudits { get; set; }
+}
+
+// ── Audit Log ViewModels ────────────────────────────────────────────────────
+
+public class AuditLogEntryViewModel
+{
+    public int Id { get; set; }
+    public int? ProjectId { get; set; }
+    public string Category { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public string Outcome { get; set; } = string.Empty;
+    public string? Actor { get; set; }
+    public string? PiiTypesDetected { get; set; }
+    public string? HttpMethod { get; set; }
+    public string? Endpoint { get; set; }
+    public int? HttpStatusCode { get; set; }
+    public long? DurationMs { get; set; }
+    public string? Provider { get; set; }
+    public string? Details { get; set; }
+    public DateTime OccurredAt { get; set; }
+}
+
+public class AuditLogPageViewModel
+{
+    public List<AuditLogEntryViewModel> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+
+    // Filter state (for form repopulation)
+    public string? FilterCategory { get; set; }
+    public string? FilterEventType { get; set; }
+    public string? FilterOutcome { get; set; }
+    public string? FilterFrom { get; set; }
+    public string? FilterTo { get; set; }
 }
 
 // ── Call Pipeline ViewModels ────────────────────────────────────────────────
@@ -534,6 +706,24 @@ public class CallPipelineBatchUrlViewModel
     [Required]
     [Display(Name = "Recording / Transcript URLs (one per line)")]
     public string UrlList { get; set; } = string.Empty;
+}
+
+/// <summary>Form model for uploading a CSV / XLSX file of transcripts.</summary>
+public class CallPipelineFileUploadViewModel
+{
+    [Required]
+    [Display(Name = "Job Name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [Display(Name = "Evaluation Form")]
+    public int FormId { get; set; }
+
+    public int? ProjectId { get; set; }
+
+    [Required]
+    [Display(Name = "Transcript File (CSV or XLSX)")]
+    public IFormFile? File { get; set; }
 }
 
 /// <summary>Form model for creating a connector-based pipeline job.</summary>

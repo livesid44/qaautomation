@@ -206,6 +206,10 @@
                href="@Url.Action("Index", "CallPipeline")">
                 <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
             </a>
+            <a class="nav-link ps-4 @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" && ViewContext.RouteData.Values["action"]?.ToString() == "FileUpload" ? "active" : "")"
+               href="@Url.Action("FileUpload", "CallPipeline")" style="font-size:.88rem">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Upload CSV / Excel
+            </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
                href="@Url.Action("Index", "HumanReview")">
                 <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
@@ -213,6 +217,11 @@
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
                href="@Url.Action("Index", "Training")">
                 <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
+            </a>
+
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" && ViewContext.RouteData.Values["action"]?.ToString() == "Explainability" ? "active" : "")"
+               href="@Url.Action("Explainability", "Analytics")">
+                <i class="bi bi-shield-check"></i> Explainability <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-primary)">XAI</span>
             </a>
 
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "InsightsChat" ? "active" : "")"
@@ -227,6 +236,10 @@
                    href="@Url.Action("Index", "AiSettings")">
                     <i class="bi bi-gear-wide-connected"></i> AI Settings
                     <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
+                </a>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AuditLog" ? "active" : "")"
+                   href="@Url.Action("Index", "AuditLog")">
+                    <i class="bi bi-journal-text"></i> Audit Logs <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">LOG</span>
                 </a>
                 <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sampling" ? "active" : "")"
                    href="@Url.Action("Index", "Sampling")">

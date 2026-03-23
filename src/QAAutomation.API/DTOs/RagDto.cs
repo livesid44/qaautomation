@@ -4,14 +4,14 @@ namespace QAAutomation.API.DTOs;
 
 public class AiConfigDto
 {
-    // LLM
+    // LLM — "AzureOpenAI", "OpenAI", or "Google"
     public string LlmProvider { get; set; } = "AzureOpenAI";
     public string LlmEndpoint { get; set; } = string.Empty;
     public string LlmApiKey { get; set; } = string.Empty;
     public string LlmDeployment { get; set; } = "gpt-4o";
     public float LlmTemperature { get; set; } = 0.1f;
 
-    // Sentiment
+    // Sentiment — "AzureOpenAI", "OpenAI", "AzureLanguage", or "Google"
     public string SentimentProvider { get; set; } = "AzureOpenAI";
     public string LanguageEndpoint { get; set; } = string.Empty;
     public string LanguageApiKey { get; set; } = string.Empty;
@@ -19,11 +19,24 @@ public class AiConfigDto
     // RAG
     public int RagTopK { get; set; } = 3;
 
-    // Speech-to-Text
+    // Speech-to-Text — provider "Azure" or "Google"
+    public string SpeechProvider { get; set; } = "Azure";
     public string SpeechEndpoint { get; set; } = string.Empty;
     public string SpeechApiKey { get; set; } = string.Empty;
 
+    // Google (Gemini LLM + Cloud Speech-to-Text)
+    public string GoogleApiKey { get; set; } = string.Empty;
+    public string GoogleGeminiModel { get; set; } = "gemini-1.5-pro";
+
     public DateTime UpdatedAt { get; set; }
+}
+
+public class LlmTestResultDto
+{
+    public bool Success { get; set; }
+    /// <summary>LLM reply text on success, or error message on failure.</summary>
+    public string Message { get; set; } = string.Empty;
+    public long LatencyMs { get; set; }
 }
 
 public class KnowledgeSourceDto
@@ -69,5 +82,14 @@ public class KnowledgeDocumentUploadDto
     [Required] public string Title { get; set; } = string.Empty;
     public string? FileName { get; set; }
     [Required] public string Content { get; set; } = string.Empty;
+    public string? Tags { get; set; }
+}
+
+public class KnowledgeUrlFetchDto
+{
+    [Required] public int SourceId { get; set; }
+    [Required, Url] public string Url { get; set; } = string.Empty;
+    /// <summary>Optional human-readable title. Defaults to the URL when empty.</summary>
+    public string? Title { get; set; }
     public string? Tags { get; set; }
 }

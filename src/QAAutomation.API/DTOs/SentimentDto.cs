@@ -11,6 +11,9 @@ public class SentimentAnalysisRequestDto
 
     /// <summary>Name of the QA evaluator requesting the analysis.</summary>
     public string EvaluatedBy { get; set; } = string.Empty;
+
+    /// <summary>Tenant project ID — used to scope audit log entries.</summary>
+    public int? ProjectId { get; set; }
 }
 
 /// <summary>A single detected emotion for a speaker.</summary>

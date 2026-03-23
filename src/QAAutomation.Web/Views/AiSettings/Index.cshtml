@@ -58,23 +58,29 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold small">Provider</label>
-                            <select name="LlmProvider" class="form-select" id="llmProvider">
-                                @if (Model.LlmProvider == "AzureOpenAI") {
-                                    <option value="AzureOpenAI" selected>Azure OpenAI</option>
-                                    <option value="OpenAI">OpenAI (Direct)</option>
-                                } else {
+                            <select name="LlmProvider" class="form-select" id="llmProvider" onchange="toggleLlmFields()">
+                                @if (Model.LlmProvider == "OpenAI") {
                                     <option value="AzureOpenAI">Azure OpenAI</option>
                                     <option value="OpenAI" selected>OpenAI (Direct)</option>
+                                    <option value="Google">Google Gemini</option>
+                                } else if (Model.LlmProvider == "Google") {
+                                    <option value="AzureOpenAI">Azure OpenAI</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                    <option value="Google" selected>Google Gemini</option>
+                                } else {
+                                    <option value="AzureOpenAI" selected>Azure OpenAI</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                    <option value="Google">Google Gemini</option>
                                 }
                             </select>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-8" id="llmEndpointField" style="@(Model.LlmProvider == "Google" ? "display:none" : "")">
                             <label class="form-label fw-semibold small">Endpoint URL</label>
                             <input type="text" name="LlmEndpoint" class="form-control" value="@Model.LlmEndpoint"
                                    placeholder="https://your-resource.cognitiveservices.azure.com/openai/v1/" />
                             <div class="form-text">Azure AI Foundry endpoint, base resource URL, or full deployment URL — all are accepted. Leave blank to use simulated mock responses.</div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="llmApiKeyField" style="@(Model.LlmProvider == "Google" ? "display:none" : "")">
                             <label class="form-label fw-semibold small">API Key or Bearer Token</label>
                             <input type="password" name="LlmApiKey" class="form-control" value="@Model.LlmApiKey"
                                    placeholder="@(ViewData["LlmKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter API key or Bearer token")"
@@ -88,7 +94,7 @@
                                 <div class="form-text text-muted">Paste your Azure OpenAI API key, or an Entra ID bearer token obtained via <code>az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken -o tsv</code>.</div>
                             }
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4" id="llmDeploymentField" style="@(Model.LlmProvider == "Google" ? "display:none" : "")">
                             <label class="form-label fw-semibold small">Deployment / Model</label>
                             <input type="text" name="LlmDeployment" class="form-control" value="@Model.LlmDeployment"
                                    placeholder="gpt-4o" />
@@ -117,14 +123,22 @@
                                     <option value="AzureOpenAI">Azure OpenAI (same as LLM)</option>
                                     <option value="OpenAI" selected>OpenAI (Direct)</option>
                                     <option value="AzureLanguage">Azure Language Service</option>
+                                    <option value="Google">Google Gemini</option>
                                 } else if (Model.SentimentProvider == "AzureLanguage") {
                                     <option value="AzureOpenAI">Azure OpenAI (same as LLM)</option>
                                     <option value="OpenAI">OpenAI (Direct)</option>
                                     <option value="AzureLanguage" selected>Azure Language Service</option>
+                                    <option value="Google">Google Gemini</option>
+                                } else if (Model.SentimentProvider == "Google") {
+                                    <option value="AzureOpenAI">Azure OpenAI (same as LLM)</option>
+                                    <option value="OpenAI">OpenAI (Direct)</option>
+                                    <option value="AzureLanguage">Azure Language Service</option>
+                                    <option value="Google" selected>Google Gemini</option>
                                 } else {
                                     <option value="AzureOpenAI" selected>Azure OpenAI (same as LLM)</option>
                                     <option value="OpenAI">OpenAI (Direct)</option>
                                     <option value="AzureLanguage">Azure Language Service</option>
+                                    <option value="Google">Google Gemini</option>
                                 }
                             </select>
                         </div>
@@ -180,7 +194,7 @@
             <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #6f42c1 !important; border-left-style:solid !important;">
                 <div class="card-header bg-white border-0 pt-3">
                     <h6 class="fw-bold mb-0">
-                        <i class="bi bi-mic me-2 text-purple" style="color:#6f42c1"></i>Azure Speech-to-Text
+                        <i class="bi bi-mic me-2 text-purple" style="color:#6f42c1"></i>Speech-to-Text
                         @if (Model.IsSpeechConfigured)
                         {
                             <span class="badge bg-success ms-2" style="font-size:.65rem">Configured</span>
@@ -197,27 +211,94 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">STT Provider</label>
+                            <select name="SpeechProvider" class="form-select" id="speechProvider" onchange="toggleSpeechFields()">
+                                @if (Model.SpeechProvider == "Google") {
+                                    <option value="Azure">Azure Cognitive Services</option>
+                                    <option value="Google" selected>Google Cloud STT</option>
+                                } else {
+                                    <option value="Azure" selected>Azure Cognitive Services</option>
+                                    <option value="Google">Google Cloud STT</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4" id="speechEndpointField" style="@(Model.SpeechProvider == "Google" ? "display:none" : "")">
                             <label class="form-label fw-semibold small">Azure Region or Endpoint</label>
                             <input type="text" name="SpeechEndpoint" class="form-control" value="@Model.SpeechEndpoint"
                                    placeholder="e.g. eastus  or  https://eastus.api.cognitive.microsoft.com" />
                             <div class="form-text">
                                 Azure Speech Service region code (e.g. <code>eastus</code>) or a full custom endpoint URL.
-                                Leave blank to disable audio transcription.
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Speech API Key</label>
+                        <div class="col-md-5" id="speechApiKeyField" style="@(Model.SpeechProvider == "Google" ? "display:none" : "")">
+                            <label class="form-label fw-semibold small">Azure Speech API Key</label>
                             <input type="password" name="SpeechApiKey" class="form-control" value="@Model.SpeechApiKey"
-                                   placeholder="@(ViewData["SpeechKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter Azure Speech subscription key")" />
+                                   placeholder="@(ViewData["SpeechKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter Azure Speech subscription key")"
+                                   autocomplete="new-password" />
+                            @if (ViewData["SpeechKeyIsSet"] as bool? == true)
+                            {
+                                <div class="form-text text-success"><i class="bi bi-check-circle-fill me-1"></i>Azure Speech key is saved.</div>
+                            }
+                        </div>
+                        <div class="col-12" id="googleSttNote" style="@(Model.SpeechProvider == "Google" ? "" : "display:none")">
+                            <div class="alert alert-info mb-0 py-2 px-3 small">
+                                <i class="bi bi-google me-1"></i>
+                                <strong>Google Cloud STT</strong> uses your <strong>Google API Key</strong> (configured below).
+                                Audio files up to 10 MB are transcribed inline. Files hosted in Google Cloud Storage are also supported.
+                                Requires the <em>Cloud Speech-to-Text API</em> enabled in your Google Cloud project.
+                            </div>
                         </div>
                     </div>
                     <div class="alert alert-light border mt-3 mb-0 py-2 px-3 small">
                         <i class="bi bi-info-circle me-1"></i>
                         <strong>How it works:</strong> When the Call Pipeline encounters an audio URL (.mp3, .wav, .ogg, .flac, .m4a, .aac, .opus),
-                        it submits a <em>Batch Transcription</em> job to Azure Cognitive Services, polls until the transcript is ready,
+                        it submits a transcription job to the configured provider, polls until the transcript is ready,
                         then feeds the text transcript to the LLM for QA scoring — fully automated, no human in the loop.
-                        Requires an Azure AI Speech resource with the <strong>Batch Transcription</strong> API enabled.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Configuration -->
+            <div class="card border-0 shadow-sm mb-4" style="border-left:4px solid #ea4335 !important; border-left-style:solid !important;">
+                <div class="card-header bg-white border-0 pt-3">
+                    <h6 class="fw-bold mb-0">
+                        <i class="bi bi-stars me-2" style="color:#ea4335"></i>Google AI Configuration
+                        @if (!string.IsNullOrWhiteSpace(Model.GoogleApiKey) || ViewData["GoogleKeyIsSet"] as bool? == true)
+                        {
+                            <span class="badge bg-success ms-2" style="font-size:.65rem">Key configured</span>
+                        }
+                    </h6>
+                    <div class="text-muted small">
+                        Required when LLM Provider, Sentiment Provider, or STT Provider is set to <strong>Google</strong>.
+                        Uses the Google AI Studio API key — no Google Cloud project required for Gemini.
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Google API Key</label>
+                            <input type="password" name="GoogleApiKey" class="form-control" value="@Model.GoogleApiKey"
+                                   placeholder="@(ViewData["GoogleKeyIsSet"] as bool? == true ? "Key is saved — enter a new value to replace it" : "Enter Google AI Studio API key")"
+                                   autocomplete="new-password" />
+                            @if (ViewData["GoogleKeyIsSet"] as bool? == true)
+                            {
+                                <div class="form-text text-success"><i class="bi bi-check-circle-fill me-1"></i>Google API key is saved. Leave blank to keep the existing key.</div>
+                            }
+                            else
+                            {
+                                <div class="form-text text-muted">
+                                    Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+                                    The same key is used for Gemini LLM, sentiment analysis, and Google Cloud STT.
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Gemini Model</label>
+                            <input type="text" name="GoogleGeminiModel" class="form-control" value="@Model.GoogleGeminiModel"
+                                   placeholder="gemini-1.5-pro" />
+                            <div class="form-text">Model used for LLM and sentiment analysis. Examples: <code>gemini-1.5-pro</code>, <code>gemini-2.0-flash</code>.</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -281,7 +362,13 @@
                             @if (Model.IsConfigured)
                             {
                                 <span class="badge bg-success">Connected</span>
-                                <div class="text-muted" style="font-size:.75rem">@Model.LlmProvider &middot; @Model.LlmDeployment</div>
+                                <div class="text-muted" style="font-size:.75rem">
+                                    @if (Model.LlmProvider == "Google") {
+                                        @($"Google · {Model.GoogleGeminiModel}")
+                                    } else {
+                                        @($"{Model.LlmProvider} · {Model.LlmDeployment}")
+                                    }
+                                </div>
                             }
                             else
                             {
@@ -297,12 +384,18 @@
                             @if (Model.IsSpeechConfigured)
                             {
                                 <span class="badge bg-success">Configured</span>
+                                <div class="text-muted" style="font-size:.75rem">@Model.SpeechProvider</div>
                             }
                             else
                             {
                                 <span class="badge bg-secondary">Not configured</span>
                             }
                         </dd>
+                        @if (ViewData["GoogleKeyIsSet"] as bool? == true)
+                        {
+                            <dt class="col-5 text-muted">Google Key</dt>
+                            <dd class="col-7"><span class="badge bg-success" style="font-size:.65rem">Saved</span></dd>
+                        }
                         <dt class="col-5 text-muted">Last Updated</dt>
                         <dd class="col-7 small text-muted">@(Model.UpdatedAt == default ? "Never" : Model.UpdatedAt.ToString("MMM d, yyyy HH:mm"))</dd>
                     </dl>
@@ -321,6 +414,11 @@
                 <i class="bi bi-save me-2"></i>Save Settings
             </button>
             <div class="text-muted small text-center mt-2">Settings are saved to the database immediately.</div>
+            <hr class="my-3" />
+            <button type="button" class="btn btn-outline-info w-100" id="testLlmBtn" onclick="testLlmConnection()">
+                <i class="bi bi-wifi me-2"></i>Test LLM Connection
+            </button>
+            <div id="testLlmResult" class="mt-2" style="display:none"></div>
         </div>
     </div>
 </form>
@@ -330,6 +428,50 @@
     function toggleLangFields() {
         const p = document.getElementById('sentimentProvider').value;
         document.getElementById('langFields').style.display = p === 'AzureLanguage' ? '' : 'none';
+    }
+    function toggleLlmFields() {
+        const p = document.getElementById('llmProvider').value;
+        const isGoogle = p === 'Google';
+        document.getElementById('llmEndpointField').style.display  = isGoogle ? 'none' : '';
+        document.getElementById('llmApiKeyField').style.display    = isGoogle ? 'none' : '';
+        document.getElementById('llmDeploymentField').style.display = isGoogle ? 'none' : '';
+    }
+    function toggleSpeechFields() {
+        const p = document.getElementById('speechProvider').value;
+        const isGoogle = p === 'Google';
+        document.getElementById('speechEndpointField').style.display = isGoogle ? 'none' : '';
+        document.getElementById('speechApiKeyField').style.display   = isGoogle ? 'none' : '';
+        document.getElementById('googleSttNote').style.display       = isGoogle ? '' : 'none';
+    }
+    async function testLlmConnection() {
+        const btn = document.getElementById('testLlmBtn');
+        const result = document.getElementById('testLlmResult');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Testing…';
+        result.style.display = 'none';
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const resp = await fetch('@Url.Action("TestLlm", "AiSettings")', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            });
+            const data = await resp.json();
+            result.style.display = '';
+            if (data.success) {
+                result.innerHTML = `<div class="alert alert-success py-2 mb-0 small"><i class="bi bi-check-circle-fill me-1"></i><strong>Connected</strong> (${Number.isInteger(data.latencyMs) ? data.latencyMs : 0}ms)<div class="mt-1 text-muted fst-italic">"${escapeHtml(data.message)}"</div></div>`;
+            } else {
+                result.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Failed</strong> (${Number.isInteger(data.latencyMs) ? data.latencyMs : 0}ms)<div class="mt-1">${escapeHtml(data.message)}</div></div>`;
+            }
+        } catch (e) {
+            result.style.display = '';
+            result.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i>Request error: ${escapeHtml(e.message)}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-wifi me-2"></i>Test LLM Connection';
+        }
+    }
+    function escapeHtml(text) {
+        return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 </script>
 }

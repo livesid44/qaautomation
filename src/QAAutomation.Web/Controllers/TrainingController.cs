@@ -16,9 +16,11 @@ namespace QAAutomation.Web.Controllers;
 /// Trainers and agents (QA role or any authenticated user) can:
 ///   • View plans assigned to them
 ///   • Mark individual plan items as done (trainers only)
+///
+/// All data is scoped to the currently selected project/tenant.
 /// </summary>
 [Authorize]
-public class TrainingController : Controller
+public class TrainingController : ProjectAwareController
 {
     private readonly ApiClient _api;
     private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
@@ -31,18 +33,19 @@ public class TrainingController : Controller
     public async Task<IActionResult> Index(string? status = null)
     {
         var username = User.Identity?.Name;
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
         List<TrainingPlanViewModel> plans;
 
         if (User.IsInRole("Admin"))
         {
-            // Admins / QMs see all plans (optionally filtered by status)
-            plans = await _api.GetTrainingPlans(status: status);
+            // Admins / QMs see all plans for the current project (optionally filtered by status)
+            plans = await _api.GetTrainingPlans(status: status, projectId: pid);
         }
         else
         {
-            // Other roles see plans where they are agent OR trainer
-            var asAgent = await _api.GetTrainingPlans(agentUsername: username);
-            var asTrainer = await _api.GetTrainingPlans(trainerUsername: username);
+            // Other roles see plans where they are agent OR trainer, scoped to current project
+            var asAgent = await _api.GetTrainingPlans(agentUsername: username, projectId: pid);
+            var asTrainer = await _api.GetTrainingPlans(trainerUsername: username, projectId: pid);
             plans = asAgent.Union(asTrainer, new PlanIdComparer()).ToList();
             if (!string.IsNullOrEmpty(status))
                 plans = plans.Where(p => p.Status == status).ToList();
@@ -60,6 +63,7 @@ public class TrainingController : Controller
     {
         var plan = await _api.GetTrainingPlan(id);
         if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
         return View(plan);
     }
 
@@ -80,7 +84,9 @@ public class TrainingController : Controller
             Title = agentName != null
                 ? $"Training Plan — {agentName}{(callReference != null ? $" ({callReference})" : "")}"
                 : string.Empty,
-            Description = BuildDefaultDescription(formName, aiReasoning)
+            Description = BuildDefaultDescription(formName, aiReasoning),
+            // Scope to the current project automatically
+            ProjectId = CurrentProjectId > 0 ? CurrentProjectId : (int?)null
         };
         return View(vm);
     }
@@ -108,6 +114,9 @@ public class TrainingController : Controller
             return View(model);
         }
 
+        // Always use the server-side project — prevents cross-tenant assignment via form tampering
+        var projectId = CurrentProjectId > 0 ? CurrentProjectId : model.ProjectId;
+
         var dto = new
         {
             title = model.Title,
@@ -117,7 +126,7 @@ public class TrainingController : Controller
             trainerName = model.TrainerName,
             trainerUsername = model.TrainerUsername,
             dueDate = model.DueDate,
-            projectId = model.ProjectId,
+            projectId,
             evaluationResultId = model.EvaluationResultId,
             humanReviewItemId = model.HumanReviewItemId,
             createdBy = User.Identity?.Name ?? "admin",
@@ -149,6 +158,7 @@ public class TrainingController : Controller
     {
         var plan = await _api.GetTrainingPlan(id);
         if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
         if (plan.Status is "Completed" or "Closed")
         {
             TempData["Error"] = "Cannot edit a Completed or Closed training plan.";
@@ -184,6 +194,11 @@ public class TrainingController : Controller
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, CreateTrainingPlanViewModel model)
     {
+        // Validate tenant ownership before updating
+        var existing = await _api.GetTrainingPlan(id);
+        if (existing == null) return NotFound();
+        if (!CanAccessPlan(existing)) return Forbid();
+
         List<CreateTrainingPlanItemViewModel> items;
         try { items = JsonSerializer.Deserialize<List<CreateTrainingPlanItemViewModel>>(model.ItemsJson, _json) ?? new(); }
         catch { items = new(); }
@@ -196,6 +211,9 @@ public class TrainingController : Controller
             return View("Create", model);
         }
 
+        // Preserve the plan's original projectId — prevent cross-tenant re-assignment
+        var projectId = existing.ProjectId;
+
         var dto = new
         {
             title = model.Title,
@@ -205,7 +223,7 @@ public class TrainingController : Controller
             trainerName = model.TrainerName,
             trainerUsername = model.TrainerUsername,
             dueDate = model.DueDate,
-            projectId = model.ProjectId
+            projectId
         };
 
         var ok = await _api.UpdateTrainingPlan(id, dto);
@@ -227,6 +245,10 @@ public class TrainingController : Controller
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Activate(int id)
     {
+        var plan = await _api.GetTrainingPlan(id);
+        if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
+
         var ok = await _api.UpdateTrainingPlanStatus(id,
             new { status = "Active", updatedBy = User.Identity?.Name ?? "admin" });
         TempData[ok ? "Success" : "Error"] = ok
@@ -241,6 +263,10 @@ public class TrainingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(int id)
     {
+        var plan = await _api.GetTrainingPlan(id);
+        if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
+
         var ok = await _api.UpdateTrainingPlanStatus(id,
             new { status = "InProgress", updatedBy = User.Identity?.Name ?? "trainer" });
         TempData[ok ? "Success" : "Error"] = ok
@@ -255,6 +281,10 @@ public class TrainingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteItem(int planId, int itemId, string? completionNotes)
     {
+        var plan = await _api.GetTrainingPlan(planId);
+        if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
+
         var ok = await _api.CompleteTrainingPlanItem(planId, itemId,
             new { completedBy = User.Identity?.Name ?? "trainer", completionNotes });
         TempData[ok ? "Success" : "Error"] = ok
@@ -271,6 +301,7 @@ public class TrainingController : Controller
     {
         var plan = await _api.GetTrainingPlan(id);
         if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
         return View(new CloseTrainingPlanViewModel { PlanId = id });
     }
 
@@ -279,6 +310,10 @@ public class TrainingController : Controller
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Close(CloseTrainingPlanViewModel model)
     {
+        var plan = await _api.GetTrainingPlan(model.PlanId);
+        if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
+
         var result = await _api.CloseTrainingPlan(model.PlanId,
             new { closedBy = User.Identity?.Name ?? "admin", closingNotes = model.ClosingNotes });
         if (result == null)
@@ -297,12 +332,24 @@ public class TrainingController : Controller
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
+        var plan = await _api.GetTrainingPlan(id);
+        if (plan == null) return NotFound();
+        if (!CanAccessPlan(plan)) return Forbid();
+
         await _api.DeleteTrainingPlan(id);
         TempData["Success"] = "Training plan deleted.";
         return RedirectToAction(nameof(Index));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns true when the current user's project can access the plan.
+    /// Access is always granted when no project is selected (CurrentProjectId == 0),
+    /// or when the plan has no project association, or when the IDs match.
+    /// </summary>
+    private bool CanAccessPlan(TrainingPlanViewModel plan) =>
+        CurrentProjectId == 0 || plan.ProjectId == null || plan.ProjectId == CurrentProjectId;
 
     private static string? BuildDefaultDescription(string? formName, string? aiReasoning)
     {

@@ -24,6 +24,15 @@ public class EvaluationResult
     /// <summary>Call recording duration in seconds (populated by the pipeline when available).</summary>
     public int? CallDurationSeconds { get; set; }
 
+    /// <summary>Overall AI quality assessment summary saved at audit time.</summary>
+    public string? OverallReasoning { get; set; }
+
+    /// <summary>JSON-serialized SentimentViewModel stored when an AI audit is saved.</summary>
+    public string? SentimentJson { get; set; }
+
+    /// <summary>JSON array [{fieldId, reasoning}] — per-field AI reasoning stored at save time.</summary>
+    public string? FieldReasoningJson { get; set; }
+
     public ICollection<EvaluationScore> Scores { get; set; } = new List<EvaluationScore>();
 
     [NotMapped]

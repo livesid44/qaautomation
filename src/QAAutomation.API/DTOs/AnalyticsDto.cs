@@ -15,6 +15,12 @@ public class AnalyticsDto
     /// <summary>Average QA score % per evaluation form (used as "call type").</summary>
     public List<CallTypeScoreDto> CallTypeScores { get; set; } = new();
 
+    /// <summary>Per-agent daily score trend — one row per agent per date.</summary>
+    public List<AgentDailyTrendDto> AgentDailyTrends { get; set; } = new();
+
+    /// <summary>Per-section daily score trend — one row per section per date.</summary>
+    public List<SectionDailyTrendDto> SectionDailyTrends { get; set; } = new();
+
     /// <summary>Total number of audit records included in this analysis.</summary>
     public int TotalAudits { get; set; }
 }
@@ -46,4 +52,138 @@ public class CallTypeScoreDto
     public string FormName { get; set; } = string.Empty;
     public double AvgScorePercent { get; set; }
     public int AuditCount { get; set; }
+}
+
+/// <summary>One agent's average QA score for a single calendar day.</summary>
+public class AgentDailyTrendDto
+{
+    public string AgentName { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;   // "yyyy-MM-dd"
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+/// <summary>One section's average QA score for a single calendar day.</summary>
+public class SectionDailyTrendDto
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;   // "yyyy-MM-dd"
+    public double AvgScorePercent { get; set; }
+    public int ScoredCount { get; set; }
+}
+
+/// <summary>
+/// AI-generated natural-language insights for the main analytics dashboard.
+/// Fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class AnalyticsInsightsDto
+{
+    /// <summary>Insight about the day-by-day QA score trend.</summary>
+    public string? DailyTrendInsight { get; set; }
+
+    /// <summary>Insight about agent-level performance patterns.</summary>
+    public string? AgentPerformanceInsight { get; set; }
+
+    /// <summary>Insight about parameter and section-level performance.</summary>
+    public string? ParameterInsight { get; set; }
+
+    /// <summary>Insight about call-type / form performance distribution.</summary>
+    public string? CallTypeInsight { get; set; }
+}
+
+// ── Explainability analytics DTOs ─────────────────────────────────────────────
+
+/// <summary>Full explainability payload returned by GET /api/analytics/explainability.</summary>
+public class ExplainabilityDto
+{
+    public int TotalAudits { get; set; }
+    public int TotalReviewed { get; set; }
+    public double AiHitlAgreementRate { get; set; }
+
+    /// <summary>Per-parameter decision drivers: shows which signals drove pass/fail outcomes.</summary>
+    public List<DecisionDriverDto> DecisionDrivers { get; set; } = new();
+
+    /// <summary>Signal usage statistics: how consistently each parameter is scored and where it is missed.</summary>
+    public List<SignalUsageDto> SignalUsage { get; set; } = new();
+
+    /// <summary>Human-in-the-loop agreement breakdown by verdict and sampling policy.</summary>
+    public List<HitlAgreementDto> HitlAgreement { get; set; } = new();
+
+    /// <summary>Which parameters most frequently contributed to audit failures (score &lt; 60%).</summary>
+    public List<FailureReasonDto> FailureReasons { get; set; } = new();
+}
+
+/// <summary>Shows how a single evaluation parameter drove pass/fail decisions across audits.</summary>
+public class DecisionDriverDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    /// <summary>Number of audits where this parameter scored below 60 % of its maximum.</summary>
+    public int LowScoreCount { get; set; }
+    /// <summary>Number of audits where this parameter scored at or above 80 % of its maximum.</summary>
+    public int HighScoreCount { get; set; }
+    /// <summary>Total number of audits that include this parameter.</summary>
+    public int TotalScoredCount { get; set; }
+    /// <summary>Standard deviation of scores as a %, indicating variability / impact on outcomes.</summary>
+    public double ScoreVariability { get; set; }
+    /// <summary>True when this parameter's average falls below 60 % — marks it as a risk area.</summary>
+    public bool IsRiskArea { get; set; }
+}
+
+/// <summary>Tracks how a parameter's signal is utilised: fully scored, partially, or missed entirely.</summary>
+public class SignalUsageDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    /// <summary>Total number of audits that include a score for this parameter.</summary>
+    public int TimesScored { get; set; }
+    /// <summary>Number of audits where the parameter received the maximum possible rating.</summary>
+    public int TimesFullScore { get; set; }
+    /// <summary>Number of audits where the parameter scored zero.</summary>
+    public int TimesMissed { get; set; }
+    /// <summary>Percentage of scored instances where full marks were awarded.</summary>
+    public double FullScoreRate { get; set; }
+    /// <summary>Percentage of scored instances where the parameter was completely missed (0).</summary>
+    public double MissRate { get; set; }
+}
+
+/// <summary>One row of HITL agreement analytics — how often humans agreed/disagreed with AI by verdict and policy.</summary>
+public class HitlAgreementDto
+{
+    public string ReviewVerdict { get; set; } = string.Empty;    // Agree | Disagree | Partial
+    public string PolicyName { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public double Percentage { get; set; }
+}
+
+/// <summary>Shows which parameter most often caused an audit to be classified as a failure.</summary>
+public class FailureReasonDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    /// <summary>Number of failed audits where this parameter scored below 60 %.</summary>
+    public int FailedAuditCount { get; set; }
+    /// <summary>Percentage of all failed audits where this parameter contributed to the failure.</summary>
+    public double ContributionPercent { get; set; }
+    public double AvgScoreInFailedAudits { get; set; }
+}
+
+/// <summary>
+/// AI-generated natural-language insights for each section of the Explainability analytics page.
+/// Fields are null when the LLM is not configured or when there is insufficient data.
+/// </summary>
+public class ExplainabilityInsightsDto
+{
+    /// <summary>2-3 sentence insight for the Decision Drivers chart.</summary>
+    public string? DecisionDriversInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the AI vs Human Agreement chart.</summary>
+    public string? HitlAgreementInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the Signal Utilisation chart.</summary>
+    public string? SignalUsageInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the Failure Reason Analysis table.</summary>
+    public string? FailureReasonsInsight { get; set; }
 }

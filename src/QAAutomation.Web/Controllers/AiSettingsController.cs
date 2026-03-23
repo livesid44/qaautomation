@@ -31,10 +31,12 @@ public class AiSettingsController : Controller
         ViewData["LlmKeyIsSet"] = settings.LlmApiKey == "***";
         ViewData["LangKeyIsSet"] = settings.LanguageApiKey == "***";
         ViewData["SpeechKeyIsSet"] = settings.SpeechApiKey == "***";
+        ViewData["GoogleKeyIsSet"] = settings.GoogleApiKey == "***";
         // Never display masked keys — show blank so admin knows they can enter a new value
         if (settings.LlmApiKey == "***") settings.LlmApiKey = "";
         if (settings.LanguageApiKey == "***") settings.LanguageApiKey = "";
         if (settings.SpeechApiKey == "***") settings.SpeechApiKey = "";
+        if (settings.GoogleApiKey == "***") settings.GoogleApiKey = "";
         ViewData["ApiBaseUrl"] = _api.BaseUrl;
         return View(settings);
     }
@@ -61,5 +63,15 @@ public class AiSettingsController : Controller
             TempData["Error"] = "Failed to save settings — please check the API connection.";
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("test-llm")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TestLlm()
+    {
+        var result = await _api.TestLlmConnectionAsync();
+        if (result == null)
+            return Json(new { success = false, message = "Could not reach the backend API.", latencyMs = 0 });
+        return Json(new { success = result.Success, message = result.Message, latencyMs = result.LatencyMs });
     }
 }

@@ -13,6 +13,7 @@ public interface IAutoAuditService
         AutoAuditRequestDto request,
         IEnumerable<AutoAuditFieldDefinition> fields,
         string formName,
+        int? projectId = null,
         CancellationToken cancellationToken = default);
 }
 

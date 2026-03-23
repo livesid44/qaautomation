@@ -43,6 +43,33 @@
                         <input type="hidden" name="isActive" value="false" />
                         <label for="isActive" class="form-check-label small">Project is active</label>
                     </div>
+                    <hr class="my-3" />
+                    <div class="mb-2">
+                        <div class="fw-semibold small mb-1"><i class="bi bi-shield-lock me-1 text-danger"></i>PII / SPII Protection</div>
+                        <div class="text-muted" style="font-size:.75rem">When enabled, call transcripts are scanned for personally identifiable information before being sent to the LLM.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="piiProtectionEnabled" value="true" class="form-check-input" id="piiProtectionEnabled"
+                               @(Model.PiiProtectionEnabled ? "checked" : "") onchange="togglePiiMode(this)" />
+                        <input type="hidden" name="piiProtectionEnabled" value="false" />
+                        <label for="piiProtectionEnabled" class="form-check-label small fw-semibold">Enable PII/SPII protection for this project</label>
+                    </div>
+                    <div class="mb-3" id="piiModeSection" style="@(Model.PiiProtectionEnabled ? "" : "display:none")">
+                        <label class="form-label fw-semibold small">Protection Mode</label>
+                        <select name="piiRedactionMode" class="form-select form-select-sm" style="max-width:260px">
+                            @if (Model.PiiRedactionMode == "Block") {
+                                <option value="Redact">Redact — replace PII with placeholders</option>
+                                <option value="Block" selected>Block  — reject audit if PII detected</option>
+                            } else {
+                                <option value="Redact" selected>Redact — replace PII with placeholders</option>
+                                <option value="Block">Block  — reject audit if PII detected</option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            <strong>Redact</strong>: tokens like emails, phone numbers, SSNs are replaced with <code>[EMAIL]</code>, <code>[PHONE]</code>, etc. before the transcript reaches the AI.<br />
+                            <strong>Block</strong>: the AI audit is refused entirely when sensitive data is detected.
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Save</button>
                 </form>
             </div>
@@ -126,3 +153,11 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    function togglePiiMode(cb) {
+        document.getElementById('piiModeSection').style.display = cb.checked ? '' : 'none';
+    }
+</script>
+}

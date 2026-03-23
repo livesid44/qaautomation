@@ -12,7 +12,20 @@ public class AnalyticsController : ProjectAwareController
     public async Task<IActionResult> Index()
     {
         var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
-        var vm = await _api.GetAnalytics(pid);
-        return View(vm ?? new Models.AnalyticsViewModel());
+        var dataTask     = _api.GetAnalytics(pid);
+        var insightsTask = _api.GetAnalyticsInsights(pid);
+        await Task.WhenAll(dataTask, insightsTask);
+        ViewBag.Insights = await insightsTask ?? new Models.AnalyticsInsightsViewModel();
+        return View(await dataTask ?? new Models.AnalyticsViewModel());
+    }
+
+    public async Task<IActionResult> Explainability()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var dataTask     = _api.GetExplainabilityAnalytics(pid);
+        var insightsTask = _api.GetExplainabilityInsights(pid);
+        await Task.WhenAll(dataTask, insightsTask);
+        ViewBag.Insights = await insightsTask ?? new Models.ExplainabilityInsightsViewModel();
+        return View(await dataTask ?? new Models.ExplainabilityViewModel());
     }
 }
