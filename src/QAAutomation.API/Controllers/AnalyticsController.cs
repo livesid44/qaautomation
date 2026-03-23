@@ -110,13 +110,175 @@ public class AnalyticsController : ControllerBase
                 AuditCount = g.Count()
             }).ToList();
 
+        // ── Agent daily trend (per-agent per-date scores) ─────────────────────
+        var agentDailyTrends = results
+            .Where(r => !string.IsNullOrWhiteSpace(r.AgentName))
+            .GroupBy(r => new { Agent = r.AgentName!, Date = (r.CallDate ?? r.EvaluatedAt).Date })
+            .OrderBy(g => g.Key.Date).ThenBy(g => g.Key.Agent)
+            .Select(g => new AgentDailyTrendDto
+            {
+                AgentName = g.Key.Agent,
+                Date = g.Key.Date.ToString("yyyy-MM-dd"),
+                AvgScorePercent = Math.Round(g.Average(ScorePercent), 1),
+                AuditCount = g.Count()
+            }).ToList();
+
+        // ── Section daily trend (per-section per-date averages) ───────────────
+        var sectionDailyTrends = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue && s.Field.Section != null)
+                .Select(s => new
+                {
+                    Section = s.Field.Section!.Title,
+                    Date = (r.CallDate ?? r.EvaluatedAt).Date,
+                    ScorePct = Math.Round(s.NumericValue!.Value / s.Field.MaxRating * 100, 1)
+                }))
+            .GroupBy(x => new { x.Section, x.Date })
+            .OrderBy(g => g.Key.Date).ThenBy(g => g.Key.Section)
+            .Select(g => new SectionDailyTrendDto
+            {
+                SectionTitle = g.Key.Section,
+                Date = g.Key.Date.ToString("yyyy-MM-dd"),
+                AvgScorePercent = Math.Round(g.Average(x => x.ScorePct), 1),
+                ScoredCount = g.Count()
+            }).ToList();
+
         return Ok(new AnalyticsDto
         {
             TotalAudits = results.Count,
             DailyScores = daily,
             AgentScores = agents,
             ParameterTrends = paramTrends,
-            CallTypeScores = callTypes
+            CallTypeScores = callTypes,
+            AgentDailyTrends = agentDailyTrends,
+            SectionDailyTrends = sectionDailyTrends
+        });
+    }
+
+    // ── GET /api/analytics/insights ───────────────────────────────────────────
+
+    /// <summary>
+    /// Uses the configured LLM to generate natural-language insights for each section of
+    /// the main Analytics Dashboard (daily trend, agent performance, parameters, call types).
+    /// Returns an empty DTO (all nulls) when the LLM is not configured or data is insufficient.
+    /// </summary>
+    [HttpGet("insights")]
+    [ProducesResponseType(typeof(AnalyticsInsightsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AnalyticsInsightsDto>> GetAnalyticsInsights(
+        [FromQuery] int? projectId = null,
+        CancellationToken ct = default)
+    {
+        var cfg = await _aiConfig.GetAsync();
+        if (string.IsNullOrWhiteSpace(cfg.LlmEndpoint) || string.IsNullOrWhiteSpace(cfg.LlmApiKey))
+            return Ok(new AnalyticsInsightsDto());
+
+        // Load the same data as Get()
+        var query = _db.EvaluationResults
+            .Include(r => r.Form).ThenInclude(f => f.Lob)
+            .Include(r => r.Scores).ThenInclude(s => s.Field).ThenInclude(f => f.Section)
+            .AsNoTracking().AsQueryable();
+        if (projectId.HasValue)
+            query = query.Where(r => r.Form.Lob != null && r.Form.Lob.ProjectId == projectId.Value);
+        var results = await query.ToListAsync(ct);
+
+        if (results.Count == 0)
+            return Ok(new AnalyticsInsightsDto());
+
+        static double Pct(global::QAAutomation.API.Models.EvaluationResult r)
+        {
+            var max = r.Scores.Where(s => s.Field?.FieldType == global::QAAutomation.API.Models.FieldType.Rating).Sum(s => s.Field.MaxRating);
+            var total = r.Scores.Sum(s => s.NumericValue ?? 0);
+            return max > 0 ? Math.Round(total / max * 100, 1) : 0;
+        }
+
+        // Daily trend summary
+        var daily = results
+            .GroupBy(r => (r.CallDate ?? r.EvaluatedAt).Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new { Date = g.Key.ToString("yyyy-MM-dd"), Avg = Math.Round(g.Average(Pct), 1), Count = g.Count() })
+            .ToList();
+        var dailySummary = daily.Count > 0
+            ? $"Total {results.Count} audits over {daily.Count} days. " +
+              $"Start avg: {daily.First().Avg}%, End avg: {daily.Last().Avg}%. " +
+              $"Best day: {daily.MaxBy(d => d.Avg)?.Date} ({daily.Max(d => d.Avg)}%), " +
+              $"Worst day: {daily.MinBy(d => d.Avg)?.Date} ({daily.Min(d => d.Avg)}%)."
+            : "No daily data.";
+
+        // Agent performance summary (top 5)
+        var agents = results
+            .Where(r => !string.IsNullOrWhiteSpace(r.AgentName))
+            .GroupBy(r => r.AgentName!)
+            .Select(g => new { Agent = g.Key, Avg = Math.Round(g.Average(Pct), 1), Count = g.Count() })
+            .OrderByDescending(a => a.Avg).Take(5)
+            .Select(a => $"{a.Agent}: {a.Avg}% ({a.Count} audits)");
+        var agentSummary = string.Join(", ", agents);
+
+        // Parameter summary (5 lowest)
+        var paramSummary = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue)
+                .Select(s => new { Label = s.Field.Label, ScorePct = s.NumericValue!.Value / s.Field.MaxRating * 100.0 }))
+            .GroupBy(x => x.Label)
+            .Select(g => new { Label = g.Key, Avg = Math.Round(g.Average(x => x.ScorePct), 1) })
+            .OrderBy(p => p.Avg).Take(5)
+            .Select(p => $"{p.Label}: {p.Avg}%");
+
+        // Call-type summary
+        var ctSummary = results
+            .GroupBy(r => r.Form?.Name ?? "Unknown")
+            .Select(g => new { Form = g.Key, Avg = Math.Round(g.Average(Pct), 1), Count = g.Count() })
+            .OrderByDescending(c => c.Count).Take(5)
+            .Select(c => $"{c.Form}: {c.Avg}% ({c.Count} audits)");
+
+        // Generate AI insights
+        var (ep, dep) = AzureOpenAIHelper.NormalizeEndpoint(cfg.LlmEndpoint, cfg.LlmDeployment);
+        var aiClient = AzureOpenAIHelper.CreateClient(ep, cfg.LlmApiKey, dep);
+        var aiOpts = new ChatCompletionOptions { Temperature = 0.4f, MaxOutputTokenCount = 180 };
+
+        async Task<string?> Ask(string prompt)
+        {
+            try
+            {
+                var messages = new List<ChatMessage>
+                {
+                    ChatMessage.CreateSystemMessage(
+                        "You are a QA analytics expert. Write concise, actionable insights (2-3 sentences, plain English) " +
+                        "based on the data summary provided. Focus on what the numbers mean for call-centre quality and what action to take."),
+                    ChatMessage.CreateUserMessage(prompt)
+                };
+                var resp = await aiClient.CompleteChatAsync(messages, aiOpts, ct);
+                return resp.Value.Content[0].Text?.Trim();
+            }
+            catch { return null; }
+        }
+
+        var dailyTask = Ask(
+            $"Day-by-day QA score trend: {dailySummary}\n" +
+            "What does this trend indicate about quality improvement or decline?");
+
+        var agentTask = string.IsNullOrWhiteSpace(agentSummary)
+            ? Task.FromResult<string?>(null)
+            : Ask($"Agent performance ({results.Count} total audits). Top agents by avg score:\n{agentSummary}\n" +
+                  "What does this distribution indicate about agent performance and coaching needs?");
+
+        var paramTask = Ask(
+            $"Parameter performance — 5 lowest-scoring parameters across {results.Count} audits:\n" +
+            string.Join("\n", paramSummary) +
+            "\nWhat do these low scores indicate and what should be prioritised?");
+
+        var ctTask = Ask(
+            $"Call type / form performance ({results.Count} total audits):\n" +
+            string.Join("\n", ctSummary) +
+            "\nWhat does this distribution indicate about which call types need quality focus?");
+
+        await Task.WhenAll(dailyTask, agentTask, paramTask, ctTask);
+
+        return Ok(new AnalyticsInsightsDto
+        {
+            DailyTrendInsight       = await dailyTask,
+            AgentPerformanceInsight = await agentTask,
+            ParameterInsight        = await paramTask,
+            CallTypeInsight         = await ctTask
         });
     }
 

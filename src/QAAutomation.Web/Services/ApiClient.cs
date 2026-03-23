@@ -583,6 +583,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityInsights failed"); return null; }
     }
 
+    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/insights?projectId={projectId.Value}" : "api/analytics/insights";
+        try { return await _http.GetFromJsonAsync<AnalyticsInsightsViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
+    }
+
     // ── Audit Log ─────────────────────────────────────────────────────────────
 
     public async Task<AuditLogPageViewModel?> GetAuditLogs(

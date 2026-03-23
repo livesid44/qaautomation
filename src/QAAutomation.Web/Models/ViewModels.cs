@@ -491,6 +491,8 @@ public class AnalyticsViewModel
     public List<AgentScoreViewModel> AgentScores { get; set; } = new();
     public List<ParameterTrendViewModel> ParameterTrends { get; set; } = new();
     public List<CallTypeScoreViewModel> CallTypeScores { get; set; } = new();
+    public List<AgentDailyTrendViewModel> AgentDailyTrends { get; set; } = new();
+    public List<SectionDailyTrendViewModel> SectionDailyTrends { get; set; } = new();
 }
 
 public class DailyScoreViewModel
@@ -520,6 +522,34 @@ public class CallTypeScoreViewModel
     public string FormName { get; set; } = string.Empty;
     public double AvgScorePercent { get; set; }
     public int AuditCount { get; set; }
+}
+
+public class AgentDailyTrendViewModel
+{
+    public string AgentName { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+public class SectionDailyTrendViewModel
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int ScoredCount { get; set; }
+}
+
+/// <summary>
+/// AI-generated natural-language insights for the main Analytics Dashboard.
+/// All fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class AnalyticsInsightsViewModel
+{
+    public string? DailyTrendInsight { get; set; }
+    public string? AgentPerformanceInsight { get; set; }
+    public string? ParameterInsight { get; set; }
+    public string? CallTypeInsight { get; set; }
 }
 
 // ── Explainability Analytics ViewModels ────────────────────────────────────────

@@ -15,6 +15,12 @@ public class AnalyticsDto
     /// <summary>Average QA score % per evaluation form (used as "call type").</summary>
     public List<CallTypeScoreDto> CallTypeScores { get; set; } = new();
 
+    /// <summary>Per-agent daily score trend — one row per agent per date.</summary>
+    public List<AgentDailyTrendDto> AgentDailyTrends { get; set; } = new();
+
+    /// <summary>Per-section daily score trend — one row per section per date.</summary>
+    public List<SectionDailyTrendDto> SectionDailyTrends { get; set; } = new();
+
     /// <summary>Total number of audit records included in this analysis.</summary>
     public int TotalAudits { get; set; }
 }
@@ -46,6 +52,43 @@ public class CallTypeScoreDto
     public string FormName { get; set; } = string.Empty;
     public double AvgScorePercent { get; set; }
     public int AuditCount { get; set; }
+}
+
+/// <summary>One agent's average QA score for a single calendar day.</summary>
+public class AgentDailyTrendDto
+{
+    public string AgentName { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;   // "yyyy-MM-dd"
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+}
+
+/// <summary>One section's average QA score for a single calendar day.</summary>
+public class SectionDailyTrendDto
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;   // "yyyy-MM-dd"
+    public double AvgScorePercent { get; set; }
+    public int ScoredCount { get; set; }
+}
+
+/// <summary>
+/// AI-generated natural-language insights for the main analytics dashboard.
+/// Fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class AnalyticsInsightsDto
+{
+    /// <summary>Insight about the day-by-day QA score trend.</summary>
+    public string? DailyTrendInsight { get; set; }
+
+    /// <summary>Insight about agent-level performance patterns.</summary>
+    public string? AgentPerformanceInsight { get; set; }
+
+    /// <summary>Insight about parameter and section-level performance.</summary>
+    public string? ParameterInsight { get; set; }
+
+    /// <summary>Insight about call-type / form performance distribution.</summary>
+    public string? CallTypeInsight { get; set; }
 }
 
 // ── Explainability analytics DTOs ─────────────────────────────────────────────
