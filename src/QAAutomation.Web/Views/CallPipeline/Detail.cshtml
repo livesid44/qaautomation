@@ -1,10 +1,12 @@
 @model CallPipelineJobViewModel
+@inject QAAutomation.Web.Services.ApiClient ApiClient
 @{
     ViewData["Title"] = $"Pipeline Job: {Model.Name}";
     var completePct = Model.TotalItems > 0 ? (double)(Model.CompletedItems + Model.FailedItems) / Model.TotalItems * 100 : 0;
     var avgScore = Model.Items.Any(i => i.ScorePercent.HasValue)
         ? Model.Items.Where(i => i.ScorePercent.HasValue).Average(i => i.ScorePercent!.Value)
         : (double?)null;
+    var isLive = Model.Status is "Running" or "Pending";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -20,7 +22,7 @@
                     _ => "bg-secondary"
                 };
             }
-            <span class="badge @badgeClass ms-2">@Model.Status</span>
+            <span class="badge @badgeClass ms-2" id="pipelineStatusBadge">@Model.Status</span>
         </h4>
         <p class="text-muted mb-0">
             <span class="badge bg-light text-dark border me-2">@Model.SourceType</span>
@@ -99,7 +101,11 @@
             <span class="small fw-semibold">@completePct.ToString("F0")%</span>
         </div>
         <div class="progress" style="height:8px">
-            <div class="progress-bar bg-success" style="width:@((Model.TotalItems > 0 ? (double)Model.CompletedItems / Model.TotalItems * 100 : 0).ToString("F0"))%"></div>
+            <div class="progress-bar bg-success" id="pipelineProgressBar"
+                 role="progressbar"
+                 style="width:@((Model.TotalItems > 0 ? (double)Model.CompletedItems / Model.TotalItems * 100 : 0).ToString("F0"))%"
+                 aria-valuenow="@((int)(Model.TotalItems > 0 ? (double)Model.CompletedItems / Model.TotalItems * 100 : 0))"
+                 aria-valuemin="0" aria-valuemax="100"></div>
             <div class="progress-bar bg-danger" style="width:@((Model.TotalItems > 0 ? (double)Model.FailedItems / Model.TotalItems * 100 : 0).ToString("F0"))%"></div>
         </div>
     </div>
@@ -190,3 +196,95 @@
         }
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    const jobId      = @Model.Id;
+    const isLive     = @(isLive ? "true" : "false");
+    const apiBase    = '@Html.Raw(ApiClient.BaseUrl)';
+    const progressBar = document.getElementById('pipelineProgressBar');
+    const statusBadge = document.getElementById('pipelineStatusBadge');
+
+    // ── Request browser Notification permission ───────────────────────────────
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    function sendNotification(title, body, icon) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: icon || '/favicon.ico',
+                tag: 'pipeline-' + jobId   // de-dupe: replace existing toast for same job
+            });
+        }
+    }
+
+    if (!isLive) return; // Nothing to watch — job already finished
+
+    // ── Open SSE stream ───────────────────────────────────────────────────────
+    const sseUrl = apiBase + '/api/callpipeline/' + jobId + '/progress';
+    const es = new EventSource(sseUrl);
+    let completedCount = 0;
+
+    es.onmessage = function(e) {
+        let evt;
+        try { evt = JSON.parse(e.data); } catch { return; }
+
+        completedCount = evt.completedSoFar || completedCount;
+        const total    = evt.totalItems || 1;
+        const pct      = Math.round(completedCount / total * 100);
+
+        // ── Update progress bar ───────────────────────────────────────────
+        if (progressBar) {
+            progressBar.style.width = pct + '%';
+            progressBar.setAttribute('aria-valuenow', pct);
+            progressBar.textContent = pct + '%';
+        }
+
+        // ── Item-level toast notification ─────────────────────────────────
+        if (evt.itemStatus === 'Completed') {
+            const label = evt.agentName
+                ? evt.agentName + (evt.callReference ? ' — ' + evt.callReference : '')
+                : (evt.callReference || 'Item #' + evt.itemId);
+            const score = evt.scorePercent != null ? ' · Score: ' + evt.scorePercent.toFixed(1) + '%' : '';
+            sendNotification('✅ Audit Complete', label + score);
+        } else if (evt.itemStatus === 'Failed') {
+            const ref = evt.callReference || 'Item #' + evt.itemId;
+            sendNotification('❌ Audit Failed', ref + '\n' + (evt.errorMessage || ''));
+        }
+
+        // ── Job-level completion ───────────────────────────────────────────
+        if (evt.jobStatus === 'Completed' || evt.jobStatus === 'Failed') {
+            es.close();
+            if (statusBadge) {
+                statusBadge.className = evt.jobStatus === 'Completed'
+                    ? 'badge bg-success ms-2'
+                    : 'badge bg-danger ms-2';
+                statusBadge.textContent = evt.jobStatus;
+            }
+            if (progressBar) {
+                progressBar.style.width = '100%';
+                progressBar.setAttribute('aria-valuenow', 100);
+                progressBar.textContent = evt.jobStatus === 'Completed' ? 'Done' : 'Finished with errors';
+                progressBar.classList.toggle('bg-danger', evt.jobStatus === 'Failed');
+            }
+            sendNotification(
+                evt.jobStatus === 'Completed' ? '🎉 Pipeline Job Done' : '⚠️ Pipeline Job Finished',
+                completedCount + ' of ' + total + ' calls audited.',
+                null
+            );
+            // Reload the table after a short delay so results appear
+            setTimeout(() => window.location.reload(), 2000);
+        }
+    };
+
+    es.onerror = function() {
+        es.close();
+        // SSE failed — fall back to a single page reload after 5 s
+        setTimeout(() => window.location.reload(), 5000);
+    };
+})();
+</script>
+}

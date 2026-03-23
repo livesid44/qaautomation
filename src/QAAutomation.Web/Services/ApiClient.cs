@@ -621,6 +621,39 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "CreateBatchUrlPipelineJob failed"); return null; }
     }
 
+    public async Task<(CallPipelineJobViewModel? Job, string? Error)> UploadTranscriptFile(
+        Stream fileStream, string fileName, string name, int formId, int? projectId)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            // Sanitise fileName: strip non-ASCII and control characters to prevent
+            // Content-Disposition header injection (CWE-116 / CodeQL xss alert)
+            var safeFileName = System.Text.RegularExpressions.Regex.Replace(
+                fileName, @"[^\x20-\x7E]", "_");
+            content.Add(new StreamContent(fileStream), "file", safeFileName);
+            content.Add(new StringContent(name), "name");
+            content.Add(new StringContent(formId.ToString()), "formId");
+            if (projectId.HasValue)
+                content.Add(new StringContent(projectId.Value.ToString()), "projectId");
+            content.Add(new StringContent("web"), "submittedBy");
+
+            var r = await _http.PostAsync("api/callpipeline/upload-file", content);
+            if (!r.IsSuccessStatusCode)
+            {
+                var body = await r.Content.ReadAsStringAsync();
+                return (null, body);
+            }
+            var job = await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+            return (job, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "UploadTranscriptFile failed");
+            return (null, ex.Message);
+        }
+    }
+
     public async Task<CallPipelineJobViewModel?> CreateConnectorPipelineJob(object dto)
     {
         try

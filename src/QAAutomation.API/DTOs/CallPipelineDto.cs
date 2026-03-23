@@ -120,3 +120,23 @@ public class CreateConnectorJobDto
     public string? FilterFromDate { get; set; }
     public string? FilterToDate { get; set; }
 }
+
+// ── SSE progress event ────────────────────────────────────────────────────────
+
+/// <summary>
+/// One Server-Sent Event payload emitted by GET /api/callpipeline/{id}/progress
+/// for each item that finishes processing.
+/// </summary>
+public class PipelineProgressEventDto
+{
+    public int ItemId { get; set; }
+    public int JobId { get; set; }
+    public string ItemStatus { get; set; } = string.Empty;   // "Completed" | "Failed"
+    public string? AgentName { get; set; }
+    public string? CallReference { get; set; }
+    public double? ScorePercent { get; set; }
+    public string? ErrorMessage { get; set; }
+    public int CompletedSoFar { get; set; }
+    public int TotalItems { get; set; }
+    public string JobStatus { get; set; } = string.Empty;    // "Running" | "Completed" | "Failed"
+}

@@ -206,6 +206,10 @@
                href="@Url.Action("Index", "CallPipeline")">
                 <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
             </a>
+            <a class="nav-link ps-4 @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" && ViewContext.RouteData.Values["action"]?.ToString() == "FileUpload" ? "active" : "")"
+               href="@Url.Action("FileUpload", "CallPipeline")" style="font-size:.88rem">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Upload CSV / Excel
+            </a>
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
                href="@Url.Action("Index", "HumanReview")">
                 <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>

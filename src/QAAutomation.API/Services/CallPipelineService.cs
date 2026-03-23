@@ -23,6 +23,8 @@ public interface ICallPipelineService
 {
     Task<CallPipelineJobDto> CreateBatchUrlJobAsync(CreateBatchUrlJobDto dto, CancellationToken ct = default);
     Task<CallPipelineJobDto> CreateConnectorJobAsync(CreateConnectorJobDto dto, CancellationToken ct = default);
+    Task<CallPipelineJobDto> CreateFileUploadJobAsync(string name, int formId, int? projectId, string submittedBy,
+        List<BatchUrlItemDto> items, CancellationToken ct = default);
     Task ProcessJobAsync(int jobId, CancellationToken ct = default);
     Task<CallPipelineJobDto?> GetJobAsync(int id);
     Task<List<CallPipelineJobDto>> ListJobsAsync(int? projectId = null);
@@ -36,6 +38,7 @@ public class CallPipelineService : ICallPipelineService
     private readonly IAzureSpeechService _speechService;
     private readonly IHttpClientFactory _httpFactory;
     private readonly IAuditLogService _auditLog;
+    private readonly PipelineProgressHub _progressHub;
     private readonly ILogger<CallPipelineService> _logger;
 
     // Maximum transcript length fed to the LLM (same cap as the interactive UI)
@@ -47,6 +50,7 @@ public class CallPipelineService : ICallPipelineService
         IAzureSpeechService speechService,
         IHttpClientFactory httpFactory,
         IAuditLogService auditLog,
+        PipelineProgressHub progressHub,
         ILogger<CallPipelineService> logger)
     {
         _db = db;
@@ -54,6 +58,7 @@ public class CallPipelineService : ICallPipelineService
         _speechService = speechService;
         _httpFactory = httpFactory;
         _auditLog = auditLog;
+        _progressHub = progressHub;
         _logger = logger;
     }
 
@@ -81,6 +86,34 @@ public class CallPipelineService : ICallPipelineService
             }).ToList()
         };
 
+        _db.CallPipelineJobs.Add(job);
+        await _db.SaveChangesAsync(ct);
+        return await MapJobToDto(job);
+    }
+
+    public async Task<CallPipelineJobDto> CreateFileUploadJobAsync(
+        string name, int formId, int? projectId, string submittedBy,
+        List<BatchUrlItemDto> items, CancellationToken ct = default)
+    {
+        var job = new CallPipelineJob
+        {
+            Name       = name,
+            SourceType = "FileUpload",
+            FormId     = formId,
+            ProjectId  = projectId,
+            Status     = "Pending",
+            CreatedBy  = submittedBy,
+            CreatedAt  = DateTime.UtcNow,
+            Items      = items.Select(i => new CallPipelineItem
+            {
+                SourceReference = i.Url,
+                AgentName       = i.AgentName,
+                CallReference   = i.CallReference,
+                CallDate        = i.CallDate,
+                Status          = "Pending",
+                CreatedAt       = DateTime.UtcNow
+            }).ToList()
+        };
         _db.CallPipelineJobs.Add(job);
         await _db.SaveChangesAsync(ct);
         return await MapJobToDto(job);
@@ -190,17 +223,47 @@ public class CallPipelineService : ICallPipelineService
             .ToList();
 
         int errors = 0;
+        int completed = 0;
+        int total = job.Items.Count(i => i.Status == "Pending");
         foreach (var item in job.Items.Where(i => i.Status == "Pending"))
         {
             if (ct.IsCancellationRequested) break;
             await ProcessItemAsync(job, item, fieldDefinitions, form.Name, ct);
             if (item.Status == "Failed") errors++;
+            completed++;
             await _db.SaveChangesAsync(ct);
+
+            // Publish per-item progress for SSE subscribers
+            _progressHub.Publish(job.Id, new PipelineProgressEventDto
+            {
+                ItemId        = item.Id,
+                JobId         = job.Id,
+                ItemStatus    = item.Status,
+                AgentName     = item.AgentName,
+                CallReference = item.CallReference,
+                ScorePercent  = item.ScorePercent,
+                ErrorMessage  = item.Status == "Failed" ? item.ErrorMessage : null,
+                CompletedSoFar = completed,
+                TotalItems    = total,
+                JobStatus     = "Running"
+            });
         }
 
         job.Status = errors == job.Items.Count ? "Failed" : "Completed";
         job.CompletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+
+        // Final event + close all subscriber channels
+        _progressHub.Publish(job.Id, new PipelineProgressEventDto
+        {
+            ItemId        = 0,
+            JobId         = job.Id,
+            ItemStatus    = "Done",
+            CompletedSoFar = completed,
+            TotalItems    = total,
+            JobStatus     = job.Status
+        });
+        _progressHub.Complete(job.Id);
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
@@ -396,7 +459,7 @@ public class CallPipelineService : ICallPipelineService
     {
         var eventType = job.SourceType switch
         {
-            "BatchUrl"   => "UrlFetch",
+            "BatchUrl" or "FileUpload" => "UrlFetch",
             "SFTP"       => "SftpFetch",
             "SharePoint" => "SharePointFetch",
             "Verint"     => "VerintFetch",
@@ -404,8 +467,8 @@ public class CallPipelineService : ICallPipelineService
             "Ozonetel"   => "OzonetelFetch",
             _            => "ExternalFetch"
         };
-        var endpoint = job.SourceType == "BatchUrl"
-            ? item.SourceReference
+        var endpoint = job.SourceType is "BatchUrl" or "FileUpload"
+            ? (item.SourceReference?.StartsWith("data:", StringComparison.OrdinalIgnoreCase) == true ? "(inline transcript)" : item.SourceReference)
             : job.SharePointSiteUrl ?? job.SftpHost ?? job.SourceType;
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -413,7 +476,7 @@ public class CallPipelineService : ICallPipelineService
         {
             var transcript = job.SourceType switch
             {
-                "BatchUrl"   => await FetchUrlAsync(item.SourceReference ?? string.Empty, ct),
+                "BatchUrl" or "FileUpload" => await FetchUrlAsync(item.SourceReference ?? string.Empty, ct),
                 "SFTP"       => await FetchSftpAsync(job, item, ct),
                 "SharePoint" => await FetchSharePointAsync(job, item, ct),
                 "Verint" or "NICE" or "Ozonetel" => await FetchRecordingPlatformAsync(job, item, ct),
@@ -450,6 +513,12 @@ public class CallPipelineService : ICallPipelineService
     private async Task<string> FetchUrlAsync(string url, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(url)) return string.Empty;
+
+        // Inline transcript stored as a data URI: "data:text/plain,<url-encoded text>"
+        // Used by the FileUpload pipeline so no HTTP fetch is needed.
+        if (url.StartsWith("data:text/plain,", StringComparison.OrdinalIgnoreCase))
+            return Uri.UnescapeDataString(url["data:text/plain,".Length..]);
+
         try
         {
             var client = _httpFactory.CreateClient("pipeline");

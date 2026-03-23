@@ -655,6 +655,24 @@ public class CallPipelineBatchUrlViewModel
     public string UrlList { get; set; } = string.Empty;
 }
 
+/// <summary>Form model for uploading a CSV / XLSX file of transcripts.</summary>
+public class CallPipelineFileUploadViewModel
+{
+    [Required]
+    [Display(Name = "Job Name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [Display(Name = "Evaluation Form")]
+    public int FormId { get; set; }
+
+    public int? ProjectId { get; set; }
+
+    [Required]
+    [Display(Name = "Transcript File (CSV or XLSX)")]
+    public IFormFile? File { get; set; }
+}
+
 /// <summary>Form model for creating a connector-based pipeline job.</summary>
 public class CallPipelineConnectorViewModel
 {

@@ -1,0 +1,222 @@
+@model CallPipelineFileUploadViewModel
+@{
+    ViewData["Title"] = "Upload Transcript File";
+    var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new();
+}
+@section Styles {
+<style>
+    .drop-zone {
+        border: 2px dashed var(--brand-primary, #0d6efd);
+        border-radius: 10px;
+        background: #f8f9fc;
+        padding: 2.5rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: background .15s, border-color .15s;
+    }
+    .drop-zone.drag-over {
+        background: #e9f0ff;
+        border-color: #0a58ca;
+    }
+    .drop-zone.has-file {
+        background: #e9f9ee;
+        border-color: #198754;
+    }
+    .template-link { font-size: .85rem; }
+</style>
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="@Url.Action("Index", "CallPipeline")" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>Upload Transcript File</h4>
+        <p class="text-muted mb-0 small">Upload a CSV or Excel file — each row is auto-audited as a separate call.</p>
+    </div>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div>@err.ErrorMessage</div>
+        }
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Job Name</label>
+                        <input type="text" name="Name" value="@Model.Name"
+                               class="form-control" placeholder="e.g. March Call Batch" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Evaluation Form</label>
+                        <select name="FormId" class="form-select" required>
+                            <option value="">— Select a form —</option>
+                            @foreach (var f in forms)
+                            {
+                                if (f.Id == Model.FormId)
+                                {
+                                    <option value="@f.Id" selected>@f.Name</option>
+                                }
+                                else
+                                {
+                                    <option value="@f.Id">@f.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Transcript File</label>
+                        <div class="drop-zone" id="dropZone">
+                            <i class="bi bi-cloud-upload fs-2 text-primary mb-2 d-block"></i>
+                            <p class="mb-1 fw-semibold" id="dropLabel">Drag &amp; drop your CSV or XLSX file here</p>
+                            <p class="text-muted small mb-2">or</p>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('fileInput').click()">
+                                Browse File
+                            </button>
+                            <input type="file" id="fileInput" name="File" class="d-none"
+                                   accept=".csv,.xlsx,.tsv,.txt" required />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-upload me-1"></i>Upload &amp; Process
+                        </button>
+                        <a href="@Url.Action("Index", "CallPipeline")" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <!-- Format guide -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-transparent fw-semibold">
+                <i class="bi bi-info-circle text-primary me-2"></i>File Format Guide
+            </div>
+            <div class="card-body small">
+                <p>Your file must contain a header row. Recognised column names (case-insensitive):</p>
+                <table class="table table-sm table-bordered mb-2">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Column</th>
+                            <th>Required?</th>
+                            <th>Example names</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Transcript</strong></td>
+                            <td><span class="badge bg-danger">Yes</span></td>
+                            <td>transcript, transcription, text, content</td>
+                        </tr>
+                        <tr>
+                            <td>Agent Name</td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>agentName, agent, rep</td>
+                        </tr>
+                        <tr>
+                            <td>Call Reference</td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>callReference, callRef, interactionId, id</td>
+                        </tr>
+                        <tr>
+                            <td>Call Date</td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>callDate, date, timestamp</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <ul class="mb-0 ps-3">
+                    <li>CSV: comma, semicolon, or tab delimited</li>
+                    <li>XLSX: first worksheet is used; rows with an empty Transcript column are skipped</li>
+                    <li>Maximum file size: <strong>50 MB</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Download template -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center gap-3">
+                <i class="bi bi-file-earmark-arrow-down fs-3 text-success"></i>
+                <div>
+                    <div class="fw-semibold">Download Template</div>
+                    <div class="small text-muted mb-1">Start with our pre-formatted CSV template</div>
+                    <a id="downloadTemplate" href="#" class="btn btn-outline-success btn-sm template-link">
+                        <i class="bi bi-download me-1"></i>template.csv
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── Template CSV download ─────────────────────────────────────────────────
+    document.getElementById('downloadTemplate').addEventListener('click', function(e) {
+        e.preventDefault();
+        const csv = 'Transcript,AgentName,CallReference,CallDate\n' +
+            '"Agent: Thank you for calling, how can I help?\nCustomer: I need help with my account.",John Smith,REF-001,2026-03-01\n' +
+            '"Agent: Good morning!\nCustomer: Hi, I have a billing question.",Jane Doe,REF-002,2026-03-02';
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = 'transcript-template.csv'; a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // ── Drag & drop ───────────────────────────────────────────────────────────
+    const dropZone  = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const dropLabel = document.getElementById('dropLabel');
+
+    dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const dt = e.dataTransfer;
+        if (dt && dt.files.length > 0) {
+            fileInput.files = dt.files;
+            updateFileLabel(dt.files[0].name);
+        }
+    });
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) updateFileLabel(fileInput.files[0].name);
+    });
+
+    function updateFileLabel(name) {
+        dropZone.classList.add('has-file');
+        dropZone.classList.remove('drag-over');
+        dropLabel.textContent = '✔ ' + name;
+    }
+
+    // ── Form submit guard ─────────────────────────────────────────────────────
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1"></span>Uploading…';
+    });
+</script>
+}

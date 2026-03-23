@@ -67,6 +67,7 @@ builder.Services.AddHttpClient("kb-url-fetch")
 // Pipeline service — fetches transcripts from URLs / SFTP / SharePoint / recording platforms
 builder.Services.AddHttpClient("pipeline")
     .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(120));
+builder.Services.AddSingleton<PipelineProgressHub>();
 builder.Services.AddScoped<ICallPipelineService, CallPipelineService>();
 
 // Azure Speech-to-Text — transcribes audio recordings before QA scoring

@@ -184,4 +184,49 @@ public class CallPipelineController : ProjectAwareController
         TempData["Success"] = "Processing triggered. Refresh the page to see updated results.";
         return RedirectToAction(nameof(Detail), new { id });
     }
+
+    // ── File upload ───────────────────────────────────────────────────────────
+
+    [HttpGet]
+    public async Task<IActionResult> FileUpload()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        ViewBag.Forms = await _api.GetLegacyForms(pid);
+        return View(new CallPipelineFileUploadViewModel
+        {
+            ProjectId = CurrentProjectId > 0 ? CurrentProjectId : null
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(52_428_800)]
+    public async Task<IActionResult> FileUpload(CallPipelineFileUploadViewModel model)
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+
+        if (model.File == null || model.File.Length == 0)
+            ModelState.AddModelError("File", "Please choose a CSV or XLSX file.");
+
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Forms = await _api.GetLegacyForms(pid);
+            return View(model);
+        }
+
+        await using var stream = model.File!.OpenReadStream();
+        var (job, error) = await _api.UploadTranscriptFile(
+            stream, model.File.FileName, model.Name, model.FormId,
+            CurrentProjectId > 0 ? CurrentProjectId : model.ProjectId);
+
+        if (job == null)
+        {
+            ModelState.AddModelError("", error ?? "Failed to create pipeline job. Please check the file format.");
+            ViewBag.Forms = await _api.GetLegacyForms(pid);
+            return View(model);
+        }
+
+        TempData["Success"] = $"Pipeline job '{job.Name}' created with {job.TotalItems} row(s) and is now processing.";
+        return RedirectToAction(nameof(Detail), new { id = job.Id });
+    }
 }

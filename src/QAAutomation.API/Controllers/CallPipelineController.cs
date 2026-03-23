@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using QAAutomation.API.DTOs;
 using QAAutomation.API.Services;
 
@@ -16,11 +17,16 @@ namespace QAAutomation.API.Controllers;
 public class CallPipelineController : ControllerBase
 {
     private readonly ICallPipelineService _svc;
+    private readonly PipelineProgressHub _progressHub;
     private readonly ILogger<CallPipelineController> _logger;
 
-    public CallPipelineController(ICallPipelineService svc, ILogger<CallPipelineController> logger)
+    public CallPipelineController(
+        ICallPipelineService svc,
+        PipelineProgressHub progressHub,
+        ILogger<CallPipelineController> logger)
     {
         _svc = svc;
+        _progressHub = progressHub;
         _logger = logger;
     }
 
@@ -117,5 +123,129 @@ public class CallPipelineController : ControllerBase
         });
 
         return Accepted(new { message = $"Job {id} queued for background processing.", jobId = id });
+    }
+
+    // ── File upload ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Accepts a multipart/form-data upload of a CSV or XLSX file containing
+    /// call transcripts.  Each row becomes one pipeline item that is
+    /// auto-audited against the selected evaluation form.
+    ///
+    /// Expected columns (case-insensitive):
+    ///   transcript (required), agentName, callReference, callDate
+    ///
+    /// After creation the job is automatically queued for background processing.
+    /// </summary>
+    [HttpPost("upload-file")]
+    [RequestSizeLimit(52_428_800)] // 50 MB
+    [ProducesResponseType(typeof(CallPipelineJobDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CallPipelineJobDto>> UploadFile(
+        IFormFile file,
+        [FromForm] string name,
+        [FromForm] int formId,
+        [FromForm] int? projectId,
+        [FromForm] string? submittedBy)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".csv" or ".xlsx" or ".tsv" or ".txt"))
+            return BadRequest("Only CSV (.csv, .tsv) and Excel (.xlsx) files are supported.");
+
+        List<BatchUrlItemDto> items;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            items = FileUploadParserService.Parse(stream, file.FileName);
+        }
+        catch (InvalidDataException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "File upload parse failed for {FileName}", file.FileName);
+            return BadRequest("Could not parse the uploaded file. Ensure it is a valid CSV or XLSX.");
+        }
+
+        var jobName = string.IsNullOrWhiteSpace(name)
+            ? $"Upload: {Path.GetFileNameWithoutExtension(file.FileName)}"
+            : name;
+
+        var job = await _svc.CreateFileUploadJobAsync(
+            jobName, formId, projectId, submittedBy ?? "web", items, HttpContext.RequestAborted);
+
+        // Always process in background so the HTTP response returns immediately
+        _ = Task.Run(async () =>
+        {
+            try { await _svc.ProcessJobAsync(job.Id); }
+            catch (Exception ex) { _logger.LogError(ex, "Background processing of uploaded job {Id} failed", job.Id); }
+        });
+
+        return CreatedAtAction(nameof(GetById), new { id = job.Id }, job);
+    }
+
+    // ── SSE progress stream ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Server-Sent Events endpoint.  Opens a persistent connection and streams
+    /// one JSON event per completed pipeline item.  The connection is closed
+    /// automatically when the job finishes.
+    ///
+    /// Event format: "data: {json}\n\n"
+    /// The browser should create an EventSource pointed at this URL.
+    /// </summary>
+    [HttpGet("{id:int}/progress")]
+    public async Task Progress(int id, CancellationToken ct)
+    {
+        var job = await _svc.GetJobAsync(id);
+        if (job is null) { Response.StatusCode = 404; return; }
+
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("X-Accel-Buffering", "no"); // for Nginx reverse proxies
+
+        // If the job is already finished, send a single terminal event and close
+        if (job.Status is "Completed" or "Failed")
+        {
+            var terminal = new PipelineProgressEventDto
+            {
+                JobId        = job.Id,
+                ItemStatus   = "Done",
+                CompletedSoFar = job.CompletedItems,
+                TotalItems   = job.TotalItems,
+                JobStatus    = job.Status
+            };
+            await WriteSSEAsync(terminal, ct);
+            return;
+        }
+
+        var channel = _progressHub.Subscribe(id);
+        try
+        {
+            await foreach (var evt in channel.Reader.ReadAllAsync(ct))
+            {
+                await WriteSSEAsync(evt, ct);
+                await Response.Body.FlushAsync(ct);
+                if (evt.JobStatus is "Completed" or "Failed") break;
+            }
+        }
+        catch (OperationCanceledException) { /* client disconnected */ }
+        finally
+        {
+            _progressHub.Unsubscribe(id, channel);
+        }
+    }
+
+    private static readonly JsonSerializerOptions _sseJson =
+        new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private async Task WriteSSEAsync(PipelineProgressEventDto evt, CancellationToken ct)
+    {
+        var json = JsonSerializer.Serialize(evt, _sseJson);
+        await Response.WriteAsync($"data: {json}\n\n", ct);
     }
 }
