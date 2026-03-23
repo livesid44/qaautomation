@@ -125,7 +125,7 @@ public class AutoAuditController : ControllerBase
         }
 
         var result = await _auditService.AnalyzeTranscriptAsync(
-            request, fieldDefinitions, form.Name, form.Lob?.ProjectId, HttpContext.RequestAborted);
+            request, fieldDefinitions, form.Name, form.Lob?.ProjectId, CancellationToken.None);
 
         return Ok(result);
     }

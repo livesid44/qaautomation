@@ -107,10 +107,12 @@ public class CallPipelineController : ControllerBase
         if (job.Status == "Running") return Conflict("Job is already running.");
 
         // For small batches (≤ 5 items) process inline so the caller gets the result immediately.
+        // Use CancellationToken.None: the LLM call can take several minutes for large transcripts
+        // and must not be cancelled if the browser connection drops or a proxy timeout fires.
         // For larger batches fire-and-forget and return 202.
         if (job.TotalItems <= 5)
         {
-            await _svc.ProcessJobAsync(id, HttpContext.RequestAborted);
+            await _svc.ProcessJobAsync(id, CancellationToken.None);
             var updated = await _svc.GetJobAsync(id);
             return Ok(updated);
         }

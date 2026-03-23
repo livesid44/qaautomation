@@ -30,7 +30,7 @@ public class SentimentController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Transcript))
             return BadRequest("Transcript cannot be empty.");
 
-        var result = await _sentimentService.AnalyzeAsync(request, HttpContext.RequestAborted);
+        var result = await _sentimentService.AnalyzeAsync(request, CancellationToken.None);
         return Ok(result);
     }
 }

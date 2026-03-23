@@ -82,5 +82,12 @@ internal static class AzureOpenAIHelper
     public static ChatClient CreateClient(string endpoint, string apiKey, string deployment) =>
         new(model: deployment,
             credential: new ApiKeyCredential(apiKey),
-            options: new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
+            options: new OpenAIClientOptions
+            {
+                Endpoint = new Uri(endpoint),
+                // LLM completions for long transcripts can take several minutes;
+                // the default 100-second SDK network timeout is too short and causes
+                // TaskCanceledException / SocketException (995) on slow responses.
+                NetworkTimeout = TimeSpan.FromMinutes(10)
+            });
 }
