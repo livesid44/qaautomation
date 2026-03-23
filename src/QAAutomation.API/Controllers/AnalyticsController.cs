@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OpenAI.Chat;
 using QAAutomation.API.Data;
 using QAAutomation.API.DTOs;
+using QAAutomation.API.Services;
 
 namespace QAAutomation.API.Controllers;
 
@@ -11,8 +13,13 @@ namespace QAAutomation.API.Controllers;
 public class AnalyticsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IAiConfigService _aiConfig;
 
-    public AnalyticsController(AppDbContext db) => _db = db;
+    public AnalyticsController(AppDbContext db, IAiConfigService aiConfig)
+    {
+        _db = db;
+        _aiConfig = aiConfig;
+    }
 
     /// <summary>Returns aggregated QA analytics: daily scores, agent performance, parameter trends, and call-type trends.
     /// Pass ?projectId=N to restrict analysis to a single project.</summary>
@@ -296,6 +303,149 @@ public class AnalyticsController : ControllerBase
             SignalUsage = signalUsage,
             HitlAgreement = hitlAgreement,
             FailureReasons = failureReasons
+        });
+    }
+
+    // ── GET /api/analytics/explainability/insights ────────────────────────────
+
+    /// <summary>
+    /// Uses the configured LLM to generate natural-language insights for each section of
+    /// the Explainability page (Decision Drivers, HITL Agreement, Signal Usage, Failure Reasons).
+    /// Returns an empty DTO (all nulls) when the LLM is not configured or data is insufficient.
+    /// </summary>
+    [HttpGet("explainability/insights")]
+    [ProducesResponseType(typeof(ExplainabilityInsightsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ExplainabilityInsightsDto>> GetExplainabilityInsights(
+        [FromQuery] int? projectId = null,
+        CancellationToken ct = default)
+    {
+        var cfg = await _aiConfig.GetAsync();
+        if (string.IsNullOrWhiteSpace(cfg.LlmEndpoint) || string.IsNullOrWhiteSpace(cfg.LlmApiKey))
+            return Ok(new ExplainabilityInsightsDto());
+
+        // ── Load data (same scope as GetExplainability) ──────────────────────
+        var resultQuery = _db.EvaluationResults
+            .Include(r => r.Form).ThenInclude(f => f.Lob)
+            .Include(r => r.Scores).ThenInclude(s => s.Field).ThenInclude(f => f.Section)
+            .AsNoTracking().AsQueryable();
+        if (projectId.HasValue)
+            resultQuery = resultQuery.Where(r => r.Form.Lob != null && r.Form.Lob.ProjectId == projectId.Value);
+        var results = await resultQuery.ToListAsync(ct);
+
+        var reviewQuery = _db.HumanReviewItems
+            .Include(h => h.SamplingPolicy)
+            .Include(h => h.EvaluationResult).ThenInclude(e => e!.Form).ThenInclude(f => f.Lob)
+            .Where(h => h.Status == "Reviewed" && h.ReviewVerdict != null)
+            .AsNoTracking().AsQueryable();
+        if (projectId.HasValue)
+            reviewQuery = reviewQuery.Where(h =>
+                h.EvaluationResult != null &&
+                h.EvaluationResult.Form.Lob != null &&
+                h.EvaluationResult.Form.Lob.ProjectId == projectId.Value);
+        var reviewItems = await reviewQuery.ToListAsync(ct);
+
+        if (results.Count == 0)
+            return Ok(new ExplainabilityInsightsDto());
+
+        // ── Pre-compute summaries to keep prompts concise ─────────────────────
+        static double Pct(global::QAAutomation.API.Models.EvaluationResult r)
+        {
+            var max = r.Scores.Where(s => s.Field?.FieldType == global::QAAutomation.API.Models.FieldType.Rating).Sum(s => s.Field.MaxRating);
+            var total = r.Scores.Sum(s => s.NumericValue ?? 0);
+            return max > 0 ? Math.Round(total / max * 100, 1) : 0;
+        }
+
+        // Decision drivers — top 6 by low-score count
+        var ddSummary = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue)
+                .Select(s => new { Label = s.Field.Label, ScorePct = s.NumericValue!.Value / s.Field.MaxRating * 100.0 }))
+            .GroupBy(x => x.Label)
+            .Select(g => new { Label = g.Key, Avg = Math.Round(g.Average(x => x.ScorePct), 1), Low = g.Count(x => x.ScorePct < 60) })
+            .OrderByDescending(x => x.Low).Take(6)
+            .Select(x => $"{x.Label}: avg {x.Avg}%, low-score count {x.Low}");
+
+        // Signal usage — top 5 by miss rate
+        var suSummary = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue)
+                .Select(s => new { Label = s.Field.Label, Missed = s.NumericValue!.Value <= 0, Full = s.NumericValue.Value >= s.Field.MaxRating }))
+            .GroupBy(x => x.Label)
+            .Select(g => new { Label = g.Key, MissRate = Math.Round(g.Count(x => x.Missed) * 100.0 / g.Count(), 1), FullRate = Math.Round(g.Count(x => x.Full) * 100.0 / g.Count(), 1) })
+            .OrderByDescending(x => x.MissRate).Take(5)
+            .Select(x => $"{x.Label}: full-score {x.FullRate}%, missed {x.MissRate}%");
+
+        // HITL agreement summary
+        var totalReviewed = reviewItems.Count;
+        var agreeRate = totalReviewed > 0 ? Math.Round(reviewItems.Count(h => h.ReviewVerdict == "Agree") * 100.0 / totalReviewed, 1) : 0;
+        var hitlSummary = reviewItems
+            .GroupBy(h => h.ReviewVerdict ?? "Unknown")
+            .Select(g => $"{g.Key}: {g.Count()} ({Math.Round(g.Count() * 100.0 / Math.Max(1, totalReviewed), 1)}%)")
+            .ToList();
+
+        // Failure reasons — top 5
+        var failedResults = results.Where(r => Pct(r) < 60).ToList();
+        var frSummary = failedResults
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue && s.NumericValue.Value / s.Field.MaxRating * 100.0 < 60)
+                .Select(s => s.Field.Label))
+            .GroupBy(l => l)
+            .Select(g => new { Label = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count).Take(5)
+            .Select(x => $"{x.Label}: appeared in {x.Count} of {failedResults.Count} failed audits");
+
+        // ── Generate all four insights in parallel ────────────────────────────
+        var (ep, dep) = AzureOpenAIHelper.NormalizeEndpoint(cfg.LlmEndpoint, cfg.LlmDeployment);
+        var aiClient = AzureOpenAIHelper.CreateClient(ep, cfg.LlmApiKey, dep);
+        var aiOpts = new ChatCompletionOptions { Temperature = 0.4f, MaxOutputTokenCount = 180 };
+
+        async Task<string?> Ask(string prompt)
+        {
+            try
+            {
+                var messages = new List<ChatMessage>
+                {
+                    ChatMessage.CreateSystemMessage(
+                        "You are a QA analytics expert. Write concise, actionable insights (2-3 sentences, plain English) " +
+                        "based on the data summary provided. Focus on what the numbers mean for call-centre quality and what action to take."),
+                    ChatMessage.CreateUserMessage(prompt)
+                };
+                var resp = await aiClient.CompleteChatAsync(messages, aiOpts, ct);
+                return resp.Value.Content[0].Text?.Trim();
+            }
+            catch { return null; }
+        }
+
+        var ddTask = Ask(
+            $"Decision Drivers (top parameters by low-score count across {results.Count} audits):\n" +
+            string.Join("\n", ddSummary) +
+            "\n\nWhat does this tell us about which areas need the most quality improvement?");
+
+        var hitlTask = totalReviewed > 0
+            ? Ask($"AI–Human Agreement Rate: {agreeRate}% across {totalReviewed} human reviews.\n" +
+                  "Verdict breakdown: " + string.Join(", ", hitlSummary) +
+                  "\n\nWhat does this agreement level indicate about AI decision quality and trust?")
+            : Task.FromResult<string?>(null);
+
+        var suTask = Ask(
+            $"Signal Utilisation (top parameters by miss rate across {results.Count} audits):\n" +
+            string.Join("\n", suSummary) +
+            "\n\nWhat do high miss rates indicate and what actions should the team take?");
+
+        var frTask = failedResults.Count > 0
+            ? Ask($"Failure Reason Analysis ({failedResults.Count} failed audits out of {results.Count} total):\n" +
+                  string.Join("\n", frSummary) +
+                  "\n\nWhich parameters are the biggest drivers of audit failures and what should be prioritised?")
+            : Task.FromResult<string?>(null);
+
+        await Task.WhenAll(ddTask, hitlTask, suTask, frTask);
+
+        return Ok(new ExplainabilityInsightsDto
+        {
+            DecisionDriversInsight = await ddTask,
+            HitlAgreementInsight   = await hitlTask,
+            SignalUsageInsight      = await suTask,
+            FailureReasonsInsight   = await frTask
         });
     }
 }

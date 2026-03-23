@@ -576,6 +576,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
     }
 
+    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/explainability/insights?projectId={projectId.Value}" : "api/analytics/explainability/insights";
+        try { return await _http.GetFromJsonAsync<ExplainabilityInsightsViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityInsights failed"); return null; }
+    }
+
     // ── Audit Log ─────────────────────────────────────────────────────────────
 
     public async Task<AuditLogPageViewModel?> GetAuditLogs(

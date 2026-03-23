@@ -125,3 +125,22 @@ public class FailureReasonDto
     public double ContributionPercent { get; set; }
     public double AvgScoreInFailedAudits { get; set; }
 }
+
+/// <summary>
+/// AI-generated natural-language insights for each section of the Explainability analytics page.
+/// Fields are null when the LLM is not configured or when there is insufficient data.
+/// </summary>
+public class ExplainabilityInsightsDto
+{
+    /// <summary>2-3 sentence insight for the Decision Drivers chart.</summary>
+    public string? DecisionDriversInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the AI vs Human Agreement chart.</summary>
+    public string? HitlAgreementInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the Signal Utilisation chart.</summary>
+    public string? SignalUsageInsight { get; set; }
+
+    /// <summary>2-3 sentence insight for the Failure Reason Analysis table.</summary>
+    public string? FailureReasonsInsight { get; set; }
+}

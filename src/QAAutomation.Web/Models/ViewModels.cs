@@ -535,6 +535,18 @@ public class ExplainabilityViewModel
     public List<FailureReasonViewModel> FailureReasons { get; set; } = new();
 }
 
+/// <summary>
+/// AI-generated natural-language insights for each section of the Explainability page.
+/// All fields are null when the LLM is not configured or there is insufficient data.
+/// </summary>
+public class ExplainabilityInsightsViewModel
+{
+    public string? DecisionDriversInsight { get; set; }
+    public string? HitlAgreementInsight { get; set; }
+    public string? SignalUsageInsight { get; set; }
+    public string? FailureReasonsInsight { get; set; }
+}
+
 public class DecisionDriverViewModel
 {
     public string ParameterLabel { get; set; } = string.Empty;

@@ -1,6 +1,8 @@
 @model QAAutomation.Web.Models.ExplainabilityViewModel
 @{
     ViewData["Title"] = "Explainability Analytics";
+    var insights = ViewBag.Insights as QAAutomation.Web.Models.ExplainabilityInsightsViewModel
+                   ?? new QAAutomation.Web.Models.ExplainabilityInsightsViewModel();
 
     bool hasData = Model.TotalAudits > 0;
 
@@ -35,6 +37,9 @@
     .section-accent-danger { border-left:4px solid #dc3545; }
     .section-accent-success { border-left:4px solid #198754; }
     .evidence-box { background:#f8f9fa; border-left:3px solid #6c757d; padding:8px 12px; border-radius:0 6px 6px 0; font-size:.85rem; }
+    .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
+    .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
 </style>
 }
 
@@ -124,6 +129,13 @@ else
     </div>
 
     <!-- ── Row 1: Decision Drivers chart + HITL doughnut ───────────────── -->
+    @if (!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight))
+    {
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Decision Drivers</div>
+            <p>@insights.DecisionDriversInsight</p>
+        </div>
+    }
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm section-accent h-100">
@@ -160,6 +172,13 @@ else
     </div>
 
     <!-- ── Row 2: Signal Usage chart ────────────────────────────────────── -->
+    @if (!string.IsNullOrWhiteSpace(insights.SignalUsageInsight))
+    {
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Signal Utilisation</div>
+            <p>@insights.SignalUsageInsight</p>
+        </div>
+    }
     <div class="row g-4 mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm section-accent-warn">
@@ -266,6 +285,13 @@ else
     <!-- ── Failure Reasons detail table ─────────────────────────────────── -->
     @if (Model.FailureReasons.Any())
     {
+        @if (!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight))
+        {
+            <div class="ai-insight-box mb-2">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Failure Reasons</div>
+                <p>@insights.FailureReasonsInsight</p>
+            </div>
+        }
         <div class="card border-0 shadow-sm section-accent-danger mb-4">
             <div class="card-header bg-white border-0 pt-4 pb-0">
                 <h6 class="fw-bold mb-0">
@@ -323,6 +349,13 @@ else
     <!-- ── HITL Agreement detail table ──────────────────────────────────── -->
     @if (Model.HitlAgreement.Any())
     {
+        @if (!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight))
+        {
+            <div class="ai-insight-box mb-2">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — AI vs Human Agreement</div>
+                <p>@insights.HitlAgreementInsight</p>
+            </div>
+        }
         <div class="card border-0 shadow-sm section-accent-success mb-4">
             <div class="card-header bg-white border-0 pt-4 pb-0">
                 <h6 class="fw-bold mb-0">
