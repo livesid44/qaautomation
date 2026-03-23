@@ -487,7 +487,7 @@ CREATE TABLE dbo.TrainingPlans
     CONSTRAINT PK_TrainingPlans PRIMARY KEY (Id),
     CONSTRAINT FK_TP_Project         FOREIGN KEY (ProjectId)          REFERENCES dbo.Projects (Id) ON DELETE SET NULL,
     CONSTRAINT FK_TP_EvalResult      FOREIGN KEY (EvaluationResultId) REFERENCES dbo.EvaluationResults (Id) ON DELETE SET NULL,
-    CONSTRAINT FK_TP_HumanReview     FOREIGN KEY (HumanReviewItemId)  REFERENCES dbo.HumanReviewItems (Id) ON DELETE SET NULL
+    CONSTRAINT FK_TP_HumanReview     FOREIGN KEY (HumanReviewItemId)  REFERENCES dbo.HumanReviewItems (Id) ON DELETE NO ACTION
 );
 GO
 
