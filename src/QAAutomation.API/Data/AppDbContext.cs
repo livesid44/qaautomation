@@ -501,6 +501,7 @@ public class AppDbContext : DbContext
                 Description = "Quality evaluation form for Capital One credit card customer support interactions. Covers call handling, issue resolution, communication, compliance, and closing.",
                 IsActive = true,
                 LobId = lob.Id,
+                ScoringMethod = ScoringMethod.Generic,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Sections = new List<FormSection>
@@ -1053,53 +1054,39 @@ public class AppDbContext : DbContext
             Description = "Internal Quality Assurance evaluation form for YouTube Creator Support Operations. Based on the YouTube CSO QA Framework covering Effectiveness, Effort, Engagement, Business Critical, and Compliance Critical competencies.",
             IsActive = true,
             LobId = csoLob.Id,
+            ScoringMethod = ScoringMethod.SectionAutoFail,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             Sections = new List<FormSection>
             {
                 new()
                 {
-                    Title = "Creator Critical – Effectiveness",
-                    Description = "Have we helped the creator with their goal/issue?",
+                    Title = "Creator Critical",
+                    Description = "Have we helped the creator with their goal/issue? How much effort did it take, and how did we make them feel?",
                     Order = 0,
                     Fields = new List<FormField>
                     {
+                        // Effectiveness
                         new() { Label = "Accuracy",               Description = "Did the creator receive an accurate and complete solution for all the informed issues?",                                                          FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
                         new() { Label = "Tailoring",              Description = "Were the issues or expectations of the creator met with the right level of personalisation?",                                                    FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
                         new() { Label = "Obviation & Next Steps", Description = "Has the creator been equipped with relevant obviation opportunities and next steps?",                                                            FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
-                    }
-                },
-                new()
-                {
-                    Title = "Creator Critical – Effort",
-                    Description = "How much effort was it for the creator to get a resolution?",
-                    Order = 1,
-                    Fields = new List<FormField>
-                    {
-                        new() { Label = "Responsiveness",         Description = "Have we set and/or kept expectations with regards to timely and proactive follow-up communications?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 0 },
-                        new() { Label = "Internal Coordination",  Description = "Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 1 },
-                        new() { Label = "Workflows Adherence",    Description = "Did we minimise creator effort by following correct workflows?",                                                                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 2 },
-                        new() { Label = "Creator Feedback",       Description = "Was the creator reassured that their feedback was captured and addressed?",                                                                     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 3 },
-                        new() { Label = "CSAT Survey",            Description = "Was the creator appropriately asked to provide feedback through a CSAT survey?",                                                               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = false, Order = 4 },
-                    }
-                },
-                new()
-                {
-                    Title = "Creator Critical – Engagement",
-                    Description = "How did we make the creator feel during their interaction?",
-                    Order = 2,
-                    Fields = new List<FormField>
-                    {
-                        new() { Label = "Clarity",  Description = "Has the creator received clear communication through the use of correct language and effective questioning?",                                                  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
-                        new() { Label = "Empathy",  Description = "Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 1 },
-                        new() { Label = "Tone",     Description = "Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 2 },
+                        // Effort
+                        new() { Label = "Responsiveness",         Description = "Have we set and/or kept expectations with regards to timely and proactive follow-up communications?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 3 },
+                        new() { Label = "Internal Coordination",  Description = "Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 4 },
+                        new() { Label = "Workflows Adherence",    Description = "Did we minimise creator effort by following correct workflows?",                                                                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 5 },
+                        new() { Label = "Creator Feedback",       Description = "Was the creator reassured that their feedback was captured and addressed?",                                                                     FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true,  Order = 6 },
+                        new() { Label = "CSAT Survey",            Description = "Was the creator appropriately asked to provide feedback through a CSAT survey?",                                                               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = false, Order = 7 },
+                        // Engagement
+                        new() { Label = "Clarity",  Description = "Has the creator received clear communication through the use of correct language and effective questioning?",                                                  FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 8 },
+                        new() { Label = "Empathy",  Description = "Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?",                                           FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 9 },
+                        new() { Label = "Tone",     Description = "Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?",                                FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 10 },
                     }
                 },
                 new()
                 {
                     Title = "Business Critical",
                     Description = "Non-compensatory business-critical competencies — failure in any one triggers an auto-fail for this category.",
-                    Order = 3,
+                    Order = 1,
                     Fields = new List<FormField>
                     {
                         new() { Label = "Due Diligence", Description = "Did the agent complete all required due-diligence steps before responding or escalating?",                                                               FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
@@ -1110,7 +1097,7 @@ public class AppDbContext : DbContext
                 {
                     Title = "Compliance Critical",
                     Description = "Non-compensatory compliance competencies — failure in any one triggers an auto-fail for this category.",
-                    Order = 4,
+                    Order = 2,
                     Fields = new List<FormField>
                     {
                         new() { Label = "Authentication",     Description = "Did the agent follow the correct authentication process before discussing account or creator details?",                                              FieldType = FieldType.Rating, MaxRating = 1, IsRequired = true, Order = 0 },
@@ -1123,6 +1110,21 @@ public class AppDbContext : DbContext
         EvaluationForms.Add(ytForm);
         await SaveChangesAsync();
         } // end if (!await Projects.AnyAsync(...))
+
+        // ── Ensure existing YouTube form uses SectionAutoFail scoring (runs every startup) ──
+        // For databases created before ScoringMethod was added, the column defaults to 0 (Generic).
+        // This block upgrades the YouTube form to SectionAutoFail without recreating anything.
+        var ytLob = await Lobs.FirstOrDefaultAsync(l => l.Name == "CSO");
+        if (ytLob != null)
+        {
+            var ytExistingForm = await EvaluationForms
+                .FirstOrDefaultAsync(f => f.LobId == ytLob.Id && f.Name.Contains("YouTube"));
+            if (ytExistingForm != null && ytExistingForm.ScoringMethod != Models.ScoringMethod.SectionAutoFail)
+            {
+                ytExistingForm.ScoringMethod = Models.ScoringMethod.SectionAutoFail;
+                await SaveChangesAsync();
+            }
+        }
 
         // ── YouTube IQA Knowledge Base (assessment guidelines for AI Audit) ────
         // This block runs every startup — guarded only by the source-level check —

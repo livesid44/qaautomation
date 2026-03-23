@@ -141,6 +141,7 @@ public class EvaluationFormsController : ControllerBase
         LobName = form.Lob?.Name,
         ProjectId = form.Lob?.ProjectId,
         ProjectName = form.Lob?.Project?.Name,
+        ScoringMethod = form.ScoringMethod,
         Sections = form.Sections.OrderBy(s => s.Order).Select(s => new FormSectionDto
         {
             Id = s.Id,

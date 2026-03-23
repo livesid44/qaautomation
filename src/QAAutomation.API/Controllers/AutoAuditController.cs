@@ -127,6 +127,9 @@ public class AutoAuditController : ControllerBase
         var result = await _auditService.AnalyzeTranscriptAsync(
             request, fieldDefinitions, form.Name, form.Lob?.ProjectId, CancellationToken.None);
 
+        // Propagate the form's scoring method so the web layer applies the correct calculation
+        result.ScoringMethod = form.ScoringMethod;
+
         return Ok(result);
     }
 }

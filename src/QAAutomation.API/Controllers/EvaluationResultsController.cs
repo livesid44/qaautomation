@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using QAAutomation.API.Data;
 using QAAutomation.API.DTOs;
 using QAAutomation.API.Models;
+using QAAutomation.API.Services;
 
 namespace QAAutomation.API.Controllers;
 
@@ -138,46 +139,64 @@ public class EvaluationResultsController : ControllerBase
         return NoContent();
     }
 
-    private static EvaluationResultDto MapToDto(EvaluationResult result) => new()
+    private static EvaluationResultDto MapToDto(EvaluationResult result)
     {
-        Id = result.Id,
-        FormId = result.FormId,
-        FormName = result.Form?.Name ?? string.Empty,
-        EvaluatedBy = result.EvaluatedBy,
-        EvaluatedAt = result.EvaluatedAt,
-        Notes = result.Notes,
-        AgentName = result.AgentName,
-        CallReference = result.CallReference,
-        CallDate = result.CallDate,
-        CallDurationSeconds = result.CallDurationSeconds,
-        OverallReasoning = result.OverallReasoning,
-        SentimentJson = result.SentimentJson,
-        FieldReasoningJson = result.FieldReasoningJson,
-        Scores = result.Scores.Select(s => new EvaluationScoreDto
+        var method = result.Form?.ScoringMethod ?? ScoringMethod.Generic;
+        var entries = result.Scores
+            .Where(s => s.Field?.Section != null && s.Field.FieldType == FieldType.Rating)
+            .Select(s => new ScoringCalculator.FieldEntry(
+                s.Field.Section.Id,
+                s.Field.Section.Title,
+                s.Field.Section.Order,
+                s.NumericValue ?? 0,
+                s.Field.MaxRating));
+        var (totalScore, maxScore, sections) = ScoringCalculator.Compute(method, entries);
+
+        return new EvaluationResultDto
         {
-            Id = s.Id,
-            ResultId = s.ResultId,
-            FieldId = s.FieldId,
-            Value = s.Value,
-            NumericValue = s.NumericValue
-        }).ToList(),
-        TotalScore = result.TotalScore,
-        MaxPossibleScore = result.MaxPossibleScore,
-        Sections = result.Scores
-            .Where(s => s.Field?.Section != null)
-            .GroupBy(s => new { s.Field.Section.Id, s.Field.Section.Title, s.Field.Section.Order })
-            .OrderBy(g => g.Key.Order)
-            .Select(g => new EvaluationResultSectionDto
+            Id = result.Id,
+            FormId = result.FormId,
+            FormName = result.Form?.Name ?? string.Empty,
+            EvaluatedBy = result.EvaluatedBy,
+            EvaluatedAt = result.EvaluatedAt,
+            Notes = result.Notes,
+            AgentName = result.AgentName,
+            CallReference = result.CallReference,
+            CallDate = result.CallDate,
+            CallDurationSeconds = result.CallDurationSeconds,
+            OverallReasoning = result.OverallReasoning,
+            SentimentJson = result.SentimentJson,
+            FieldReasoningJson = result.FieldReasoningJson,
+            Scores = result.Scores.Select(s => new EvaluationScoreDto
             {
-                Title = g.Key.Title,
-                Fields = g.OrderBy(s => s.Field.Order).Select(s => new EvaluationResultFieldScoreDto
+                Id = s.Id,
+                ResultId = s.ResultId,
+                FieldId = s.FieldId,
+                Value = s.Value,
+                NumericValue = s.NumericValue
+            }).ToList(),
+            TotalScore = totalScore,
+            MaxPossibleScore = maxScore,
+            Sections = sections.Select(sec =>
+            {
+                var rawFields = result.Scores
+                    .Where(s => s.Field?.Section?.Title == sec.SectionTitle && s.Field.Section.Order == sec.SectionOrder)
+                    .OrderBy(s => s.Field!.Order);
+                return new EvaluationResultSectionDto
                 {
-                    FieldId = s.FieldId,
-                    FieldLabel = s.Field.Label,
-                    MaxRating = s.Field.MaxRating,
-                    Value = s.Value,
-                    NumericValue = s.NumericValue
-                }).ToList()
+                    Title = sec.SectionTitle,
+                    SectionScore = sec.Score,
+                    SectionMax = sec.MaxScore,
+                    Fields = rawFields.Select(s => new EvaluationResultFieldScoreDto
+                    {
+                        FieldId = s.FieldId,
+                        FieldLabel = s.Field!.Label,
+                        MaxRating = s.Field.MaxRating,
+                        Value = s.Value,
+                        NumericValue = s.NumericValue
+                    }).ToList()
+                };
             }).ToList()
-    };
+        };
+    }
 }

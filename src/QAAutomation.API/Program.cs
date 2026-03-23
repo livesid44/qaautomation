@@ -233,6 +233,7 @@ using (var scope = app.Services.CreateScope())
         ("AiConfigs",         "GoogleApiKey",         "ALTER TABLE AiConfigs ADD COLUMN GoogleApiKey TEXT NOT NULL DEFAULT ''",             "ALTER TABLE AiConfigs ADD GoogleApiKey NVARCHAR(500) NOT NULL DEFAULT ''"),
         ("AiConfigs",         "GoogleGeminiModel",    "ALTER TABLE AiConfigs ADD COLUMN GoogleGeminiModel TEXT NOT NULL DEFAULT 'gemini-1.5-pro'", "ALTER TABLE AiConfigs ADD GoogleGeminiModel NVARCHAR(100) NOT NULL DEFAULT 'gemini-1.5-pro'"),
         ("AiConfigs",         "SpeechProvider",       "ALTER TABLE AiConfigs ADD COLUMN SpeechProvider TEXT NOT NULL DEFAULT 'Azure'",      "ALTER TABLE AiConfigs ADD SpeechProvider NVARCHAR(50) NOT NULL DEFAULT 'Azure'"),
+        ("EvaluationForms",   "ScoringMethod",         "ALTER TABLE EvaluationForms ADD COLUMN ScoringMethod INTEGER NOT NULL DEFAULT 0",     "ALTER TABLE EvaluationForms ADD ScoringMethod INT NOT NULL DEFAULT 0"),
     };
 
     foreach (var (table, column, sqliteSql, sqlServerSql) in columnMigrations)

@@ -192,12 +192,17 @@ public class HumanReviewController : ControllerBase
         double? scorePercent = null;
         if (result != null && result.Scores.Any())
         {
-            var maxScore = result.Scores
-                .Where(s => s.Field != null && s.Field.FieldType == Models.FieldType.Rating)
-                .Sum(s => s.Field.MaxRating);
-            scorePercent = maxScore > 0
-                ? Math.Round(result.TotalScore / maxScore * 100, 1)
-                : 0;
+            var method = result.Form?.ScoringMethod ?? Models.ScoringMethod.Generic;
+            var entries = result.Scores
+                .Where(s => s.Field?.Section != null && s.Field.FieldType == Models.FieldType.Rating)
+                .Select(s => new QAAutomation.API.Services.ScoringCalculator.FieldEntry(
+                    s.Field.Section.Id,
+                    s.Field.Section.Title,
+                    s.Field.Section.Order,
+                    s.NumericValue ?? 0,
+                    s.Field.MaxRating));
+            var (totalScore, maxScore, _) = QAAutomation.API.Services.ScoringCalculator.Compute(method, entries);
+            scorePercent = maxScore > 0 ? Math.Round(totalScore / maxScore * 100, 1) : 0;
         }
 
         return new HumanReviewItemDto

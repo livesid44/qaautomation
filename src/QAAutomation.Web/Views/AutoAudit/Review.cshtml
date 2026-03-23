@@ -407,8 +407,9 @@
                         {
                             <div class="d-flex justify-content-between py-1 border-bottom">
                                 <span class="small text-truncate me-2">@grp.Key</span>
-                                <span class="small text-muted text-nowrap" id="sec_@(grp.Key.Replace(" ","_"))">
-                                    @grp.Sum(f => f.FinalScore).ToString("F0")/@grp.Sum(f => f.MaxRating)
+                                <span class="small text-nowrap" id="sec_@(grp.Key.Replace(" ","_"))">
+                                    <span class="text-muted">@grp.Sum(f => f.FinalScore).ToString("F0")/@grp.Sum(f => f.MaxRating)</span>
+                                    <span class="badge bg-secondary ms-1" id="secpct_@(grp.Key.Replace(" ","_"))">0%</span>
                                 </span>
                             </div>
                         }
@@ -460,6 +461,7 @@
 <script>
     const fields = @Html.Raw(ViewData["FieldsJson"] as string ?? "[]");
     const totalMax = @Model.MaxPossibleScore;
+    const scoringMethod = @Model.ScoringMethod; // 0=Generic, 1=SectionAutoFail
     const ratingLabels = {1:'Unacceptable',2:'Needs Improvement',3:'Meets Standard',4:'Exceeds Standard',5:'Outstanding'};
 
     function setScore(idx, val, btn) {
@@ -480,13 +482,24 @@
     }
 
     function updatePreview() {
-        let total = 0;
-        const sectionScores = {};
+        // Build raw section scores
+        const sectionRaw = {};
         fields.forEach(f => {
-            total += f.finalScore;
             const key = (f.sectionTitle || '').replace(/ /g,'_');
-            sectionScores[key] = (sectionScores[key] || 0) + f.finalScore;
+            if (!sectionRaw[key]) sectionRaw[key] = { sum: 0, hasZero: false, max: 0 };
+            sectionRaw[key].sum += f.finalScore;
+            sectionRaw[key].max += f.maxRating;
+            if (f.finalScore === 0) sectionRaw[key].hasZero = true;
         });
+
+        // Apply scoring method
+        let total = 0;
+        Object.entries(sectionRaw).forEach(([key, data]) => {
+            const effective = (scoringMethod === 1 && data.hasZero) ? 0 : data.sum;
+            data.effective = effective;
+            total += effective;
+        });
+
         const pct = totalMax > 0 ? total / totalMax * 100 : 0;
         document.getElementById('totalPct').textContent = pct.toFixed(0) + '%';
         document.getElementById('totalRaw').textContent = total.toFixed(0) + ' / ' + totalMax + ' pts';
@@ -497,11 +510,17 @@
         status.textContent = pct >= 80 ? 'PASS' : pct >= 60 ? 'NEEDS IMPROVEMENT' : 'FAIL';
         status.className = 'badge fs-6 px-3 py-2 ' + (pct >= 80 ? 'bg-success' : pct >= 60 ? 'bg-warning text-dark' : 'bg-danger');
         document.getElementById('totalPct').className = 'display-3 fw-bold ' + (pct >= 80 ? 'text-success' : pct >= 60 ? 'text-warning' : 'text-danger');
-        Object.entries(sectionScores).forEach(([key, score]) => {
-            const el = document.getElementById('sec_' + key);
-            if (el) {
-                const max = fields.filter(f => (f.sectionTitle||'').replace(/ /g,'_') === key).reduce((a,f) => a+f.maxRating, 0);
-                el.textContent = score.toFixed(0) + '/' + max;
+
+        Object.entries(sectionRaw).forEach(([key, data]) => {
+            const rawEl = document.getElementById('sec_' + key);
+            if (rawEl) {
+                rawEl.querySelector('span.text-muted').textContent = data.sum.toFixed(0) + '/' + data.max;
+            }
+            const secPct = data.max > 0 ? Math.round(data.effective / data.max * 100) : 0;
+            const pctEl = document.getElementById('secpct_' + key);
+            if (pctEl) {
+                pctEl.textContent = secPct + '%';
+                pctEl.className = 'badge ms-1 ' + (secPct >= 80 ? 'bg-success' : secPct === 0 ? 'bg-danger' : 'bg-warning text-dark');
             }
         });
     }
@@ -522,6 +541,9 @@
         };
         document.getElementById('reviewJsonInput').value = JSON.stringify(reviewData);
     }
+
+    // Initialise section % badges on page load
+    updatePreview();
 </script>
 }
 

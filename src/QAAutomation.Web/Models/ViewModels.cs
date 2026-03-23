@@ -182,6 +182,8 @@ public class LegacyFormViewModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsActive { get; set; }
+    /// <summary>Scoring method: 0 = Generic, 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public List<LegacySectionViewModel> Sections { get; set; } = new();
 }
 
@@ -287,6 +289,8 @@ public class AutoAuditReviewViewModel
     public bool IsAiGenerated { get; set; }
     public string? AnalysisError { get; set; }
     public List<AutoAuditFieldReviewViewModel> Fields { get; set; } = new();
+    /// <summary>Scoring method: 0 = Generic, 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public double TotalScore => Fields.Sum(f => f.FinalScore);
     public double MaxPossibleScore => Fields.Sum(f => f.MaxRating);
     public double ScorePercent => MaxPossibleScore > 0 ? Math.Round(TotalScore / MaxPossibleScore * 100, 1) : 0;

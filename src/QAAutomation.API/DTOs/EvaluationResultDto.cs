@@ -24,6 +24,10 @@ public class EvaluationResultDto
 public class EvaluationResultSectionDto
 {
     public string Title { get; set; } = string.Empty;
+    /// <summary>Effective section score (0 when SectionAutoFail triggers).</summary>
+    public double SectionScore { get; set; }
+    public double SectionMax { get; set; }
+    public double SectionScorePercent => SectionMax > 0 ? Math.Round(SectionScore / SectionMax * 100, 1) : 0;
     public List<EvaluationResultFieldScoreDto> Fields { get; set; } = new();
 }
 
