@@ -634,610 +634,805 @@ GO
 -- ── 5.3  Projects ────────────────────────────────────────────────────────────
 INSERT INTO dbo.Projects (Name, Description, IsActive, PiiProtectionEnabled, PiiRedactionMode, CreatedAt)
 VALUES
-    ('Customer Service Excellence',
-     'End-to-end QA for the customer service call centre covering all inbound queues.',
+    ('Capital One',
+     'Capital One Financial Corporation',
      1, 1, 'Redact', '2026-01-05 00:00:00'),
-    ('Sales & Upsell',
-     'QA program for the outbound sales and upsell team.',
-     1, 0, 'Redact', '2026-01-05 00:00:00'),
-    ('Technical Support',
-     'Level 1 and Level 2 technical support QA monitoring.',
-     1, 1, 'Block',  '2026-01-06 00:00:00');
+    ('Youtube',
+     'YouTube Creator Support Operations — Internal Quality Assurance',
+     1, 0, 'Redact', '2026-01-05 00:00:00');
 GO
 
 -- ── 5.4  UserProjectAccesses ──────────────────────────────────────────────────
--- qamanager and analyst1 get access to all three projects
--- trainer1 and agent1 only access Project 1 (Customer Service)
+-- admin/qamanager/analyst1 get access to all projects; trainer1/agent1 only Capital One
 INSERT INTO dbo.UserProjectAccesses (UserId, ProjectId, GrantedAt)
 SELECT u.Id, p.Id, '2026-01-06 00:00:00'
 FROM   dbo.AppUsers u
 CROSS JOIN dbo.Projects p
-WHERE  u.Username IN ('qamanager','analyst1');
+WHERE  u.Username IN ('admin','qamanager','analyst1');
 
 INSERT INTO dbo.UserProjectAccesses (UserId, ProjectId, GrantedAt)
 SELECT u.Id, p.Id, '2026-01-06 00:00:00'
 FROM   dbo.AppUsers u
-JOIN   dbo.Projects p ON p.Name = 'Customer Service Excellence'
+JOIN   dbo.Projects p ON p.Name = 'Capital One'
 WHERE  u.Username IN ('trainer1','agent1');
 GO
 
 -- ── 5.5  LOBs ────────────────────────────────────────────────────────────────
-DECLARE @P1 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
-DECLARE @P2 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Sales & Upsell');
-DECLARE @P3 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Technical Support');
+DECLARE @PCapOne  INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @PYoutube INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Youtube');
 
 INSERT INTO dbo.Lobs (ProjectId, Name, Description, IsActive, CreatedAt)
 VALUES
-    (@P1, 'Inbound General',    'General inbound customer enquiries.',          1, '2026-01-10 00:00:00'),
-    (@P1, 'Complaints',         'Escalated complaint calls.',                   1, '2026-01-10 00:00:00'),
-    (@P1, 'Retention',          'Customer retention and churn prevention.',     1, '2026-01-10 00:00:00'),
-    (@P2, 'Cold Outbound',      'Cold outbound sales calls.',                   1, '2026-01-10 00:00:00'),
-    (@P2, 'Warm Leads',         'Calls to pre-qualified warm leads.',           1, '2026-01-10 00:00:00'),
-    (@P3, 'Level 1 Support',    'First-contact technical resolution.',          1, '2026-01-10 00:00:00'),
-    (@P3, 'Level 2 Escalations','Complex technical escalations.',               1, '2026-01-10 00:00:00');
+    (@PCapOne,  'Customer Support Call', 'Customer support call centre quality evaluation', 1, '2026-01-10 00:00:00'),
+    (@PYoutube, 'CSO',                   'Creator Support Operations line of business',     1, '2026-01-10 00:00:00');
 GO
 
 -- ── 5.6  Parameters ──────────────────────────────────────────────────────────
--- Global (NULL ProjectId) parameters reusable across all projects
+DECLARE @PCapOne2  INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @PYoutube2 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Youtube');
+
 INSERT INTO dbo.Parameters (Name, Description, Category, DefaultWeight, IsActive, EvaluationType, ProjectId, CreatedAt)
 VALUES
-    ('Opening & Greeting',
-     'Did the agent greet the customer professionally, state their name and the company name?',
-     'Communication', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
+    -- Capital One: Call Opening
+    ('Professional Greeting',
+     'Agent uses approved greeting script with brand name, own name, and offer to help',
+     'Call Opening', 1.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Customer Identity Verification',
+     'Completes full CID verification per PCI/security policy before discussing account',
+     'Call Opening', 2.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Brand Introduction',
+     'Sets the right tone and properly introduces Capital One services',
+     'Call Opening', 1.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    -- Capital One: Issue Resolution
+    ('First Call Resolution',
+     'Resolves customer issue completely without need for callback or transfer',
+     'Issue Resolution', 3.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Product & Policy Knowledge',
+     'Demonstrates accurate knowledge of Capital One credit card products, rates, and policies',
+     'Issue Resolution', 2.0, 1, 'KnowledgeBased', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Information Accuracy',
+     'All information provided to customer is accurate and up to date',
+     'Issue Resolution', 2.5, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Problem-Solving Ability',
+     'Effectively identifies root cause and provides appropriate resolution or alternatives',
+     'Issue Resolution', 2.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    -- Capital One: Communication Skills
+    ('Verbal Clarity & Articulation',
+     'Speaks clearly, avoids jargon, adjusts language to customer''s level',
+     'Communication Skills', 1.5, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
     ('Active Listening',
-     'Did the agent demonstrate active listening — paraphrase, confirm understanding, avoid interruptions?',
-     'Communication', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Empathy & Tone',
-     'Did the agent show empathy, maintain a warm and professional tone throughout the call?',
-     'Communication', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Problem Identification',
-     'Did the agent accurately identify the root cause of the customer issue?',
-     'Resolution', 1.5, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Resolution & Accuracy',
-     'Was the resolution provided correct, complete, and within policy?',
-     'Resolution', 2.0, 1, 'KnowledgeBased', NULL, '2026-01-08 00:00:00'),
-
-    ('Hold Procedure',
-     'Did the agent follow the hold procedure — ask permission, provide reason, check back every 2 minutes?',
-     'Process', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Data Verification',
-     'Did the agent verify at least two customer identifiers before discussing account details?',
-     'Compliance', 2.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Regulatory Compliance',
-     'Were all mandatory disclosures and regulatory scripts read verbatim where required?',
-     'Compliance', 3.0, 1, 'KnowledgeBased', NULL, '2026-01-08 00:00:00'),
-
-    ('Closing & Wrap-up',
-     'Did the agent summarise actions, confirm customer satisfaction and close the call properly?',
-     'Communication', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('After-Call Work',
-     'Was the call correctly disposed, notes added, and any follow-up tasks created?',
-     'Process', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Upsell Attempt',
-     'Did the agent identify a natural upsell opportunity and present it compliantly?',
-     'Sales', 1.5, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Objection Handling',
-     'Did the agent handle customer objections confidently and logically without applying pressure?',
-     'Sales', 1.5, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Technical Accuracy',
-     'Was the technical information or troubleshooting step provided correct for the described issue?',
-     'Technical', 2.0, 1, 'KnowledgeBased', NULL, '2026-01-08 00:00:00'),
-
-    ('Escalation Handling',
-     'When escalation was required, was the process followed correctly and communicated clearly?',
-     'Process', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00'),
-
-    ('Call Control',
-     'Did the agent manage the pace, direction and duration of the call effectively?',
-     'Communication', 1.0, 1, 'LLM', NULL, '2026-01-08 00:00:00');
+     'Demonstrates understanding, does not interrupt, confirms understanding before proceeding',
+     'Communication Skills', 1.5, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Empathy & Rapport Building',
+     'Acknowledges customer emotions, personalizes the interaction, builds trust',
+     'Communication Skills', 2.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Pace, Tone & Energy',
+     'Maintains professional tone throughout, appropriate pace, positive energy',
+     'Communication Skills', 1.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    -- Capital One: Compliance & Procedures
+    ('CFPB Regulatory Compliance',
+     'Adheres to all CFPB regulations including fair lending, UDAAP, and debt collection rules',
+     'Compliance & Procedures', 5.0, 1, 'KnowledgeBased', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Required Disclosures',
+     'Provides all mandatory disclosures (APR, fees, payment terms) as required by Reg Z',
+     'Compliance & Procedures', 3.0, 1, 'KnowledgeBased', @PCapOne2, '2026-01-08 00:00:00'),
+    ('PCI Data Security',
+     'Does not capture, repeat, or store sensitive payment card data in violation of PCI DSS',
+     'Compliance & Procedures', 5.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    -- Capital One: Call Closing
+    ('Issue Summary & Confirmation',
+     'Summarizes resolution and confirms customer satisfaction before closing',
+     'Call Closing', 1.5, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Offer of Further Assistance',
+     'Proactively asks if customer needs anything else before ending the call',
+     'Call Closing', 1.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    ('Professional Sign-Off',
+     'Uses approved closing script, thanks customer, and ends call professionally',
+     'Call Closing', 1.0, 1, 'LLM', @PCapOne2, '2026-01-08 00:00:00'),
+    -- Youtube: Creator Critical — Effectiveness
+    ('Accuracy',
+     'Did the creator receive an accurate and complete solution for all the informed issues?',
+     'Creator Critical — Effectiveness', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Tailoring',
+     'Were the issues or expectations of the creator met with the right level of personalisation?',
+     'Creator Critical — Effectiveness', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Obviation & Next Steps',
+     'Has the creator been equipped with relevant obviation opportunities and next steps?',
+     'Creator Critical — Effectiveness', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    -- Youtube: Creator Critical — Effort
+    ('Responsiveness',
+     'Have we set and/or kept expectations with regards to timely and proactive follow-up communications?',
+     'Creator Critical — Effort', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Internal Coordination',
+     'Did we reduce creator effort by effectively connecting them with the right internal teams (consults and bugs)?',
+     'Creator Critical — Effort', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Workflows Adherence',
+     'Did we minimise creator effort by following correct workflows?',
+     'Creator Critical — Effort', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Creator Feedback',
+     'Was the creator reassured that their feedback was captured and addressed?',
+     'Creator Critical — Effort', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('CSAT Survey',
+     'Was the creator appropriately asked to provide feedback through a CSAT survey?',
+     'Creator Critical — Effort', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    -- Youtube: Creator Critical — Engagement
+    ('Clarity',
+     'Has the creator received clear communication through the use of correct language and effective questioning?',
+     'Creator Critical — Engagement', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Empathy',
+     'Was the creator reassured that there was a clear understanding of the goal or problem, urgency and sensitivities?',
+     'Creator Critical — Engagement', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Tone',
+     'Did the creator receive consistently professional and respectful communications aligned with YouTube Tone & Voice guidelines?',
+     'Creator Critical — Engagement', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    -- Youtube: Business Critical
+    ('Due Diligence',
+     'Did the agent complete all required due-diligence steps before responding or escalating?',
+     'Business Critical', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Issue Tagging',
+     'Was the case correctly tagged / categorised using Neo Categorization?',
+     'Business Critical', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    -- Youtube: Compliance Critical
+    ('Authentication',
+     'Did the agent follow the correct authentication process before discussing account or creator details?',
+     'Compliance Critical', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Keep YouTube Safe',
+     'Did the agent adhere to all policies that keep YouTube and its creators safe (trust & safety, content policy)?',
+     'Compliance Critical', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00'),
+    ('Policy',
+     'Did the agent correctly apply and communicate YouTube policies relevant to the creator''s issue?',
+     'Compliance Critical', 1.0, 1, 'LLM', @PYoutube2, '2026-01-08 00:00:00');
 GO
 
 -- ── 5.7  RatingCriteria & Levels ────────────────────────────────────────────
+DECLARE @PCapOne3  INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @PYoutube3 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Youtube');
+
 INSERT INTO dbo.RatingCriteria (Name, Description, MinScore, MaxScore, IsActive, ProjectId, CreatedAt)
 VALUES
-    ('5-Point Excellence Scale',
-     'Standard 1–5 quality rating where 5 = Exceptional and 1 = Unacceptable.',
-     1, 5, 1, NULL, '2026-01-08 00:00:00'),
-
-    ('Yes / No / Partial',
-     'Binary or partial compliance check.',
-     0, 2, 1, NULL, '2026-01-08 00:00:00'),
-
-    ('Compliance Gate',
-     'Mandatory compliance check — fail causes overall call to be non-compliant.',
-     0, 1, 1, NULL, '2026-01-08 00:00:00');
+    ('QA Score (1-5)',
+     'Standard quality score from 1 (Unacceptable) to 5 (Outstanding)',
+     1, 5, 1, @PCapOne3, '2026-01-08 00:00:00'),
+    ('Compliance (Pass/Fail)',
+     'Binary compliance check - failure is auto-fail',
+     0, 1, 1, @PCapOne3, '2026-01-08 00:00:00'),
+    ('YouTube IQA — Pass/Fail',
+     'Non-compensatory pass/fail used across all YouTube IQA competencies. Failure in any mandatory competency results in auto-fail for that category.',
+     0, 1, 1, @PYoutube3, '2026-01-08 00:00:00');
 GO
 
-DECLARE @RC1 INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = '5-Point Excellence Scale');
-DECLARE @RC2 INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'Yes / No / Partial');
-DECLARE @RC3 INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'Compliance Gate');
+DECLARE @RCQa   INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'QA Score (1-5)');
+DECLARE @RCComp INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'Compliance (Pass/Fail)');
+DECLARE @RCYt   INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'YouTube IQA — Pass/Fail');
 
 INSERT INTO dbo.RatingLevels (CriteriaId, Score, Label, Description, Color)
 VALUES
-    (@RC1, 5, 'Exceptional', 'Far exceeds expectations; customer delight achieved.', '#198754'),
-    (@RC1, 4, 'Good',        'Meets expectations with minor improvement areas.',     '#0d6efd'),
-    (@RC1, 3, 'Satisfactory','Partially meets expectations; coaching required.',     '#ffc107'),
-    (@RC1, 2, 'Needs Improvement','Significant gaps; structured development needed.','#fd7e14'),
-    (@RC1, 1, 'Unacceptable','Critical failure; immediate remediation required.',    '#dc3545'),
-
-    (@RC2, 2, 'Yes',     'Fully met.',         '#198754'),
-    (@RC2, 1, 'Partial', 'Partially met.',     '#ffc107'),
-    (@RC2, 0, 'No',      'Not met.',           '#dc3545'),
-
-    (@RC3, 1, 'Pass',    'Compliant.',         '#198754'),
-    (@RC3, 0, 'Fail',    'Non-compliant.',     '#dc3545');
+    -- QA Score (1-5)
+    (@RCQa, 1, 'Unacceptable',      'Critical failure affecting customer or compliance',    '#dc3545'),
+    (@RCQa, 2, 'Needs Improvement', 'Below standard performance',                           '#fd7e14'),
+    (@RCQa, 3, 'Meets Standard',    'Satisfactory performance meeting expectations',        '#ffc107'),
+    (@RCQa, 4, 'Exceeds Standard',  'Above average performance',                           '#20c997'),
+    (@RCQa, 5, 'Outstanding',       'Exemplary performance, exceeded all expectations',     '#198754'),
+    -- Compliance (Pass/Fail)
+    (@RCComp, 0, 'FAIL', 'Non-compliant — requires immediate coaching',                    '#dc3545'),
+    (@RCComp, 1, 'PASS', 'Compliant with policy and regulation',                           '#198754'),
+    -- YouTube IQA — Pass/Fail
+    (@RCYt, 0, 'FAIL', 'Competency not met — triggers category auto-fail',                 '#dc3545'),
+    (@RCYt, 1, 'PASS', 'Competency met or not applicable (Yes/NA)',                        '#198754');
 GO
 
 -- ── 5.8  ParameterClubs ──────────────────────────────────────────────────────
-DECLARE @P1b INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
+DECLARE @PCapOne4  INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @PYoutube4 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Youtube');
 
 INSERT INTO dbo.ParameterClubs (Name, Description, IsActive, ProjectId, CreatedAt)
 VALUES
-    ('Core Communication Club',    'Covers all communication-related parameters.',     1, @P1b, '2026-01-09 00:00:00'),
-    ('Compliance & Process Club',  'Mandatory compliance and process parameters.',     1, @P1b, '2026-01-09 00:00:00'),
-    ('Sales Effectiveness Club',   'Sales-specific parameters for upsell quality.',   1, NULL,  '2026-01-09 00:00:00');
+    -- Capital One clubs
+    ('Call Opening',
+     'Initial call handling — greeting, verification, and brand introduction',
+     1, @PCapOne4, '2026-01-09 00:00:00'),
+    ('Issue Resolution',
+     'Effectiveness in understanding and resolving the customer''s credit card issue',
+     1, @PCapOne4, '2026-01-09 00:00:00'),
+    ('Communication Skills',
+     'Quality of verbal communication and relationship building',
+     1, @PCapOne4, '2026-01-09 00:00:00'),
+    ('Compliance & Procedures',
+     'Adherence to regulatory and internal compliance requirements — violations are auto-fail',
+     1, @PCapOne4, '2026-01-09 00:00:00'),
+    ('Call Closing',
+     'Professional and thorough call conclusion',
+     1, @PCapOne4, '2026-01-09 00:00:00'),
+    -- Youtube clubs
+    ('Creator Critical – Effectiveness',
+     'Measures whether the creator received an accurate, tailored, and complete solution including relevant next steps.',
+     1, @PYoutube4, '2026-01-09 00:00:00'),
+    ('Creator Critical – Effort',
+     'Measures how much effort was required for the creator to reach resolution, covering responsiveness, coordination, workflows, and feedback loops.',
+     1, @PYoutube4, '2026-01-09 00:00:00'),
+    ('Creator Critical – Engagement',
+     'Measures how the creator felt during the interaction in terms of communication clarity, empathy, and professional tone.',
+     1, @PYoutube4, '2026-01-09 00:00:00'),
+    ('Business Critical',
+     'Non-compensatory business-critical checks: due diligence and correct issue tagging.',
+     1, @PYoutube4, '2026-01-09 00:00:00'),
+    ('Compliance Critical',
+     'Non-compensatory compliance checks: authentication, trust & safety, and policy adherence.',
+     1, @PYoutube4, '2026-01-09 00:00:00');
 GO
 
-DECLARE @Club1 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Core Communication Club');
-DECLARE @Club2 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Compliance & Process Club');
-DECLARE @Club3 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Sales Effectiveness Club');
+-- ParameterClubItems
+DECLARE @PCapOne4b  INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @PYoutube4b INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Youtube');
+DECLARE @RCQa2   INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'QA Score (1-5)');
+DECLARE @RCComp2 INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'Compliance (Pass/Fail)');
+DECLARE @RCYt2   INT = (SELECT Id FROM dbo.RatingCriteria WHERE Name = 'YouTube IQA — Pass/Fail');
+DECLARE @CoClub1 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Call Opening'            AND ProjectId = @PCapOne4b);
+DECLARE @CoClub2 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Issue Resolution'        AND ProjectId = @PCapOne4b);
+DECLARE @CoClub3 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Communication Skills'    AND ProjectId = @PCapOne4b);
+DECLARE @CoClub4 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Compliance & Procedures' AND ProjectId = @PCapOne4b);
+DECLARE @CoClub5 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Call Closing'            AND ProjectId = @PCapOne4b);
+DECLARE @YtClub1 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Creator Critical – Effectiveness' AND ProjectId = @PYoutube4b);
+DECLARE @YtClub2 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Creator Critical – Effort'        AND ProjectId = @PYoutube4b);
+DECLARE @YtClub3 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Creator Critical – Engagement'    AND ProjectId = @PYoutube4b);
+DECLARE @YtClub4 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Business Critical'                AND ProjectId = @PYoutube4b);
+DECLARE @YtClub5 INT = (SELECT Id FROM dbo.ParameterClubs WHERE Name = 'Compliance Critical'              AND ProjectId = @PYoutube4b);
 
-INSERT INTO dbo.ParameterClubItems (ClubId, ParameterId, [Order], WeightOverride)
-SELECT @Club1, Id, ROW_NUMBER() OVER (ORDER BY Id), NULL
-FROM   dbo.Parameters WHERE Name IN ('Opening & Greeting','Active Listening','Empathy & Tone','Closing & Wrap-up','Call Control');
-
-INSERT INTO dbo.ParameterClubItems (ClubId, ParameterId, [Order], WeightOverride)
-SELECT @Club2, Id, ROW_NUMBER() OVER (ORDER BY Id), NULL
-FROM   dbo.Parameters WHERE Name IN ('Data Verification','Regulatory Compliance','Hold Procedure','After-Call Work');
-
-INSERT INTO dbo.ParameterClubItems (ClubId, ParameterId, [Order], WeightOverride)
-SELECT @Club3, Id, ROW_NUMBER() OVER (ORDER BY Id), 2.0
-FROM   dbo.Parameters WHERE Name IN ('Upsell Attempt','Objection Handling','Closing & Wrap-up');
+INSERT INTO dbo.ParameterClubItems (ClubId, ParameterId, [Order], RatingCriteriaId)
+VALUES
+    -- Call Opening
+    (@CoClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Professional Greeting'          AND ProjectId=@PCapOne4b), 0, @RCQa2),
+    (@CoClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Customer Identity Verification' AND ProjectId=@PCapOne4b), 1, @RCComp2),
+    (@CoClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Brand Introduction'             AND ProjectId=@PCapOne4b), 2, @RCQa2),
+    -- Issue Resolution
+    (@CoClub2, (SELECT Id FROM dbo.Parameters WHERE Name='First Call Resolution'          AND ProjectId=@PCapOne4b), 0, @RCQa2),
+    (@CoClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Product & Policy Knowledge'     AND ProjectId=@PCapOne4b), 1, @RCQa2),
+    (@CoClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Information Accuracy'           AND ProjectId=@PCapOne4b), 2, @RCQa2),
+    (@CoClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Problem-Solving Ability'        AND ProjectId=@PCapOne4b), 3, @RCQa2),
+    -- Communication Skills
+    (@CoClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Verbal Clarity & Articulation'  AND ProjectId=@PCapOne4b), 0, @RCQa2),
+    (@CoClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Active Listening'               AND ProjectId=@PCapOne4b), 1, @RCQa2),
+    (@CoClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Empathy & Rapport Building'     AND ProjectId=@PCapOne4b), 2, @RCQa2),
+    (@CoClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Pace, Tone & Energy'            AND ProjectId=@PCapOne4b), 3, @RCQa2),
+    -- Compliance & Procedures
+    (@CoClub4, (SELECT Id FROM dbo.Parameters WHERE Name='CFPB Regulatory Compliance'     AND ProjectId=@PCapOne4b), 0, @RCComp2),
+    (@CoClub4, (SELECT Id FROM dbo.Parameters WHERE Name='Required Disclosures'           AND ProjectId=@PCapOne4b), 1, @RCComp2),
+    (@CoClub4, (SELECT Id FROM dbo.Parameters WHERE Name='PCI Data Security'              AND ProjectId=@PCapOne4b), 2, @RCComp2),
+    -- Call Closing
+    (@CoClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Issue Summary & Confirmation'   AND ProjectId=@PCapOne4b), 0, @RCQa2),
+    (@CoClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Offer of Further Assistance'    AND ProjectId=@PCapOne4b), 1, @RCQa2),
+    (@CoClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Professional Sign-Off'          AND ProjectId=@PCapOne4b), 2, @RCQa2),
+    -- Creator Critical – Effectiveness
+    (@YtClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Accuracy'               AND ProjectId=@PYoutube4b), 0, @RCYt2),
+    (@YtClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Tailoring'              AND ProjectId=@PYoutube4b), 1, @RCYt2),
+    (@YtClub1, (SELECT Id FROM dbo.Parameters WHERE Name='Obviation & Next Steps' AND ProjectId=@PYoutube4b), 2, @RCYt2),
+    -- Creator Critical – Effort
+    (@YtClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Responsiveness'        AND ProjectId=@PYoutube4b), 0, @RCYt2),
+    (@YtClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Internal Coordination' AND ProjectId=@PYoutube4b), 1, @RCYt2),
+    (@YtClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Workflows Adherence'   AND ProjectId=@PYoutube4b), 2, @RCYt2),
+    (@YtClub2, (SELECT Id FROM dbo.Parameters WHERE Name='Creator Feedback'      AND ProjectId=@PYoutube4b), 3, @RCYt2),
+    (@YtClub2, (SELECT Id FROM dbo.Parameters WHERE Name='CSAT Survey'           AND ProjectId=@PYoutube4b), 4, @RCYt2),
+    -- Creator Critical – Engagement
+    (@YtClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Clarity' AND ProjectId=@PYoutube4b), 0, @RCYt2),
+    (@YtClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Empathy' AND ProjectId=@PYoutube4b), 1, @RCYt2),
+    (@YtClub3, (SELECT Id FROM dbo.Parameters WHERE Name='Tone'    AND ProjectId=@PYoutube4b), 2, @RCYt2),
+    -- Business Critical
+    (@YtClub4, (SELECT Id FROM dbo.Parameters WHERE Name='Due Diligence' AND ProjectId=@PYoutube4b), 0, @RCYt2),
+    (@YtClub4, (SELECT Id FROM dbo.Parameters WHERE Name='Issue Tagging'  AND ProjectId=@PYoutube4b), 1, @RCYt2),
+    -- Compliance Critical
+    (@YtClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Authentication'    AND ProjectId=@PYoutube4b), 0, @RCYt2),
+    (@YtClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Keep YouTube Safe' AND ProjectId=@PYoutube4b), 1, @RCYt2),
+    (@YtClub5, (SELECT Id FROM dbo.Parameters WHERE Name='Policy'            AND ProjectId=@PYoutube4b), 2, @RCYt2);
 GO
 
 -- ── 5.9  Evaluation Forms ─────────────────────────────────────────────────────
-DECLARE @LobInbound  INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'Inbound General');
-DECLARE @LobCompl    INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'Complaints');
-DECLARE @LobSalesCold INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'Cold Outbound');
-DECLARE @LobL1       INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'Level 1 Support');
+DECLARE @LobCS  INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'Customer Support Call');
+DECLARE @LobCSO INT = (SELECT Id FROM dbo.Lobs WHERE Name = 'CSO');
 
 INSERT INTO dbo.EvaluationForms (Name, Description, IsActive, LobId, CreatedAt, UpdatedAt)
 VALUES
-    ('Inbound Customer Service QA Form',
-     'Standard QA scorecard for all inbound customer service calls.',
-     1, @LobInbound, '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
-
-    ('Complaints Handling Scorecard',
-     'Enhanced form for escalated complaint calls with compliance gates.',
-     1, @LobCompl, '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
-
-    ('Sales Call QA Form',
-     'Outbound sales and upsell quality scorecard.',
-     1, @LobSalesCold, '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
-
-    ('Tech Support Level 1 Form',
-     'First-contact resolution QA form for L1 technical support.',
-     1, @LobL1, '2026-01-12 00:00:00', '2026-01-12 00:00:00');
+    ('Capital One — Credit Card Customer Support QA Form',
+     'Quality evaluation form for Capital One credit card customer support interactions. Covers call handling, issue resolution, communication, compliance, and closing.',
+     1, @LobCS,  '2026-01-12 00:00:00', '2026-01-12 00:00:00'),
+    ('YouTube CSO IQA Evaluation Form',
+     'Internal Quality Assurance evaluation form for YouTube Creator Support Operations. Based on the YouTube CSO QA Framework covering Effectiveness, Effort, Engagement, Business Critical, and Compliance Critical competencies.',
+     1, @LobCSO, '2026-01-12 00:00:00', '2026-01-12 00:00:00');
 GO
 
--- ── 5.9a  Form Sections & Fields — Form 1: Inbound Customer Service ──────────
-DECLARE @Form1 INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Inbound Customer Service QA Form');
-DECLARE @Sec1  INT, @Sec2 INT, @Sec3 INT;
+-- ── 5.9a  Form Sections & Fields — Capital One QA Form ───────────────────────
+DECLARE @FormCO INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Capital One — Credit Card Customer Support QA Form');
+DECLARE @COSec0 INT, @COSec1 INT, @COSec2 INT, @COSec3 INT, @COSec4 INT;
 
 INSERT INTO dbo.FormSections (FormId, Title, Description, [Order])
 VALUES
-    (@Form1, 'Opening & Communication', 'How the agent started and managed the conversation.', 1),
-    (@Form1, 'Resolution Quality',      'How well the agent identified and resolved the issue.', 2),
-    (@Form1, 'Compliance & Process',    'Mandatory compliance checks and process adherence.', 3);
+    (@FormCO, 'Call Opening',            'Initial call handling — greeting, verification, and brand introduction',                  0),
+    (@FormCO, 'Issue Resolution',        'Effectiveness in understanding and resolving the customer''s credit card issue',          1),
+    (@FormCO, 'Communication Skills',    'Quality of verbal communication and relationship building',                               2),
+    (@FormCO, 'Compliance & Procedures', 'Adherence to regulatory and internal compliance requirements — violations are auto-fail', 3),
+    (@FormCO, 'Call Closing',            'Professional and thorough call conclusion',                                               4);
 
-SET @Sec1 = SCOPE_IDENTITY() - 2;
-SET @Sec2 = @Sec1 + 1;
-SET @Sec3 = @Sec1 + 2;
+SET @COSec4 = SCOPE_IDENTITY();
+SET @COSec0 = @COSec4 - 4;
+SET @COSec1 = @COSec0 + 1;
+SET @COSec2 = @COSec0 + 2;
+SET @COSec3 = @COSec0 + 3;
 
-INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating, Description)
+INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating)
 VALUES
-    -- Section 1 — Communication (FieldType=2 → Rating)
-    (@Sec1, 'Opening & Greeting',  2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Opening & Greeting')),
-    (@Sec1, 'Active Listening',    2, 1, 2, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Active Listening')),
-    (@Sec1, 'Empathy & Tone',      2, 1, 3, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Empathy & Tone')),
-    (@Sec1, 'Call Control',        2, 0, 4, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Call Control')),
-    -- Section 2 — Resolution
-    (@Sec2, 'Problem Identification', 2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Problem Identification')),
-    (@Sec2, 'Resolution & Accuracy',  2, 1, 2, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Resolution & Accuracy')),
-    -- Section 3 — Compliance
-    (@Sec3, 'Data Verification',       2, 1, 1, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Data Verification')),
-    (@Sec3, 'Hold Procedure',          2, 0, 2, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Hold Procedure')),
-    (@Sec3, 'Regulatory Compliance',   2, 1, 3, 1, (SELECT Description FROM dbo.Parameters WHERE Name='Regulatory Compliance')),
-    (@Sec3, 'Closing & Wrap-up',       2, 1, 4, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Closing & Wrap-up')),
-    (@Sec3, 'After-Call Work',         2, 0, 5, 5, (SELECT Description FROM dbo.Parameters WHERE Name='After-Call Work')),
-    -- Notes — TextArea (FieldType=1)
-    (@Sec3, 'Additional Notes', 1, 0, 6, 5, 'Any additional observations not captured above.');
+    -- Call Opening (FieldType=2 => Rating)
+    (@COSec0, 'Professional Greeting',          2, 1, 0, 5),
+    (@COSec0, 'Customer Identity Verification', 2, 1, 1, 1),
+    (@COSec0, 'Brand Introduction',             2, 0, 2, 5),
+    -- Issue Resolution
+    (@COSec1, 'First Call Resolution',          2, 1, 0, 5),
+    (@COSec1, 'Product & Policy Knowledge',     2, 0, 1, 5),
+    (@COSec1, 'Information Accuracy',           2, 1, 2, 5),
+    (@COSec1, 'Problem-Solving Ability',        2, 0, 3, 5),
+    -- Communication Skills
+    (@COSec2, 'Verbal Clarity & Articulation',  2, 0, 0, 5),
+    (@COSec2, 'Active Listening',               2, 0, 1, 5),
+    (@COSec2, 'Empathy & Rapport Building',     2, 0, 2, 5),
+    (@COSec2, 'Pace, Tone & Energy',            2, 0, 3, 5),
+    -- Compliance & Procedures
+    (@COSec3, 'CFPB Regulatory Compliance',     2, 1, 0, 1),
+    (@COSec3, 'Required Disclosures',           2, 1, 1, 1),
+    (@COSec3, 'PCI Data Security',              2, 1, 2, 1),
+    -- Call Closing
+    (@COSec4, 'Issue Summary & Confirmation',   2, 0, 0, 5),
+    (@COSec4, 'Offer of Further Assistance',    2, 0, 1, 5),
+    (@COSec4, 'Professional Sign-Off',          2, 0, 2, 5);
 GO
 
--- ── 5.9b  Form Sections & Fields — Form 2: Complaints Handling ───────────────
-DECLARE @Form2 INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Complaints Handling Scorecard');
-DECLARE @CSec1 INT, @CSec2 INT;
+-- ── 5.9b  Form Sections & Fields — YouTube CSO IQA Form ─────────────────────
+DECLARE @FormYT INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'YouTube CSO IQA Evaluation Form');
+DECLARE @YTSec0 INT, @YTSec1 INT, @YTSec2 INT, @YTSec3 INT, @YTSec4 INT;
 
 INSERT INTO dbo.FormSections (FormId, Title, Description, [Order])
 VALUES
-    (@Form2, 'Empathy & De-escalation', 'Ability to defuse tension and build rapport.', 1),
-    (@Form2, 'Compliance & Resolution', 'Mandatory compliance checks for complaint calls.', 2);
+    (@FormYT, 'Creator Critical - Effectiveness', 'Have we helped the creator with their goal/issue?',                                                              0),
+    (@FormYT, 'Creator Critical - Effort',         'How much effort was it for the creator to get a resolution?',                                                    1),
+    (@FormYT, 'Creator Critical - Engagement',     'How did we make the creator feel during their interaction?',                                                     2),
+    (@FormYT, 'Business Critical',                 'Non-compensatory business-critical competencies — failure in any one triggers an auto-fail for this category.',  3),
+    (@FormYT, 'Compliance Critical',               'Non-compensatory compliance competencies — failure in any one triggers an auto-fail for this category.',          4);
 
-SET @CSec1 = SCOPE_IDENTITY() - 1;
-SET @CSec2 = @CSec1 + 1;
+SET @YTSec4 = SCOPE_IDENTITY();
+SET @YTSec0 = @YTSec4 - 4;
+SET @YTSec1 = @YTSec0 + 1;
+SET @YTSec2 = @YTSec0 + 2;
+SET @YTSec3 = @YTSec0 + 3;
 
-INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating, Description)
+INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating)
 VALUES
-    (@CSec1, 'Empathy & Tone',      2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Empathy & Tone')),
-    (@CSec1, 'Active Listening',    2, 1, 2, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Active Listening')),
-    (@CSec1, 'Opening & Greeting',  2, 1, 3, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Opening & Greeting')),
-    (@CSec2, 'Data Verification',   2, 1, 1, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Data Verification')),
-    (@CSec2, 'Regulatory Compliance',2,1, 2, 1, (SELECT Description FROM dbo.Parameters WHERE Name='Regulatory Compliance')),
-    (@CSec2, 'Resolution & Accuracy',2,1, 3, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Resolution & Accuracy')),
-    (@CSec2, 'Closing & Wrap-up',   2, 1, 4, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Closing & Wrap-up')),
-    (@CSec2, 'Reviewer Notes',      1, 0, 5, 5, 'Additional complaint notes.');
-GO
-
--- ── 5.9c  Form Sections & Fields — Form 3: Sales ─────────────────────────────
-DECLARE @Form3 INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Sales Call QA Form');
-DECLARE @SSec1 INT, @SSec2 INT;
-
-INSERT INTO dbo.FormSections (FormId, Title, Description, [Order])
-VALUES
-    (@Form3, 'Sales Quality',     'Core sales skill assessment.', 1),
-    (@Form3, 'Compliance',        'Sales compliance requirements.', 2);
-
-SET @SSec1 = SCOPE_IDENTITY() - 1;
-SET @SSec2 = @SSec1 + 1;
-
-INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating, Description)
-VALUES
-    (@SSec1, 'Opening & Greeting',  2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Opening & Greeting')),
-    (@SSec1, 'Upsell Attempt',      2, 1, 2, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Upsell Attempt')),
-    (@SSec1, 'Objection Handling',  2, 1, 3, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Objection Handling')),
-    (@SSec1, 'Closing & Wrap-up',   2, 1, 4, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Closing & Wrap-up')),
-    (@SSec2, 'Regulatory Compliance',2,1, 1, 1, (SELECT Description FROM dbo.Parameters WHERE Name='Regulatory Compliance')),
-    (@SSec2, 'Data Verification',   2, 1, 2, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Data Verification')),
-    (@SSec2, 'Notes',               1, 0, 3, 5, 'Sales call notes.');
-GO
-
--- ── 5.9d  Form Sections & Fields — Form 4: Tech Support ──────────────────────
-DECLARE @Form4 INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Tech Support Level 1 Form');
-DECLARE @TSec1 INT, @TSec2 INT;
-
-INSERT INTO dbo.FormSections (FormId, Title, Description, [Order])
-VALUES
-    (@Form4, 'Communication',      'Communication quality on the support call.', 1),
-    (@Form4, 'Technical Quality',  'Technical accuracy and escalation handling.', 2);
-
-SET @TSec1 = SCOPE_IDENTITY() - 1;
-SET @TSec2 = @TSec1 + 1;
-
-INSERT INTO dbo.FormFields (SectionId, Label, FieldType, IsRequired, [Order], MaxRating, Description)
-VALUES
-    (@TSec1, 'Opening & Greeting', 2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Opening & Greeting')),
-    (@TSec1, 'Active Listening',   2, 1, 2, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Active Listening')),
-    (@TSec1, 'Call Control',       2, 0, 3, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Call Control')),
-    (@TSec2, 'Technical Accuracy', 2, 1, 1, 5, (SELECT Description FROM dbo.Parameters WHERE Name='Technical Accuracy')),
-    (@TSec2, 'Problem Identification',2,1, 2, 5,(SELECT Description FROM dbo.Parameters WHERE Name='Problem Identification')),
-    (@TSec2, 'Escalation Handling',2, 0, 3, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Escalation Handling')),
-    (@TSec2, 'Hold Procedure',     2, 0, 4, 2, (SELECT Description FROM dbo.Parameters WHERE Name='Hold Procedure')),
-    (@TSec2, 'Technical Notes',    1, 0, 5, 5, 'Diagnostic steps tried and outcome.');
+    -- Creator Critical - Effectiveness
+    (@YTSec0, 'Accuracy',               2, 1, 0, 1),
+    (@YTSec0, 'Tailoring',              2, 1, 1, 1),
+    (@YTSec0, 'Obviation & Next Steps', 2, 1, 2, 1),
+    -- Creator Critical - Effort
+    (@YTSec1, 'Responsiveness',         2, 1, 0, 1),
+    (@YTSec1, 'Internal Coordination',  2, 1, 1, 1),
+    (@YTSec1, 'Workflows Adherence',    2, 1, 2, 1),
+    (@YTSec1, 'Creator Feedback',       2, 1, 3, 1),
+    (@YTSec1, 'CSAT Survey',            2, 0, 4, 1),
+    -- Creator Critical - Engagement
+    (@YTSec2, 'Clarity',                2, 1, 0, 1),
+    (@YTSec2, 'Empathy',                2, 1, 1, 1),
+    (@YTSec2, 'Tone',                   2, 1, 2, 1),
+    -- Business Critical
+    (@YTSec3, 'Due Diligence',          2, 1, 0, 1),
+    (@YTSec3, 'Issue Tagging',          2, 1, 1, 1),
+    -- Compliance Critical
+    (@YTSec4, 'Authentication',         2, 1, 0, 1),
+    (@YTSec4, 'Keep YouTube Safe',      2, 1, 1, 1),
+    (@YTSec4, 'Policy',                 2, 1, 2, 1);
 GO
 
 -- ── 5.10  SamplingPolicies ────────────────────────────────────────────────────
-DECLARE @P1c INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
-DECLARE @P2c INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Sales & Upsell');
+DECLARE @PCapOne5 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
 
 INSERT INTO dbo.SamplingPolicies
     (Name, Description, ProjectId, CallTypeFilter, SamplingMethod, SampleValue,
      IsActive, CreatedBy, CreatedAt, UpdatedAt)
 VALUES
-    ('10% Random Sample — CS',
-     'Randomly selects 10% of all completed customer service audits for human review.',
-     @P1c, NULL, 'Percentage', 10, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00'),
+    ('10% Random Sampling',
+     'Sample 10% of all completed evaluations for human review.',
+     @PCapOne5, NULL, 'Percentage', 10, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00'),
 
-    ('100% Complaints Review',
-     'All complaint-call audits are flagged for human review.',
-     @P1c, 'Complaints', 'Percentage', 100, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00'),
+    ('Compliance Risk — All Failing Calls',
+     '100% review for calls with compliance-related failures.',
+     @PCapOne5, 'Compliance', 'Percentage', 100, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00'),
 
-    ('5 Sales Calls / Day',
-     'Caps human review at 5 sales call audits per day.',
-     @P2c, NULL, 'Count', 5, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00'),
-
-    ('Long-Call Deep Dive',
-     'Reviews any call audited with a duration over 10 minutes.',
-     @P1c, NULL, 'Percentage', 100, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00');
-
-UPDATE dbo.SamplingPolicies
-SET MinDurationSeconds = 600
-WHERE Name = 'Long-Call Deep Dive';
+    ('New Agents — 5 Calls per Week',
+     'Review the first 5 calls per week for newly onboarded agents.',
+     @PCapOne5, NULL, 'Count', 5, 1, 'admin', '2026-01-15 00:00:00', '2026-01-15 00:00:00');
 GO
 
 -- ── 5.11  KnowledgeSources & Documents ───────────────────────────────────────
-DECLARE @P1d INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
+DECLARE @PCapOne6 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
 
 INSERT INTO dbo.KnowledgeSources (Name, ConnectorType, Description, IsActive, ProjectId, CreatedAt)
 VALUES
-    ('CS Policy Manual', 'ManualUpload',
-     'Internal customer service policy and procedure documents.',
-     1, @P1d, '2026-01-08 00:00:00'),
-    ('Compliance Scripts', 'ManualUpload',
-     'Approved regulatory scripts that must be read verbatim.',
-     1, @P1d, '2026-01-08 00:00:00');
+    ('Capital One QA Policy Documents', 'ManualUpload',
+     'Internal QA policies, compliance guidelines, and evaluation rubrics for Capital One customer support',
+     1, @PCapOne6, '2025-01-01 00:00:00');
 GO
 
-DECLARE @KS1 INT = (SELECT Id FROM dbo.KnowledgeSources WHERE Name = 'CS Policy Manual');
-DECLARE @KS2 INT = (SELECT Id FROM dbo.KnowledgeSources WHERE Name = 'Compliance Scripts');
+DECLARE @KS1 INT = (SELECT Id FROM dbo.KnowledgeSources WHERE Name = 'Capital One QA Policy Documents');
 
 INSERT INTO dbo.KnowledgeDocuments (SourceId, Title, FileName, Content, Tags, ContentSizeBytes, UploadedAt)
 VALUES
-    (@KS1, 'Hold Procedure Policy', 'hold_procedure.txt',
-     'When placing a customer on hold: (1) Always ask permission — "May I place you on hold for a moment?" '
-     + '(2) Provide a reason for the hold. (3) Check back every 2 minutes. '
-     + '(4) Thank the customer for their patience when returning. '
-     + 'Maximum hold time: 5 minutes. If resolution requires longer, offer a callback.',
-     'hold,process,procedure', 520, '2026-01-09 00:00:00'),
+    (@KS1, 'PCI DSS Agent Guidelines v4.0', 'PCI_DSS_Agent_Guidelines_v4.pdf',
+     'PCI DSS Scope for Call Centre Agents. '
+     + 'Agents MUST NOT: Ask customers to read aloud full card numbers; Write down, store, or repeat Primary Account Numbers (PAN); Record sensitive authentication data after authorisation. '
+     + 'Agents MUST: Complete CID verification before accessing any account information; Use masked card numbers (last 4 digits only) when confirming identity; '
+     + 'Immediately terminate calls where customers attempt to provide full card numbers verbally. '
+     + 'Violations are classified as Critical and result in immediate remediation and mandatory retraining.',
+     'PCI,Compliance,Security,CID', 1240, '2025-01-01 00:00:00'),
 
-    (@KS1, 'Data Verification Standard', 'data_verification.txt',
-     'Before discussing any account details, agents must verify a minimum of TWO of the following identifiers: '
-     + '(a) Full name, (b) Date of birth, (c) Account number, (d) Registered email, (e) Security password/PIN. '
-     + 'If the customer fails verification, escalate to the fraud team immediately — do NOT proceed.',
-     'verification,compliance,security', 390, '2026-01-09 00:00:00'),
+    (@KS1, 'Reg Z Required Disclosures Script', 'RegZ_Disclosure_Script_2025.pdf',
+     'Regulation Z — Required Verbal Disclosures for Credit Card Calls. '
+     + 'When discussing APR or fees, agents must deliver the following scripted disclosure: '
+     + '"Just to let you know, [Product Name] has a variable APR of [X]% for purchases, [Y]% for cash advances, and a minimum interest charge of $[Z]. '
+     + 'Late fees are up to $[amount]. Please refer to your Cardmember Agreement for full terms." '
+     + 'This disclosure is mandatory whenever opening a new account, discussing promotional rates, responding to balance transfer enquiries, or any conversation involving credit terms or fees. '
+     + 'Failure to deliver this disclosure in full is a Reg Z compliance violation.',
+     'Compliance,RegZ,Disclosures,Fees', 980, '2025-01-01 00:00:00'),
 
-    (@KS2, 'Regulatory Disclosure Script — General',  'disclosure_general.txt',
-     'REQUIRED VERBATIM SCRIPT: '
-     + '"This call may be recorded for quality and training purposes. '
-     + 'By continuing this call you consent to the recording. '
-     + 'Our full privacy policy is available at [company website]."',
-     'regulatory,compliance,script,disclosure', 280, '2026-01-09 00:00:00'),
-
-    (@KS2, 'Payment Card Industry Script', 'pci_script.txt',
-     'REQUIRED VERBATIM SCRIPT BEFORE TAKING PAYMENT DETAILS: '
-     + '"For your security, please note that I will never ask you to share your full card number, CVV, '
-     + 'or PIN over the phone. If you are asked for these, please end the call and call us back on our '
-     + 'official number. Are you happy to proceed?"',
-     'pci,payment,compliance,script', 350, '2026-01-09 00:00:00');
+    (@KS1, 'QA Evaluation Rubric — Communication Skills', 'QA_Rubric_Communication_2025.pdf',
+     'Communication Skills Evaluation Rubric. '
+     + 'Score 5 (Outstanding): Agent communicates with exceptional clarity, warmth, and professionalism. '
+     + 'Score 4 (Exceeds Standard): Clear and professional communication with minor inconsistencies. Active listening demonstrated. '
+     + 'Score 3 (Meets Standard): Acceptable communication. Occasional lapses but no significant impact on customer experience. '
+     + 'Score 2 (Needs Improvement): Unclear communication, interrupts customer, or uses inappropriate tone. '
+     + 'Score 1 (Unacceptable): Rude, dismissive, or seriously unclear communication. Immediate coaching required.',
+     'Communication,Rubric,Scoring,Training', 870, '2025-01-15 00:00:00');
 GO
 
--- ── 5.12  Evaluation Results & Scores (sample completed audits) ───────────────
-DECLARE @FormCS INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Inbound Customer Service QA Form');
-DECLARE @FormCC INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Complaints Handling Scorecard');
+-- ── 5.12  Evaluation Results & Scores (sample Capital One audits) ─────────────
+DECLARE @FormCO2 INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Capital One — Credit Card Customer Support QA Form');
 
--- Result 1 — High-scoring inbound call
+-- Result 1 — Sarah Mitchell (high performing)
 INSERT INTO dbo.EvaluationResults
-    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate,
-     CallDurationSeconds, OverallReasoning, Notes)
+    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate, Notes)
 VALUES
-    (@FormCS, 'auto-audit', '2026-02-10 09:15:00', 'Sarah Johnson', 'REF-20260210-001', '2026-02-10 09:00:00',
-     480, 'Agent demonstrated excellent communication throughout. Greeted professionally, verified customer, resolved billing query accurately. Minor improvement on wrap-up.', NULL);
+    (@FormCO2, 'admin', '2025-01-15 09:00:00', 'Sarah Mitchell', 'COF-2025-00142', '2025-01-14 00:00:00',
+     'Excellent across all areas. Strong compliance adherence and outstanding customer rapport.');
 
 DECLARE @R1 INT = SCOPE_IDENTITY();
 
--- Insert scores for Result 1 (map to field labels dynamically)
 INSERT INTO dbo.EvaluationScores (ResultId, FieldId, Value, NumericValue)
 SELECT @R1, ff.Id, CAST(v.Score AS NVARCHAR(10)), v.Score
 FROM (VALUES
-    ('Opening & Greeting', 5),
-    ('Active Listening',   4),
-    ('Empathy & Tone',     5),
-    ('Call Control',       4),
-    ('Problem Identification', 5),
-    ('Resolution & Accuracy',  4),
-    ('Data Verification',      2),
-    ('Hold Procedure',         2),
-    ('Regulatory Compliance',  1),
-    ('Closing & Wrap-up',      3),
-    ('After-Call Work',        4)
+    ('Professional Greeting',          4),
+    ('Customer Identity Verification', 1),
+    ('Brand Introduction',             4),
+    ('First Call Resolution',          5),
+    ('Product & Policy Knowledge',     4),
+    ('Information Accuracy',           5),
+    ('Problem-Solving Ability',        4),
+    ('Verbal Clarity & Articulation',  5),
+    ('Active Listening',               4),
+    ('Empathy & Rapport Building',     5),
+    ('Pace, Tone & Energy',            4),
+    ('CFPB Regulatory Compliance',     1),
+    ('Required Disclosures',           1),
+    ('PCI Data Security',              1),
+    ('Issue Summary & Confirmation',   5),
+    ('Offer of Further Assistance',    5),
+    ('Professional Sign-Off',          4)
 ) AS v(Label, Score)
 JOIN dbo.FormFields ff ON ff.Label = v.Label
-JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCS;
+JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCO2;
 
--- Result 2 — Average inbound call
+-- Result 2 — James Kowalski (missed disclosure)
 INSERT INTO dbo.EvaluationResults
-    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate,
-     CallDurationSeconds, OverallReasoning, Notes)
+    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate, Notes)
 VALUES
-    (@FormCS, 'auto-audit', '2026-02-11 11:30:00', 'Mark Davis', 'REF-20260211-007', '2026-02-11 11:15:00',
-     720, 'Agent showed empathy but failed data verification on first attempt and skipped the required disclosure script. Resolution was partially correct.', NULL);
+    (@FormCO2, 'admin', '2025-01-22 10:00:00', 'James Kowalski', 'COF-2025-00215', '2025-01-21 00:00:00',
+     'Good performance overall. Missed required APR disclosure on the first attempt — corrected after customer prompt.');
 
 DECLARE @R2 INT = SCOPE_IDENTITY();
 
 INSERT INTO dbo.EvaluationScores (ResultId, FieldId, Value, NumericValue)
 SELECT @R2, ff.Id, CAST(v.Score AS NVARCHAR(10)), v.Score
 FROM (VALUES
-    ('Opening & Greeting', 3),
-    ('Active Listening',   3),
-    ('Empathy & Tone',     4),
-    ('Call Control',       3),
-    ('Problem Identification', 3),
-    ('Resolution & Accuracy',  2),
-    ('Data Verification',      1),
-    ('Hold Procedure',         1),
-    ('Regulatory Compliance',  0),
-    ('Closing & Wrap-up',      3),
-    ('After-Call Work',        3)
+    ('Professional Greeting',          4),
+    ('Customer Identity Verification', 1),
+    ('Brand Introduction',             3),
+    ('First Call Resolution',          4),
+    ('Product & Policy Knowledge',     3),
+    ('Information Accuracy',           4),
+    ('Problem-Solving Ability',        3),
+    ('Verbal Clarity & Articulation',  4),
+    ('Active Listening',               3),
+    ('Empathy & Rapport Building',     3),
+    ('Pace, Tone & Energy',            3),
+    ('CFPB Regulatory Compliance',     1),
+    ('Required Disclosures',           0),
+    ('PCI Data Security',              1),
+    ('Issue Summary & Confirmation',   3),
+    ('Offer of Further Assistance',    3),
+    ('Professional Sign-Off',          4)
 ) AS v(Label, Score)
 JOIN dbo.FormFields ff ON ff.Label = v.Label
-JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCS;
+JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCO2;
 
--- Result 3 — Complaint call (high performing)
+-- Result 3 — Priya Nair (outstanding)
 INSERT INTO dbo.EvaluationResults
-    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate,
-     CallDurationSeconds, OverallReasoning, Notes)
+    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate, Notes)
 VALUES
-    (@FormCC, 'auto-audit', '2026-02-12 14:00:00', 'Priya Sharma', 'REF-20260212-COMP-003', '2026-02-12 13:45:00',
-     960, 'Exceptional complaint handling. Agent de-escalated quickly, verified customer properly, read disclosure correctly, and resolved the billing dispute with a fair outcome.', NULL);
+    (@FormCO2, 'admin', '2025-02-05 11:00:00', 'Priya Nair', 'COF-2025-00318', '2025-02-04 00:00:00',
+     'Outstanding call. Customer escalation handled with exceptional empathy. Full compliance adherence throughout.');
 
 DECLARE @R3 INT = SCOPE_IDENTITY();
 
 INSERT INTO dbo.EvaluationScores (ResultId, FieldId, Value, NumericValue)
 SELECT @R3, ff.Id, CAST(v.Score AS NVARCHAR(10)), v.Score
 FROM (VALUES
-    ('Empathy & Tone',       5),
-    ('Active Listening',     5),
-    ('Opening & Greeting',   4),
-    ('Data Verification',    2),
-    ('Regulatory Compliance',1),
-    ('Resolution & Accuracy',5),
-    ('Closing & Wrap-up',    5)
+    ('Professional Greeting',          5),
+    ('Customer Identity Verification', 1),
+    ('Brand Introduction',             5),
+    ('First Call Resolution',          5),
+    ('Product & Policy Knowledge',     5),
+    ('Information Accuracy',           5),
+    ('Problem-Solving Ability',        5),
+    ('Verbal Clarity & Articulation',  5),
+    ('Active Listening',               5),
+    ('Empathy & Rapport Building',     5),
+    ('Pace, Tone & Energy',            5),
+    ('CFPB Regulatory Compliance',     1),
+    ('Required Disclosures',           1),
+    ('PCI Data Security',              1),
+    ('Issue Summary & Confirmation',   5),
+    ('Offer of Further Assistance',    5),
+    ('Professional Sign-Off',          5)
 ) AS v(Label, Score)
 JOIN dbo.FormFields ff ON ff.Label = v.Label
-JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCC;
+JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCO2;
+
+-- Result 4 — Derek Thompson (PCI violation, below standard)
+INSERT INTO dbo.EvaluationResults
+    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate, Notes)
+VALUES
+    (@FormCO2, 'admin', '2025-02-12 12:00:00', 'Derek Thompson', 'COF-2025-00401', '2025-02-11 00:00:00',
+     'Below standard. Failed to complete full CID verification and asked customer to repeat card number aloud — PCI violation. Immediate coaching required.');
+
+DECLARE @R4 INT = SCOPE_IDENTITY();
+
+INSERT INTO dbo.EvaluationScores (ResultId, FieldId, Value, NumericValue)
+SELECT @R4, ff.Id, CAST(v.Score AS NVARCHAR(10)), v.Score
+FROM (VALUES
+    ('Professional Greeting',          3),
+    ('Customer Identity Verification', 0),
+    ('Brand Introduction',             2),
+    ('First Call Resolution',          2),
+    ('Product & Policy Knowledge',     2),
+    ('Information Accuracy',           3),
+    ('Problem-Solving Ability',        2),
+    ('Verbal Clarity & Articulation',  3),
+    ('Active Listening',               2),
+    ('Empathy & Rapport Building',     2),
+    ('Pace, Tone & Energy',            2),
+    ('CFPB Regulatory Compliance',     1),
+    ('Required Disclosures',           1),
+    ('PCI Data Security',              0),
+    ('Issue Summary & Confirmation',   2),
+    ('Offer of Further Assistance',    2),
+    ('Professional Sign-Off',          3)
+) AS v(Label, Score)
+JOIN dbo.FormFields ff ON ff.Label = v.Label
+JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCO2;
+
+-- Result 5 — Maria Gonzalez (solid)
+INSERT INTO dbo.EvaluationResults
+    (FormId, EvaluatedBy, EvaluatedAt, AgentName, CallReference, CallDate, Notes)
+VALUES
+    (@FormCO2, 'admin', '2025-02-20 13:00:00', 'Maria Gonzalez', 'COF-2025-00487', '2025-02-19 00:00:00',
+     'Solid performance with good first-call resolution. Slight hesitation on product knowledge for balance transfer promotions.');
+
+DECLARE @R5 INT = SCOPE_IDENTITY();
+
+INSERT INTO dbo.EvaluationScores (ResultId, FieldId, Value, NumericValue)
+SELECT @R5, ff.Id, CAST(v.Score AS NVARCHAR(10)), v.Score
+FROM (VALUES
+    ('Professional Greeting',          5),
+    ('Customer Identity Verification', 1),
+    ('Brand Introduction',             4),
+    ('First Call Resolution',          4),
+    ('Product & Policy Knowledge',     3),
+    ('Information Accuracy',           4),
+    ('Problem-Solving Ability',        4),
+    ('Verbal Clarity & Articulation',  4),
+    ('Active Listening',               4),
+    ('Empathy & Rapport Building',     4),
+    ('Pace, Tone & Energy',            4),
+    ('CFPB Regulatory Compliance',     1),
+    ('Required Disclosures',           1),
+    ('PCI Data Security',              1),
+    ('Issue Summary & Confirmation',   4),
+    ('Offer of Further Assistance',    4),
+    ('Professional Sign-Off',          5)
+) AS v(Label, Score)
+JOIN dbo.FormFields ff ON ff.Label = v.Label
+JOIN dbo.FormSections fs ON fs.Id = ff.SectionId AND fs.FormId = @FormCO2;
 GO
 
 -- ── 5.13  HumanReviewItems ────────────────────────────────────────────────────
-DECLARE @SP1 INT = (SELECT Id FROM dbo.SamplingPolicies WHERE Name = '10% Random Sample — CS');
-DECLARE @SP2 INT = (SELECT Id FROM dbo.SamplingPolicies WHERE Name = '100% Complaints Review');
-DECLARE @R1x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Sarah Johnson' ORDER BY EvaluatedAt);
-DECLARE @R2x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Mark Davis'   ORDER BY EvaluatedAt);
-DECLARE @R3x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Priya Sharma' ORDER BY EvaluatedAt);
+DECLARE @SP1 INT = (SELECT Id FROM dbo.SamplingPolicies WHERE Name = '10% Random Sampling');
+DECLARE @R1x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Sarah Mitchell' ORDER BY EvaluatedAt);
+DECLARE @R2x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'James Kowalski' ORDER BY EvaluatedAt);
+DECLARE @R4x INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Derek Thompson' ORDER BY EvaluatedAt);
 
 INSERT INTO dbo.HumanReviewItems
     (EvaluationResultId, SamplingPolicyId, SampledAt, SampledBy, AssignedTo, Status,
      ReviewerComment, ReviewVerdict, ReviewedBy, ReviewedAt)
 VALUES
-    (@R1x, @SP1, '2026-02-10 10:00:00', 'system', 'analyst1', 'Reviewed',
-     'I agree with the AI scoring. Sarah did a great job — the 3 on wrap-up seems right, she could have been more thorough summarising the actions.',
-     'Agree', 'analyst1', '2026-02-10 15:30:00'),
+    (@R1x, @SP1, '2025-01-15 10:00:00', 'system', 'admin', 'Reviewed',
+     'Agree with the AI scoring. Agent demonstrated excellent product knowledge and compliance.',
+     'Agree', 'admin', '2025-01-16 09:00:00'),
 
-    (@R2x, @SP1, '2026-02-11 12:00:00', 'system', 'analyst1', 'InReview',
-     NULL, NULL, NULL, NULL),
+    (@R2x, @SP1, '2025-01-22 11:00:00', 'system', 'admin', 'Reviewed',
+     'Partially agree — the Required Disclosures failure was borderline; agent did mention APR but not in the required format.',
+     'Partial', 'admin', '2025-01-23 10:00:00'),
 
-    (@R3x, @SP2, '2026-02-12 15:00:00', 'system', 'analyst1', 'Pending',
+    (@R4x, @SP1, '2025-02-12 14:00:00', 'system', 'admin', 'Pending',
      NULL, NULL, NULL, NULL);
 GO
 
--- ── 5.14  CallPipeline — sample upload job ────────────────────────────────────
-DECLARE @FormCSp INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Inbound Customer Service QA Form');
-DECLARE @Proj1   INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
+-- ── 5.14  CallPipeline ────────────────────────────────────────────────────────
+DECLARE @FormCO3  INT = (SELECT Id FROM dbo.EvaluationForms WHERE Name = 'Capital One — Credit Card Customer Support QA Form');
+DECLARE @PCapOne7 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @R1p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Sarah Mitchell' ORDER BY EvaluatedAt);
+DECLARE @R2p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'James Kowalski' ORDER BY EvaluatedAt);
+DECLARE @R3p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Priya Nair'     ORDER BY EvaluatedAt);
+DECLARE @R4p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Derek Thompson' ORDER BY EvaluatedAt);
 
 INSERT INTO dbo.CallPipelineJobs
-    (Name, SourceType, FormId, ProjectId, Status,
-     CreatedAt, StartedAt, CompletedAt, CreatedBy)
+    (Name, SourceType, FormId, ProjectId, Status, CreatedAt, StartedAt, CompletedAt, CreatedBy)
 VALUES
-    ('March 2026 CSV Upload Batch', 'FileUpload', @FormCSp, @Proj1, 'Completed',
-     '2026-03-01 08:00:00', '2026-03-01 08:01:00', '2026-03-01 08:12:00', 'analyst1');
+    ('Capital One — Weekly Batch Jan W3 2025', 'BatchUrl', @FormCO3, @PCapOne7, 'Completed',
+     '2025-01-20 00:00:00', '2025-01-20 09:00:00', '2025-01-20 09:18:00', 'admin');
 
 DECLARE @Job1 INT = SCOPE_IDENTITY();
-
-DECLARE @R1p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Sarah Johnson' ORDER BY EvaluatedAt);
-DECLARE @R2p INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Mark Davis'   ORDER BY EvaluatedAt);
 
 INSERT INTO dbo.CallPipelineItems
     (JobId, SourceReference, AgentName, CallReference, CallDate, Status,
      CreatedAt, ProcessedAt, EvaluationResultId, ScorePercent, AiReasoning)
 VALUES
-    (@Job1, 'data:text/plain,(transcript%20text%20here)', 'Sarah Johnson', 'REF-20260210-001', '2026-02-10 09:00:00',
-     'Completed', '2026-03-01 08:01:00', '2026-03-01 08:05:00', @R1p, 88.0,
-     'Strong performance overall with minor wrap-up improvement needed.'),
-
-    (@Job1, 'data:text/plain,(transcript%20text%20here)', 'Mark Davis', 'REF-20260211-007', '2026-02-11 11:15:00',
-     'Completed', '2026-03-01 08:05:00', '2026-03-01 08:09:00', @R2p, 62.5,
-     'Failed regulatory compliance and data verification — coaching required.'),
-
-    (@Job1, 'data:text/plain,(transcript%20text%20here)', 'Tom Richards', 'REF-20260301-015', '2026-03-01 07:30:00',
-     'Failed', '2026-03-01 08:09:00', '2026-03-01 08:10:00', NULL, NULL,
-     NULL);
+    (@Job1, 'https://recordings.capitalone.internal/calls/COF-2025-00142.mp3',
+     'Sarah Mitchell', 'COF-2025-00142', '2025-01-14 00:00:00', 'Completed',
+     '2025-01-20 00:00:00', '2025-01-20 09:05:00', @R1p, 91.2,
+     'Excellent performance across all evaluation areas. Strong compliance adherence and outstanding customer rapport.'),
+    (@Job1, 'https://recordings.capitalone.internal/calls/COF-2025-00215.mp3',
+     'James Kowalski', 'COF-2025-00215', '2025-01-21 00:00:00', 'Completed',
+     '2025-01-20 00:00:00', '2025-01-20 09:10:00', @R2p, 73.5,
+     'Good overall performance. Missed required APR disclosure on the first attempt — corrected after customer prompt.'),
+    (@Job1, 'https://recordings.capitalone.internal/calls/COF-2025-00155.mp3',
+     'Maria Gonzalez', 'COF-2025-00155', '2025-01-16 00:00:00', 'Failed',
+     '2025-01-20 00:00:00', '2025-01-20 09:15:00', NULL, NULL, NULL);
 
 UPDATE dbo.CallPipelineItems
-SET ErrorMessage = 'Transcript returned empty — file row may have been blank.'
-WHERE JobId = @Job1 AND AgentName = 'Tom Richards';
+SET ErrorMessage = 'Audio quality too poor to transcribe reliably (SNR < 10 dB).'
+WHERE JobId = @Job1 AND AgentName = 'Maria Gonzalez';
+
+INSERT INTO dbo.CallPipelineJobs
+    (Name, SourceType, FormId, ProjectId, Status, CreatedAt, StartedAt, CompletedAt, CreatedBy)
+VALUES
+    ('Capital One — Weekly Batch Feb W1 2025', 'BatchUrl', @FormCO3, @PCapOne7, 'Completed',
+     '2025-02-03 00:00:00', '2025-02-03 09:00:00', '2025-02-03 09:22:00', 'admin');
+
+DECLARE @Job2 INT = SCOPE_IDENTITY();
+
+INSERT INTO dbo.CallPipelineItems
+    (JobId, SourceReference, AgentName, CallReference, CallDate, Status,
+     CreatedAt, ProcessedAt, EvaluationResultId, ScorePercent, AiReasoning)
+VALUES
+    (@Job2, 'https://recordings.capitalone.internal/calls/COF-2025-00318.mp3',
+     'Priya Nair', 'COF-2025-00318', '2025-02-04 00:00:00', 'Completed',
+     '2025-02-03 00:00:00', '2025-02-03 09:08:00', @R3p, 98.5,
+     'Outstanding call. Customer escalation handled with exceptional empathy. Full compliance adherence throughout.'),
+    (@Job2, 'https://recordings.capitalone.internal/calls/COF-2025-00401.mp3',
+     'Derek Thompson', 'COF-2025-00401', '2025-02-11 00:00:00', 'Completed',
+     '2025-02-03 00:00:00', '2025-02-03 09:16:00', @R4p, 38.2,
+     'Below standard. Failed CID verification and PCI DSS violation detected. Immediate coaching required.');
 GO
 
 -- ── 5.15  Training Plans ──────────────────────────────────────────────────────
-DECLARE @R2t INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Mark Davis' ORDER BY EvaluatedAt);
-DECLARE @HRI2 INT = (SELECT TOP 1 Id FROM dbo.HumanReviewItems WHERE EvaluationResultId = @R2t);
-DECLARE @Proj1t INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
+DECLARE @PCapOne8 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
+DECLARE @R4t INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'Derek Thompson' ORDER BY EvaluatedAt);
+DECLARE @R2t INT = (SELECT TOP 1 Id FROM dbo.EvaluationResults WHERE AgentName = 'James Kowalski' ORDER BY EvaluatedAt);
 
 INSERT INTO dbo.TrainingPlans
     (Title, Description, AgentName, AgentUsername, TrainerName, TrainerUsername,
      Status, DueDate, ProjectId, EvaluationResultId, HumanReviewItemId,
      CreatedBy, CreatedAt, UpdatedAt)
 VALUES
-    ('Compliance Remediation — Mark Davis',
-     'Mark failed both data verification and the regulatory disclosure script on 11 Feb. '
-     + 'This plan targets immediate compliance remediation with a structured coaching programme.',
-     'Mark Davis', 'agent1',
-     'Sarah Johnson', NULL,
-     'Active', '2026-03-31 00:00:00',
-     @Proj1t, @R2t, @HRI2,
-     'qamanager', '2026-02-12 09:00:00', '2026-02-12 09:00:00');
+    ('PCI DSS Compliance Remediation — Derek Thompson',
+     'Immediate coaching required following PCI DSS violation (COF-2025-00401). Agent asked customer to repeat card number verbally and failed full CID verification.',
+     'Derek Thompson', 'agent1', 'admin', NULL,
+     'Active', '2025-03-10 00:00:00',
+     @PCapOne8, @R4t, NULL,
+     'admin', '2025-02-12 00:00:00', '2025-02-12 00:00:00');
 
 DECLARE @TP1 INT = SCOPE_IDENTITY();
 
 INSERT INTO dbo.TrainingPlanItems
     (TrainingPlanId, TargetArea, ItemType, Content, Status, [Order])
 VALUES
-    (@TP1, 'Compliance', 'Observation',
-     'Agent failed to read the mandatory regulatory disclosure script at the start of the call. '
-     + 'This is a critical compliance requirement and a zero-tolerance breach.',
+    (@TP1, 'Compliance & Procedures', 'Observation',
+     'Agent asked the customer to repeat their full card number aloud, violating PCI DSS data security requirements.',
+     'Pending', 0),
+    (@TP1, 'Compliance & Procedures', 'Observation',
+     'Customer Identity Verification (CID) process was not completed before account details were discussed.',
      'Pending', 1),
-
-    (@TP1, 'Compliance', 'Recommendation',
-     'Complete the mandatory compliance e-learning module (Compliance-101) by 21 Feb 2026. '
-     + 'Trainer to verify completion certificate.',
-     'InProgress', 2),
-
-    (@TP1, 'Compliance', 'Observation',
-     'Data verification was attempted once (name only) rather than the required minimum of two identifiers.',
+    (@TP1, 'Compliance & Procedures', 'Recommendation',
+     'Complete the PCI DSS e-learning module (30 min) and pass the assessment with a minimum score of 80%.',
+     'Pending', 2),
+    (@TP1, 'Compliance & Procedures', 'Recommendation',
+     'Complete a live role-play session with the trainer covering CID verification and sensitive data handling.',
      'Pending', 3),
+    (@TP1, 'Call Opening', 'Recommendation',
+     'Review the CID verification checklist and practise the verification script until it becomes second nature.',
+     'Pending', 4);
 
-    (@TP1, 'Compliance', 'Recommendation',
-     'Role-play three data verification scenarios with trainer by 28 Feb 2026 and score 100% on assessment.',
-     'Pending', 4),
+INSERT INTO dbo.TrainingPlans
+    (Title, Description, AgentName, AgentUsername, TrainerName, TrainerUsername,
+     Status, DueDate, ProjectId, EvaluationResultId, HumanReviewItemId,
+     CreatedBy, CreatedAt, UpdatedAt)
+VALUES
+    ('Required Disclosures Coaching — James Kowalski',
+     'APR and fee disclosure was not provided in the required format on call COF-2025-00215. Coaching to reinforce Reg Z disclosure requirements.',
+     'James Kowalski', NULL, 'admin', NULL,
+     'InProgress', '2025-03-05 00:00:00',
+     @PCapOne8, @R2t, NULL,
+     'admin', '2025-01-22 00:00:00', '2025-02-01 00:00:00');
 
-    (@TP1, 'Resolution', 'Observation',
-     'Resolution provided was partially correct — agent quoted an outdated refund policy. '
-     + 'Knowledge gap identified in billing resolution procedures.',
-     'Pending', 5),
+DECLARE @TP2 INT = SCOPE_IDENTITY();
 
-    (@TP1, 'Resolution', 'Recommendation',
-     'Read the updated Billing Resolution Policy (v4, Jan 2026) and complete the policy knowledge check with a minimum score of 90%.',
-     'Pending', 6);
+INSERT INTO dbo.TrainingPlanItems
+    (TrainingPlanId, TargetArea, ItemType, Content, Status, [Order], CompletedBy, CompletedAt, CompletionNotes)
+VALUES
+    (@TP2, 'Compliance & Procedures', 'Observation',
+     'Required APR and fee disclosures were mentioned but not delivered in the mandatory scripted format as required by Reg Z.',
+     'Done', 0, 'admin', '2025-02-01 00:00:00', 'Agent reviewed the Reg Z disclosure script and confirmed understanding.'),
+    (@TP2, 'Compliance & Procedures', 'Recommendation',
+     'Review the Reg Z required disclosure scripts for all Capital One credit card product categories.',
+     'InProgress', 1, NULL, NULL, NULL),
+    (@TP2, 'Compliance & Procedures', 'Recommendation',
+     'Conduct two supervised calls where the trainer monitors disclosure delivery in real time.',
+     'Pending', 2, NULL, NULL, NULL);
 GO
 
 -- ── 5.16  Audit Log entries (sample PII and API call events) ─────────────────
-DECLARE @Proj1al INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Customer Service Excellence');
+DECLARE @PCapOne9 INT = (SELECT Id FROM dbo.Projects WHERE Name = 'Capital One');
 
 INSERT INTO dbo.AuditLogs
     (ProjectId, Category, EventType, Outcome, Actor, PiiTypesDetected,
      HttpMethod, Endpoint, HttpStatusCode, DurationMs, Provider, Details, OccurredAt)
 VALUES
-    (@Proj1al, 'PiiEvent', 'PiiDetected', 'Detected', 'auto-audit', 'EMAIL,PHONE',
+    (@PCapOne9, 'PiiEvent', 'PiiDetected', 'Detected', 'auto-audit', 'EMAIL,PHONE',
      NULL, NULL, NULL, NULL, NULL,
-     'PII detected in transcript for REF-20260211-007 before LLM call.',
-     '2026-03-01 08:05:10'),
+     'PII detected in transcript for COF-2025-00215 before LLM call.',
+     '2025-01-22 10:05:00'),
 
-    (@Proj1al, 'PiiEvent', 'PiiRedacted', 'Redacted', 'auto-audit', 'EMAIL,PHONE',
+    (@PCapOne9, 'PiiEvent', 'PiiRedacted', 'Redacted', 'auto-audit', 'EMAIL,PHONE',
      NULL, NULL, NULL, NULL, NULL,
-     'PII tokens replaced with [EMAIL] and [PHONE] before LLM call. REF-20260211-007.',
-     '2026-03-01 08:05:11'),
+     'PII tokens replaced with [EMAIL] and [PHONE] before LLM call. COF-2025-00215.',
+     '2025-01-22 10:05:01'),
 
-    (@Proj1al, 'ExternalApiCall', 'LlmAudit', 'Success', 'auto-audit', NULL,
+    (@PCapOne9, 'ExternalApiCall', 'LlmAudit', 'Success', 'auto-audit', NULL,
      'POST', 'https://my-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions', 200, 3420, 'AzureOpenAI',
-     'Job: 1; Item: 1; Ref: REF-20260210-001',
-     '2026-03-01 08:05:05'),
+     'Job: Capital One — Weekly Batch Jan W3 2025; Ref: COF-2025-00142',
+     '2025-01-20 09:05:00'),
 
-    (@Proj1al, 'ExternalApiCall', 'LlmAudit', 'Success', 'auto-audit', NULL,
+    (@PCapOne9, 'ExternalApiCall', 'LlmAudit', 'Success', 'auto-audit', NULL,
      'POST', 'https://my-openai.openai.azure.com/openai/deployments/gpt-4o/chat/completions', 200, 4110, 'AzureOpenAI',
-     'Job: 1; Item: 2; Ref: REF-20260211-007',
-     '2026-03-01 08:09:00'),
+     'Job: Capital One — Weekly Batch Jan W3 2025; Ref: COF-2025-00215',
+     '2025-01-20 09:10:00'),
 
-    (@Proj1al, 'ExternalApiCall', 'UrlFetch', 'Failure', 'pipeline:March 2026 CSV Upload Batch', NULL,
-     'GET', '(inline transcript)', NULL, 0, NULL,
-     'Job: 1; Item: 3; Error: Transcript returned empty.',
-     '2026-03-01 08:09:30');
+    (@PCapOne9, 'ExternalApiCall', 'UrlFetch', 'Failure', 'pipeline:Capital One — Weekly Batch Jan W3 2025', NULL,
+     'GET', 'https://recordings.capitalone.internal/calls/COF-2025-00155.mp3', NULL, 0, NULL,
+     'Audio quality too poor to transcribe reliably (SNR < 10 dB).',
+     '2025-01-20 09:15:00');
 GO
 
 -- =============================================================================
