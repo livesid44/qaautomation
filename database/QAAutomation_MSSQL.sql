@@ -606,7 +606,7 @@ VALUES
 GO
 
 -- ── 5.2  AppUsers ────────────────────────────────────────────────────────────
--- Passwords are BCrypt hashes.
+-- Passwords are SHA-256 hex hashes (matches AppDbContext.HashPassword).
 -- admin     → password: Admin@123
 -- qamanager → password: QA@Manager1
 -- analyst1  → password: Analyst@1
@@ -615,19 +615,19 @@ GO
 INSERT INTO dbo.AppUsers (Username, PasswordHash, Email, Role, IsActive, CreatedAt)
 VALUES
     ('admin',
-     '$2a$11$rVHpJzfxbXpRKpUqmMoJ8u7YkqA5k7qW3xN2vL0cGzHlP4sJ8cH6i',
+     'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7',
      'admin@qaplatform.local', 'Admin', 1, '2026-01-01 00:00:00'),
     ('qamanager',
-     '$2a$11$mK3gLpQz9wX1YcN5sR7AiOeJp8fKl4dV6hMtW2oBnC0rUs6FDyqPm',
+     '7aff26f8a5aa7ef020f0efeb1c747c1563df51f6fad025741d06a99b3259a7b6',
      'qamanager@qaplatform.local', 'Manager', 1, '2026-01-01 00:00:00'),
     ('analyst1',
-     '$2a$11$bX7nYp4wE2QkRf9mZ3sCuuL5JhD8GiV0tFxM6oKjPN1rWA2eBdqIe',
+     '7657ceb01ad1eaa5f98bacf3bd1e78d7e30ee70115b306fa5d6b86eaec5f9a8b',
      'analyst1@qaplatform.local', 'Analyst', 1, '2026-01-02 00:00:00'),
     ('trainer1',
-     '$2a$11$cM8oZq5xF3RlSg0nA4tDvvM6KiE9HjW1uGyN7pLkQO2sSB3fCerJf',
+     '83b0e6ae5824d14e339b97119776f11bae629890e5fa518ef3f587b6919c0a08',
      'trainer1@qaplatform.local', 'User', 1, '2026-01-02 00:00:00'),
     ('agent1',
-     '$2a$11$dN9pAr6yG4SmTh1oB5uEwwN7LjF0IkX2vHzO8qMlRP3tTC4gDfsKg',
+     '82edae304d5ac65434f7c04a85656610ded207660c43107b092157d71ce12f5c',
      'agent1@qaplatform.local', 'User', 1, '2026-01-02 00:00:00');
 GO
 
