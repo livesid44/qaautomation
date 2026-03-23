@@ -4,7 +4,7 @@
     var insights = ViewBag.Insights as QAAutomation.Web.Models.AnalyticsInsightsViewModel
                    ?? new QAAutomation.Web.Models.AnalyticsInsightsViewModel();
 
-    // Serialise data for Chart.js
+    // Serialise data for Chart.js — use explicit camelCase keys so JS property access works correctly
     var dailyLabels   = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.Date));
     var dailyData     = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.AvgScorePercent));
     var dailyCounts   = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.AuditCount));
@@ -21,316 +21,473 @@
     var ctData        = System.Text.Json.JsonSerializer.Serialize(Model.CallTypeScores.Select(c => c.AvgScorePercent));
     var ctCounts      = System.Text.Json.JsonSerializer.Serialize(Model.CallTypeScores.Select(c => c.AuditCount));
 
-    // Agent daily trend — serialise as raw array for JS processing
-    var agentTrendJson    = System.Text.Json.JsonSerializer.Serialize(Model.AgentDailyTrends.Select(t => new { t.AgentName, t.Date, t.AvgScorePercent, t.AuditCount }));
+    // FIX: use explicit camelCase property names so JS r.agentName / r.date / r.avgScorePercent resolve correctly
+    var agentTrendJson   = System.Text.Json.JsonSerializer.Serialize(Model.AgentDailyTrends.Select(t =>
+        new { agentName = t.AgentName, date = t.Date, avgScorePercent = t.AvgScorePercent, auditCount = t.AuditCount }));
+    var sectionTrendJson = System.Text.Json.JsonSerializer.Serialize(Model.SectionDailyTrends.Select(t =>
+        new { sectionTitle = t.SectionTitle, date = t.Date, avgScorePercent = t.AvgScorePercent, scoredCount = t.ScoredCount }));
 
-    // Section daily trend
-    var sectionTrendJson  = System.Text.Json.JsonSerializer.Serialize(Model.SectionDailyTrends.Select(t => new { t.SectionTitle, t.Date, t.AvgScorePercent, t.ScoredCount }));
+    bool hasData = Model.TotalAudits > 0;
 
-    bool hasData      = Model.TotalAudits > 0;
+    // Pre-compute KPIs
+    var overallAvg   = Model.DailyScores.Count > 0 ? Math.Round(Model.DailyScores.Average(d => d.AvgScorePercent), 1) : 0.0;
+    var topAgent     = Model.AgentScores.OrderByDescending(a => a.AvgScorePercent).FirstOrDefault();
+    var weakestParam = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).FirstOrDefault();
+    var bestForm     = Model.CallTypeScores.OrderByDescending(c => c.AvgScorePercent).FirstOrDefault();
+
+    // Score distribution (Low <60 / Medium 60-79 / High >=80)
+    var agentLow  = Model.AgentScores.Count(a => a.AvgScorePercent < 60);
+    var agentMed  = Model.AgentScores.Count(a => a.AvgScorePercent >= 60 && a.AvgScorePercent < 80);
+    var agentHigh = Model.AgentScores.Count(a => a.AvgScorePercent >= 80);
+
+    var distLabels = System.Text.Json.JsonSerializer.Serialize(new[] { "High (>=80%)", "Medium (60-79%)", "Low (<60%)" });
+    var distData   = System.Text.Json.JsonSerializer.Serialize(new[] { agentHigh, agentMed, agentLow });
 }
 @section Styles {
 <style>
-    .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
-    .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
-    .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
+    .ai-insight-box { background: linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border: 1px solid #b3d9f7; border-radius: 10px; padding: 14px 18px; margin-bottom: 1rem; font-size: .9rem; }
+    .ai-insight-box .ai-label { font-size: .7rem; font-weight: 700; letter-spacing: .05em; color: #0d6efd; text-transform: uppercase; margin-bottom: 4px; }
+    .ai-insight-box p { margin: 0; color: #2c3e50; line-height: 1.55; }
+    .tab-content { padding-top: 1.5rem; }
+    .nav-tabs .nav-link { font-size: .9rem; font-weight: 500; color: #495057; }
+    .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 600; }
+    .filter-bar { background: #f8f9fa; border-radius: 8px; padding: 12px 16px; margin-bottom: 1.25rem; }
+    .export-btn { font-size: .8rem; }
 </style>
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Page header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Analytics Dashboard</h4>
         <p class="text-muted mb-0">QA performance trends across all audits</p>
     </div>
-    <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
+        <a href="@Url.Action("Explainability", "Analytics")" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-shield-check me-1"></i>Explainability
+        </a>
+    </div>
+</div>
+
+<!-- Date-range and score filter bar -->
+<div class="filter-bar d-flex flex-wrap align-items-end gap-3">
+    <div>
+        <label class="form-label mb-1 small fw-semibold">From date</label>
+        <input type="date" id="filterFrom" class="form-control form-control-sm" style="width:160px">
+    </div>
+    <div>
+        <label class="form-label mb-1 small fw-semibold">To date</label>
+        <input type="date" id="filterTo" class="form-control form-control-sm" style="width:160px">
+    </div>
+    <div>
+        <label class="form-label mb-1 small fw-semibold">Min score %</label>
+        <input type="number" id="filterMinScore" class="form-control form-control-sm" style="width:100px" min="0" max="100" placeholder="0">
+    </div>
+    <div>
+        <label class="form-label mb-1 small fw-semibold">Max score %</label>
+        <input type="number" id="filterMaxScore" class="form-control form-control-sm" style="width:100px" min="0" max="100" placeholder="100">
+    </div>
+    <button class="btn btn-primary btn-sm" id="applyFilter"><i class="bi bi-funnel me-1"></i>Apply</button>
+    <button class="btn btn-outline-secondary btn-sm" id="clearFilter"><i class="bi bi-x-circle me-1"></i>Clear</button>
+    <span id="filterStatus" class="text-muted small ms-auto align-self-center"></span>
 </div>
 
 @if (!hasData)
 {
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle me-2"></i>No audit records found. Submit some audits to see analytics.
-    </div>
+    <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No audit records found. Submit some audits to see analytics.</div>
 }
 else
 {
-    <!-- ── KPI summary row ──────────────────────────────────────────────── -->
-    <div class="row g-3 mb-4">
-        @{
-            var overallAvg = Model.DailyScores.Count > 0
-                ? Math.Round(Model.DailyScores.Average(d => d.AvgScorePercent), 1) : 0.0;
-            var topAgent = Model.AgentScores.OrderByDescending(a => a.AvgScorePercent).FirstOrDefault();
-            var weakestParam = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).FirstOrDefault();
-            var bestForm = Model.CallTypeScores.OrderByDescending(c => c.AvgScorePercent).FirstOrDefault();
-        }
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
-                        <i class="bi bi-percent fs-4 text-primary"></i>
-                    </div>
-                    <div>
-                        <div class="fs-2 fw-bold">@overallAvg<small class="fs-6 text-muted">%</small></div>
-                        <div class="text-muted small">Overall Avg Score</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
-                        <i class="bi bi-person-check fs-4 text-success"></i>
-                    </div>
-                    <div>
-                        <div class="fs-5 fw-bold text-truncate" style="max-width:130px" title="@topAgent?.AgentName">
-                            @(topAgent?.AgentName ?? "—")
-                        </div>
-                        <div class="text-muted small">Top Agent (@(topAgent != null ? topAgent.AvgScorePercent + "%" : "—"))</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
-                        <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
-                    </div>
-                    <div>
-                        <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@weakestParam?.ParameterLabel">
-                            @(weakestParam?.ParameterLabel ?? "—")
-                        </div>
-                        <div class="text-muted small">Weakest Parameter (@(weakestParam != null ? weakestParam.AvgScorePercent + "%" : "—"))</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-info bg-opacity-10 p-3">
-                        <i class="bi bi-telephone-inbound fs-4 text-info"></i>
-                    </div>
-                    <div>
-                        <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@bestForm?.FormName">
-                            @(bestForm?.FormName ?? "—")
-                        </div>
-                        <div class="text-muted small">Best Form (@(bestForm != null ? bestForm.AvgScorePercent + "%" : "—"))</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Tab navigation -->
+    <ul class="nav nav-tabs border-bottom" id="analyticsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">
+                <i class="bi bi-speedometer2 me-1"></i>Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-agent" data-bs-toggle="tab" data-bs-target="#pane-agent" type="button" role="tab">
+                <i class="bi bi-people me-1"></i>Agent Performance
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-param" data-bs-toggle="tab" data-bs-target="#pane-param" type="button" role="tab">
+                <i class="bi bi-sliders me-1"></i>Parameter Analysis
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-calltype" data-bs-toggle="tab" data-bs-target="#pane-calltype" type="button" role="tab">
+                <i class="bi bi-telephone me-1"></i>Call Type / Form
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-trends" data-bs-toggle="tab" data-bs-target="#pane-trends" type="button" role="tab">
+                <i class="bi bi-graph-up-arrow me-1"></i>Trends
+            </button>
+        </li>
+    </ul>
 
-    <!-- ── Row 1: Daily trend + Agent performance ───────────────────────── -->
-    @if (!string.IsNullOrWhiteSpace(insights.DailyTrendInsight))
-    {
-        <div class="ai-insight-box">
-            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Daily QA Trend</div>
-            <p>@insights.DailyTrendInsight</p>
-        </div>
-    }
-    <div class="row g-4 mb-4">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Day-by-Day QA Score</h6>
-                    <small class="text-muted">Average score % per call date</small>
+    <div class="tab-content" id="analyticsTabContent">
+
+        <!-- TAB 1: OVERVIEW -->
+        <div class="tab-pane fade show active" id="pane-overview" role="tabpanel">
+            <!-- KPI summary row -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                                <i class="bi bi-percent fs-4 text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold">@overallAvg<small class="fs-6 text-muted">%</small></div>
+                                <div class="text-muted small">Overall Avg Score</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <canvas id="dailyChart" height="100"></canvas>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                <i class="bi bi-person-check fs-4 text-success"></i>
+                            </div>
+                            <div>
+                                <div class="fs-5 fw-bold text-truncate" style="max-width:130px" title="@topAgent?.AgentName">@(topAgent?.AgentName ?? "—")</div>
+                                <div class="text-muted small">Top Agent (@(topAgent != null ? topAgent.AvgScorePercent + "%" : "—"))</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                                <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                            </div>
+                            <div>
+                                <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@weakestParam?.ParameterLabel">@(weakestParam?.ParameterLabel ?? "—")</div>
+                                <div class="text-muted small">Weakest Parameter (@(weakestParam != null ? weakestParam.AvgScorePercent + "%" : "—"))</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                                <i class="bi bi-telephone-inbound fs-4 text-info"></i>
+                            </div>
+                            <div>
+                                <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@bestForm?.FormName">@(bestForm?.FormName ?? "—")</div>
+                                <div class="text-muted small">Best Form (@(bestForm != null ? bestForm.AvgScorePercent + "%" : "—"))</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score distribution row -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-4">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                <i class="bi bi-check-circle fs-4 text-success"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-success">@agentHigh</div>
+                                <div class="text-muted small">Agents &ge; 80% (High)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                                <i class="bi bi-dash-circle fs-4 text-warning"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-warning">@agentMed</div>
+                                <div class="text-muted small">Agents 60&ndash;79% (Medium)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                                <i class="bi bi-x-circle fs-4 text-danger"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-danger">@agentLow</div>
+                                <div class="text-muted small">Agents &lt; 60% (Low)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(insights.DailyTrendInsight))
+            {
+                <div class="ai-insight-box">
+                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Daily QA Trend</div>
+                    <p>@insights.DailyTrendInsight</p>
+                </div>
+            }
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Day-by-Day QA Score</h6>
+                            <small class="text-muted">Average score % per call date</small>
+                        </div>
+                        <div class="card-body"><canvas id="dailyChart" height="100"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2 text-info"></i>Agent Score Distribution</h6>
+                            <small class="text-muted">Agents by performance band</small>
+                        </div>
+                        <div class="card-body"><canvas id="distChart" height="200"></canvas></div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
+
+        <!-- TAB 2: AGENT PERFORMANCE -->
+        <div class="tab-pane fade" id="pane-agent" role="tabpanel">
+            @if (!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight))
+            {
+                <div class="ai-insight-box">
+                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Agent Performance</div>
+                    <p>@insights.AgentPerformanceInsight</p>
+                </div>
+            }
+            <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Agent Performance</h6>
+                    <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Agent Performance Overview</h6>
                     <small class="text-muted">Average score % per agent</small>
                 </div>
-                <div class="card-body">
-                    <canvas id="agentChart" height="200"></canvas>
-                </div>
+                <div class="card-body"><canvas id="agentChart" height="80"></canvas></div>
             </div>
+            @if (Model.AgentScores.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Performance Details</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('agentTable','agent-performance')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="agentTable">
+                                <thead class="table-light">
+                                    <tr><th>Agent</th><th class="text-center">Audits</th><th>Avg Score</th><th>Band</th><th>Score Bar</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var agent in Model.AgentScores.OrderByDescending(a => a.AvgScorePercent))
+                                    {
+                                        var color = agent.AvgScorePercent >= 80 ? "success" : agent.AvgScorePercent >= 60 ? "warning" : "danger";
+                                        var band = agent.AvgScorePercent >= 80 ? "High" : agent.AvgScorePercent >= 60 ? "Medium" : "Low";
+                                        <tr>
+                                            <td class="fw-semibold">@agent.AgentName</td>
+                                            <td class="text-center">@agent.AuditCount</td>
+                                            <td><span class="badge bg-@color">@agent.AvgScorePercent%</span></td>
+                                            <td><span class="badge bg-@color bg-opacity-25 text-@color border border-@color">@band</span></td>
+                                            <td style="min-width:140px">
+                                                <div class="progress" style="height:8px">
+                                                    <div class="progress-bar bg-@color" style="width:@agent.AvgScorePercent%"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
-    </div>
 
-    <!-- ── Row 2: Parameter trend + Call-type trend ─────────────────────── -->
-    @if (!string.IsNullOrWhiteSpace(insights.ParameterInsight))
-    {
-        <div class="ai-insight-box">
-            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Parameter &amp; Section Performance</div>
-            <p>@insights.ParameterInsight</p>
-        </div>
-    }
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card border-0 shadow-sm h-100">
+        <!-- TAB 3: PARAMETER ANALYSIS -->
+        <div class="tab-pane fade" id="pane-param" role="tabpanel">
+            @if (!string.IsNullOrWhiteSpace(insights.ParameterInsight))
+            {
+                <div class="ai-insight-box">
+                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Parameter &amp; Section Performance</div>
+                    <p>@insights.ParameterInsight</p>
+                </div>
+            }
+            <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
                     <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-warning"></i>Parameter-wise Performance</h6>
                     <small class="text-muted">Average score % per evaluation parameter</small>
                 </div>
-                <div class="card-body" style="overflow-x:auto">
-                    <canvas id="paramChart"></canvas>
+                <div class="card-body" style="overflow-x:auto"><canvas id="paramChart"></canvas></div>
+            </div>
+            @if (Model.ParameterTrends.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>Parameter Performance Details</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('paramTable','parameter-performance')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="paramTable">
+                                <thead class="table-light">
+                                    <tr><th>Section</th><th>Parameter</th><th class="text-center">Scored</th><th>Avg Score</th><th>Score Bar</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var param in Model.ParameterTrends.OrderBy(p => p.SectionTitle).ThenBy(p => p.ParameterLabel))
+                                    {
+                                        var color = param.AvgScorePercent >= 80 ? "success" : param.AvgScorePercent >= 60 ? "warning" : "danger";
+                                        <tr>
+                                            <td class="text-muted small">@param.SectionTitle</td>
+                                            <td class="fw-semibold">@param.ParameterLabel</td>
+                                            <td class="text-center">@param.ScoredCount</td>
+                                            <td><span class="badge bg-@color">@param.AvgScorePercent%</span></td>
+                                            <td style="min-width:140px">
+                                                <div class="progress" style="height:8px">
+                                                    <div class="progress-bar bg-@color" style="width:@param.AvgScorePercent%"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- TAB 4: CALL TYPE / FORM -->
+        <div class="tab-pane fade" id="pane-calltype" role="tabpanel">
+            @if (!string.IsNullOrWhiteSpace(insights.CallTypeInsight))
+            {
+                <div class="ai-insight-box">
+                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Call Type / Form Performance</div>
+                    <p>@insights.CallTypeInsight</p>
+                </div>
+            }
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-telephone me-2 text-info"></i>Call Type / Form Performance</h6>
+                            <small class="text-muted">Average score % by evaluation form</small>
+                        </div>
+                        <div class="card-body"><canvas id="callTypeChart" height="240"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Form Performance Details</h6>
+                                <small class="text-muted">Metrics per evaluation form</small>
+                            </div>
+                            <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('callTypeTable','call-type-performance')">
+                                <i class="bi bi-download me-1"></i>Export CSV
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="callTypeTable">
+                                    <thead class="table-light">
+                                        <tr><th>Form Name</th><th class="text-center">Audits</th><th>Avg Score</th><th>Score Bar</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var ct in Model.CallTypeScores.OrderByDescending(c => c.AvgScorePercent))
+                                        {
+                                            var color = ct.AvgScorePercent >= 80 ? "success" : ct.AvgScorePercent >= 60 ? "warning" : "danger";
+                                            <tr>
+                                                <td class="fw-semibold">@ct.FormName</td>
+                                                <td class="text-center">@ct.AuditCount</td>
+                                                <td><span class="badge bg-@color">@ct.AvgScorePercent%</span></td>
+                                                <td style="min-width:120px">
+                                                    <div class="progress" style="height:8px">
+                                                        <div class="progress-bar bg-@color" style="width:@ct.AvgScorePercent%"></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-5">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-telephone me-2 text-info"></i>Call Type / Form Performance</h6>
-                    <small class="text-muted">Average score % by evaluation form</small>
+
+        <!-- TAB 5: TRENDS -->
+        <div class="tab-pane fade" id="pane-trends" role="tabpanel">
+            @if (Model.AgentDailyTrends.Count > 0)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-4 pb-0">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-success"></i>Agent-wise Performance Trend</h6>
+                        <small class="text-muted">Day-by-day average score % per agent</small>
+                    </div>
+                    <div class="card-body" style="overflow-x:auto"><canvas id="agentTrendChart"></canvas></div>
                 </div>
-                <div class="card-body">
-                    <canvas id="callTypeChart" height="200"></canvas>
+            }
+            @if (Model.SectionDailyTrends.Count > 0)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-4 pb-0">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-warning"></i>Section-wise Score Trend</h6>
+                        <small class="text-muted">Day-by-day average score % per evaluation section</small>
+                    </div>
+                    <div class="card-body" style="overflow-x:auto"><canvas id="sectionTrendChart"></canvas></div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Agent detail table ────────────────────────────────────────────── -->
-    @if (Model.AgentScores.Count > 0)
-    {
-        @if (!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight))
-        {
-            <div class="ai-insight-box mt-4">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Agent Performance</div>
-                <p>@insights.AgentPerformanceInsight</p>
-            </div>
-        }
-        <div class="card border-0 shadow-sm mt-2">
-            <div class="card-header bg-white border-0 pt-4 pb-0">
-                <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Performance Details</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Agent</th>
-                                <th class="text-center">Audits</th>
-                                <th>Avg Score</th>
-                                <th>Score Bar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var agent in Model.AgentScores.OrderByDescending(a => a.AvgScorePercent))
-                            {
-                                var color = agent.AvgScorePercent >= 80 ? "success"
-                                          : agent.AvgScorePercent >= 60 ? "warning" : "danger";
-                                <tr>
-                                    <td class="fw-semibold">@agent.AgentName</td>
-                                    <td class="text-center">@agent.AuditCount</td>
-                                    <td><span class="badge bg-@color">@agent.AvgScorePercent%</span></td>
-                                    <td style="min-width:140px">
-                                        <div class="progress" style="height:8px">
-                                            <div class="progress-bar bg-@color" style="width:@agent.AvgScorePercent%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+            }
+            @if (Model.AgentDailyTrends.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Daily Score Data</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('agentTrendTable','agent-daily-trend')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                            <table class="table table-sm table-hover mb-0" id="agentTrendTable">
+                                <thead class="table-light sticky-top">
+                                    <tr><th>Agent</th><th>Date</th><th class="text-center">Audits</th><th>Avg Score</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var t in Model.AgentDailyTrends.OrderByDescending(x => x.Date).ThenBy(x => x.AgentName))
+                                    {
+                                        var color = t.AvgScorePercent >= 80 ? "success" : t.AvgScorePercent >= 60 ? "warning" : "danger";
+                                        <tr>
+                                            <td>@t.AgentName</td>
+                                            <td class="text-muted small">@t.Date</td>
+                                            <td class="text-center">@t.AuditCount</td>
+                                            <td><span class="badge bg-@color">@t.AvgScorePercent%</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            }
         </div>
-    }
 
-    <!-- ── Parameter detail table ───────────────────────────────────────── -->
-    @if (Model.ParameterTrends.Count > 0)
-    {
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white border-0 pt-4 pb-0">
-                <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>Parameter Performance Details</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Section</th>
-                                <th>Parameter</th>
-                                <th class="text-center">Scored</th>
-                                <th>Avg Score</th>
-                                <th>Score Bar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var param in Model.ParameterTrends.OrderBy(p => p.SectionTitle).ThenBy(p => p.ParameterLabel))
-                            {
-                                var color = param.AvgScorePercent >= 80 ? "success"
-                                          : param.AvgScorePercent >= 60 ? "warning" : "danger";
-                                <tr>
-                                    <td class="text-muted small">@param.SectionTitle</td>
-                                    <td class="fw-semibold">@param.ParameterLabel</td>
-                                    <td class="text-center">@param.ScoredCount</td>
-                                    <td><span class="badge bg-@color">@param.AvgScorePercent%</span></td>
-                                    <td style="min-width:140px">
-                                        <div class="progress" style="height:8px">
-                                            <div class="progress-bar bg-@color" style="width:@param.AvgScorePercent%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- ── Agent-wise performance trend ─────────────────────────────────── -->
-    @if (Model.AgentDailyTrends.Count > 0)
-    {
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white border-0 pt-4 pb-0">
-                <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-success"></i>Agent-wise Performance Trend</h6>
-                <small class="text-muted">Day-by-day average score % per agent — shows whether each agent is improving or declining over time</small>
-            </div>
-            <div class="card-body" style="overflow-x:auto">
-                <canvas id="agentTrendChart"></canvas>
-            </div>
-        </div>
-    }
-
-    <!-- ── Section-wise score trend ──────────────────────────────────────── -->
-    @if (Model.SectionDailyTrends.Count > 0)
-    {
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white border-0 pt-4 pb-0">
-                <h6 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-warning"></i>Section-wise Score Trend</h6>
-                <small class="text-muted">Day-by-day average score % per evaluation section — highlights which sections are trending up or down</small>
-            </div>
-            <div class="card-body" style="overflow-x:auto">
-                <canvas id="sectionTrendChart"></canvas>
-            </div>
-        </div>
-    }
-
-    <!-- ── Call-type AI insight ──────────────────────────────────────────── -->
-    @if (!string.IsNullOrWhiteSpace(insights.CallTypeInsight))
-    {
-        <div class="ai-insight-box mt-4">
-            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Call Type / Form Performance</div>
-            <p>@insights.CallTypeInsight</p>
-        </div>
-    }
-
-    <!-- ── Explainability CTA ─────────────────────────────────────────────── -->
-    <div class="card border-0 shadow-sm mt-4 bg-light">
-        <div class="card-body d-flex align-items-center gap-3">
-            <i class="bi bi-shield-check fs-3 text-primary"></i>
-            <div class="flex-grow-1">
-                <div class="fw-semibold">Need to understand <em>why</em> each decision was reached?</div>
-                <div class="text-muted small">
-                    View the Explainability module for decision drivers, signal utilisation, HITL agreement rates,
-                    and failure-reason analysis — required for audits, legal defensibility, and building trust.
-                </div>
-            </div>
-            <a href="@Url.Action("Explainability", "Analytics")" class="btn btn-primary text-nowrap">
-                <i class="bi bi-shield-check me-1"></i>Open Explainability
-            </a>
-        </div>
     </div>
 }
 
@@ -340,38 +497,43 @@ else
 (function () {
     const gridColor = 'rgba(0,0,0,0.06)';
 
-    // ── Daily QA score line chart ──────────────────────────────────────────
-    const dailyLabels  = @Html.Raw(dailyLabels);
-    const dailyData    = @Html.Raw(dailyData);
-    const dailyCounts  = @Html.Raw(dailyCounts);
-    if (dailyLabels.length) {
-        new Chart(document.getElementById('dailyChart'), {
+    const dailyLabels   = @Html.Raw(dailyLabels);
+    const dailyData     = @Html.Raw(dailyData);
+    const dailyCounts   = @Html.Raw(dailyCounts);
+    const agentLabels   = @Html.Raw(agentLabels);
+    const agentData     = @Html.Raw(agentData);
+    const agentCounts   = @Html.Raw(agentCounts);
+    const paramLabels   = @Html.Raw(paramLabels);
+    const paramSections = @Html.Raw(paramSections);
+    const paramData     = @Html.Raw(paramData);
+    const ctLabels      = @Html.Raw(ctLabels);
+    const ctData        = @Html.Raw(ctData);
+    const ctCounts      = @Html.Raw(ctCounts);
+    const agentTrendRaw   = @Html.Raw(agentTrendJson);
+    const sectionTrendRaw = @Html.Raw(sectionTrendJson);
+    const distLabels = @Html.Raw(distLabels);
+    const distData   = @Html.Raw(distData);
+
+    const charts = {};
+
+    function scoreColor(v) { return v >= 80 ? '#198754' : v >= 60 ? '#ffc107' : '#dc3545'; }
+    function scoreColorBg(v) { return v >= 80 ? 'rgba(25,135,84,0.75)' : v >= 60 ? 'rgba(255,193,7,0.75)' : 'rgba(220,53,69,0.75)'; }
+
+    function buildDailyChart(labels, data, counts) {
+        const el = document.getElementById('dailyChart');
+        if (!el || !labels.length) return;
+        if (charts.daily) charts.daily.destroy();
+        charts.daily = new Chart(el, {
             type: 'line',
             data: {
-                labels: dailyLabels,
-                datasets: [{
-                    label: 'Avg Score %',
-                    data: dailyData,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13,110,253,0.08)',
-                    pointBackgroundColor: '#0d6efd',
-                    tension: 0.3,
-                    fill: true,
-                    yAxisID: 'y'
-                }, {
-                    label: 'Audit Count',
-                    data: dailyCounts,
-                    borderColor: '#6c757d',
-                    backgroundColor: 'rgba(108,117,125,0.12)',
-                    tension: 0.2,
-                    borderDash: [5,3],
-                    fill: false,
-                    yAxisID: 'y1'
-                }]
+                labels,
+                datasets: [
+                    { label: 'Avg Score %', data, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.08)', pointBackgroundColor: '#0d6efd', tension: 0.3, fill: true, yAxisID: 'y' },
+                    { label: 'Audit Count', data: counts, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.12)', tension: 0.2, borderDash: [5,3], fill: false, yAxisID: 'y1' }
+                ]
             },
             options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
+                responsive: true, interaction: { mode: 'index', intersect: false },
                 plugins: { legend: { position: 'top' } },
                 scales: {
                     y:  { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
@@ -382,198 +544,169 @@ else
         });
     }
 
-    // ── Agent bar chart ────────────────────────────────────────────────────
-    const agentLabels  = @Html.Raw(agentLabels);
-    const agentData    = @Html.Raw(agentData);
-    const agentCounts  = @Html.Raw(agentCounts);
-    if (agentLabels.length) {
-        const agentColors = agentData.map(v => v >= 80 ? '#198754' : v >= 60 ? '#ffc107' : '#dc3545');
-        new Chart(document.getElementById('agentChart'), {
-            type: 'bar',
-            data: {
-                labels: agentLabels,
-                datasets: [{
-                    label: 'Avg Score %',
-                    data: agentData,
-                    backgroundColor: agentColors,
-                    borderRadius: 5
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: (ctx) => `Audits: ${agentCounts[ctx.dataIndex]}`
-                        }
-                    }
-                },
-                scales: {
-                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
-                    y: { grid: { display: false } }
-                }
-            }
-        });
-    }
-
-    // ── Parameter horizontal bar chart ─────────────────────────────────────
-    const paramLabels   = @Html.Raw(paramLabels);
-    const paramSections = @Html.Raw(paramSections);
-    const paramData     = @Html.Raw(paramData);
-    if (paramLabels.length) {
-        const paramColors = paramData.map(v => v >= 80 ? 'rgba(25,135,84,0.75)' : v >= 60 ? 'rgba(255,193,7,0.75)' : 'rgba(220,53,69,0.75)');
-        const paramH = Math.max(300, paramLabels.length * 28);
-        document.getElementById('paramChart').style.height = paramH + 'px';
-        new Chart(document.getElementById('paramChart'), {
-            type: 'bar',
-            data: {
-                labels: paramLabels,
-                datasets: [{
-                    label: 'Avg Score %',
-                    data: paramData,
-                    backgroundColor: paramColors,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            beforeTitle: (items) => paramSections[items[0].dataIndex] ? `[${paramSections[items[0].dataIndex]}]` : ''
-                        }
-                    }
-                },
-                scales: {
-                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
-                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                }
-            }
-        });
-    }
-
-    // ── Call-type doughnut chart ───────────────────────────────────────────
-    const ctLabels = @Html.Raw(ctLabels);
-    const ctData   = @Html.Raw(ctData);
-    const ctCounts = @Html.Raw(ctCounts);
-    if (ctLabels.length) {
-        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997'];
-        new Chart(document.getElementById('callTypeChart'), {
+    function buildDistChart() {
+        const el = document.getElementById('distChart');
+        if (!el) return;
+        if (charts.dist) charts.dist.destroy();
+        charts.dist = new Chart(el, {
             type: 'doughnut',
-            data: {
-                labels: ctLabels,
-                datasets: [{
-                    data: ctData,
-                    backgroundColor: ctLabels.map((_, i) => palette[i % palette.length]),
-                    borderWidth: 2
-                }]
-            },
+            data: { labels: distLabels, datasets: [{ data: distData, backgroundColor: ['#198754', '#ffc107', '#dc3545'], borderWidth: 2 }] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw} agent${ctx.raw !== 1 ? 's' : ''}` } } } }
+        });
+    }
+
+    function buildAgentChart(labels, data, counts) {
+        const el = document.getElementById('agentChart');
+        if (!el || !labels.length) return;
+        if (charts.agent) charts.agent.destroy();
+        charts.agent = new Chart(el, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Avg Score %', data, backgroundColor: data.map(v => scoreColor(v)), borderRadius: 5 }] },
             options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ` ${ctx.label}: ${ctx.raw}% (${ctCounts[ctx.dataIndex]} audits)`
-                        }
-                    }
-                }
+                indexAxis: 'y', responsive: true,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${counts[ctx.dataIndex]}` } } },
+                scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } }, y: { grid: { display: false } } }
             }
         });
     }
 
-    // ── Agent-wise performance trend (multi-line) ──────────────────────────
-    const agentTrendRaw = @Html.Raw(agentTrendJson);
-    if (agentTrendRaw.length) {
-        // Collect sorted unique dates and agent names
-        const atDates = [...new Set(agentTrendRaw.map(r => r.date))].sort();
-        const atAgents = [...new Set(agentTrendRaw.map(r => r.agentName))].sort();
-        const trendPalette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997','#adb5bd'];
-
-        // Build one dataset per agent
-        const atDatasets = atAgents.map((agent, i) => {
-            const byDate = Object.fromEntries(
-                agentTrendRaw.filter(r => r.agentName === agent).map(r => [r.date, r.avgScorePercent])
-            );
-            return {
-                label: agent,
-                data: atDates.map(d => byDate[d] ?? null),
-                borderColor: trendPalette[i % trendPalette.length],
-                backgroundColor: 'transparent',
-                pointBackgroundColor: trendPalette[i % trendPalette.length],
-                tension: 0.3,
-                spanGaps: true
-            };
+    function buildParamChart(labels, sections, data) {
+        const el = document.getElementById('paramChart');
+        if (!el || !labels.length) return;
+        if (charts.param) charts.param.destroy();
+        const h = Math.max(300, labels.length * 28);
+        el.style.height = h + 'px';
+        charts.param = new Chart(el, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Avg Score %', data, backgroundColor: data.map(v => scoreColorBg(v)), borderRadius: 4 }] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { beforeTitle: (items) => sections[items[0].dataIndex] ? `[${sections[items[0].dataIndex]}]` : '' } } },
+                scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } }
+            }
         });
-
-        const atH = Math.max(260, atAgents.length * 20 + 120);
-        const atCanvas = document.getElementById('agentTrendChart');
-        if (atCanvas) {
-            atCanvas.style.height = atH + 'px';
-            new Chart(atCanvas, {
-                type: 'line',
-                data: { labels: atDates, datasets: atDatasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } },
-                        x: { grid: { color: gridColor } }
-                    }
-                }
-            });
-        }
     }
 
-    // ── Section-wise score trend (multi-line) ──────────────────────────────
-    const sectionTrendRaw = @Html.Raw(sectionTrendJson);
-    if (sectionTrendRaw.length) {
-        const stDates    = [...new Set(sectionTrendRaw.map(r => r.date))].sort();
-        const stSections = [...new Set(sectionTrendRaw.map(r => r.sectionTitle))].sort();
-        const stPalette  = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997','#adb5bd'];
-
-        const stDatasets = stSections.map((section, i) => {
-            const byDate = Object.fromEntries(
-                sectionTrendRaw.filter(r => r.sectionTitle === section).map(r => [r.date, r.avgScorePercent])
-            );
-            return {
-                label: section,
-                data: stDates.map(d => byDate[d] ?? null),
-                borderColor: stPalette[i % stPalette.length],
-                backgroundColor: 'transparent',
-                pointBackgroundColor: stPalette[i % stPalette.length],
-                tension: 0.3,
-                spanGaps: true
-            };
+    function buildCallTypeChart(labels, data, counts) {
+        const el = document.getElementById('callTypeChart');
+        if (!el || !labels.length) return;
+        if (charts.callType) charts.callType.destroy();
+        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997'];
+        charts.callType = new Chart(el, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderWidth: 2 }] },
+            options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}% (${counts[ctx.dataIndex]} audits)` } } } }
         });
-
-        const stH = Math.max(260, stSections.length * 20 + 120);
-        const stCanvas = document.getElementById('sectionTrendChart');
-        if (stCanvas) {
-            stCanvas.style.height = stH + 'px';
-            new Chart(stCanvas, {
-                type: 'line',
-                data: { labels: stDates, datasets: stDatasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: {
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } },
-                        x: { grid: { color: gridColor } }
-                    }
-                }
-            });
-        }
     }
+
+    function buildAgentTrendChart(raw) {
+        const el = document.getElementById('agentTrendChart');
+        if (!el || !raw.length) return;
+        if (charts.agentTrend) charts.agentTrend.destroy();
+        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997','#adb5bd'];
+        const dates  = [...new Set(raw.map(r => r.date))].sort();
+        const agents = [...new Set(raw.map(r => r.agentName))].sort();
+        const datasets = agents.map((agent, i) => {
+            const byDate = Object.fromEntries(raw.filter(r => r.agentName === agent).map(r => [r.date, r.avgScorePercent]));
+            return { label: agent, data: dates.map(d => byDate[d] ?? null), borderColor: palette[i % palette.length], backgroundColor: 'transparent', pointBackgroundColor: palette[i % palette.length], tension: 0.3, spanGaps: true };
+        });
+        el.style.height = Math.max(260, agents.length * 20 + 120) + 'px';
+        charts.agentTrend = new Chart(el, {
+            type: 'line', data: { labels: dates, datasets },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+        });
+    }
+
+    function buildSectionTrendChart(raw) {
+        const el = document.getElementById('sectionTrendChart');
+        if (!el || !raw.length) return;
+        if (charts.sectionTrend) charts.sectionTrend.destroy();
+        const palette = ['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1','#fd7e14','#20c997','#adb5bd'];
+        const dates    = [...new Set(raw.map(r => r.date))].sort();
+        const sections = [...new Set(raw.map(r => r.sectionTitle))].sort();
+        const datasets = sections.map((section, i) => {
+            const byDate = Object.fromEntries(raw.filter(r => r.sectionTitle === section).map(r => [r.date, r.avgScorePercent]));
+            return { label: section, data: dates.map(d => byDate[d] ?? null), borderColor: palette[i % palette.length], backgroundColor: 'transparent', pointBackgroundColor: palette[i % palette.length], tension: 0.3, spanGaps: true };
+        });
+        el.style.height = Math.max(260, sections.length * 20 + 120) + 'px';
+        charts.sectionTrend = new Chart(el, {
+            type: 'line', data: { labels: dates, datasets },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+        });
+    }
+
+    // Build all charts on load
+    buildDailyChart(dailyLabels, dailyData, dailyCounts);
+    buildDistChart();
+    buildAgentChart(agentLabels, agentData, agentCounts);
+    buildParamChart(paramLabels, paramSections, paramData);
+    buildCallTypeChart(ctLabels, ctData, ctCounts);
+    buildAgentTrendChart(agentTrendRaw);
+    buildSectionTrendChart(sectionTrendRaw);
+
+    // Rebuild trend charts when Trends tab becomes visible (canvas must be visible for Chart.js)
+    document.getElementById('tab-trends')?.addEventListener('shown.bs.tab', () => {
+        buildAgentTrendChart(agentTrendRaw);
+        buildSectionTrendChart(sectionTrendRaw);
+    });
+
+    // Filter logic
+    document.getElementById('applyFilter')?.addEventListener('click', applyFilter);
+    document.getElementById('clearFilter')?.addEventListener('click', clearFilter);
+
+    function applyFilter() {
+        const from     = document.getElementById('filterFrom').value;
+        const to       = document.getElementById('filterTo').value;
+        const minScore = parseFloat(document.getElementById('filterMinScore').value) || 0;
+        const maxScore = parseFloat(document.getElementById('filterMaxScore').value);
+        const effectiveMax = isNaN(maxScore) ? 100 : maxScore;
+
+        // Filter daily series by date
+        const fIdx = dailyLabels.reduce((acc, d, i) => { if ((!from || d >= from) && (!to || d <= to)) acc.push(i); return acc; }, []);
+        buildDailyChart(fIdx.map(i => dailyLabels[i]), fIdx.map(i => dailyData[i]), fIdx.map(i => dailyCounts[i]));
+
+        // Filter agents by score
+        const aIdx = agentLabels.reduce((acc, _, i) => { if (agentData[i] >= minScore && agentData[i] <= effectiveMax) acc.push(i); return acc; }, []);
+        buildAgentChart(aIdx.map(i => agentLabels[i]), aIdx.map(i => agentData[i]), aIdx.map(i => agentCounts[i]));
+
+        // Filter trend data
+        const fTrend   = agentTrendRaw.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && r.avgScorePercent >= minScore && r.avgScorePercent <= effectiveMax);
+        const fSection = sectionTrendRaw.filter(r => (!from || r.date >= from) && (!to || r.date <= to));
+        buildAgentTrendChart(fTrend);
+        buildSectionTrendChart(fSection);
+
+        document.getElementById('filterStatus').textContent = `Showing: ${fIdx.length} days, ${aIdx.length} agents`;
+    }
+
+    function clearFilter() {
+        ['filterFrom','filterTo','filterMinScore','filterMaxScore'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        buildDailyChart(dailyLabels, dailyData, dailyCounts);
+        buildAgentChart(agentLabels, agentData, agentCounts);
+        buildAgentTrendChart(agentTrendRaw);
+        buildSectionTrendChart(sectionTrendRaw);
+        document.getElementById('filterStatus').textContent = '';
+    }
+
+    // CSV export helper (global so onclick attributes can call it)
+    // Prefixes formula-injection characters (=, +, -, @@) with a tab to prevent spreadsheet formula execution.
+    window.exportTableCsv = function (tableId, filename) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const dangerousChars = ['=', '+', '-', '@@'];
+        const sanitize = function(v) {
+            const t = v.replace(/"/g, '""').trim();
+            return '"' + (dangerousChars.some(function(c) { return t.charAt(0) === c; }) ? '\t' + t : t) + '"';
+        };
+        const csv = Array.from(table.querySelectorAll('tr'))
+            .map(function(r) { return Array.from(r.querySelectorAll('th,td')).map(function(c) { return sanitize(c.innerText); }).join(','); })
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    };
 })();
 </script>
 }
