@@ -28,4 +28,11 @@ public class AnalyticsController : ProjectAwareController
         ViewBag.Insights = await insightsTask ?? new Models.ExplainabilityInsightsViewModel();
         return View(await dataTask ?? new Models.ExplainabilityViewModel());
     }
+
+    public async Task<IActionResult> DecisionAssurance()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var model = await _api.GetDecisionAssurance(pid) ?? new Models.DecisionAssuranceViewModel();
+        return View(model);
+    }
 }

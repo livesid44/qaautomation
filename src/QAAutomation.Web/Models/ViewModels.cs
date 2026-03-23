@@ -944,3 +944,68 @@ public class InsightsChatResultViewModel
     public int RowCount { get; set; }
     public string? Error { get; set; }
 }
+
+// ── Decision Assurance ViewModels ────────────────────────────────────────────
+
+public class DecisionAssuranceViewModel
+{
+    public int TotalAudits { get; set; }
+    public List<DecisionConfidenceViewModel> DecisionConfidences { get; set; } = new();
+    public List<AgentRiskProfileViewModel> AgentRiskProfiles { get; set; } = new();
+    public List<SectionCalibrationViewModel> SectionCalibration { get; set; } = new();
+    public List<RiskRadarItemViewModel> RiskRadar { get; set; } = new();
+    public List<CalibrationHeatmapRowViewModel> CalibrationHeatmap { get; set; } = new();
+}
+
+public class DecisionConfidenceViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public double ScoreStdDev { get; set; }
+    public double ConsistencyScore { get; set; }
+    public double ConfidenceScore { get; set; }
+    public string RiskLevel { get; set; } = "Low";
+    public int AuditCount { get; set; }
+}
+
+public class AgentRiskProfileViewModel
+{
+    public string AgentName { get; set; } = string.Empty;
+    public int AuditCount { get; set; }
+    public double AvgScorePercent { get; set; }
+    public double RecentAvgPercent { get; set; }
+    public double PriorAvgPercent { get; set; }
+    public double Momentum { get; set; }
+    public string Trend { get; set; } = "Stable";
+    public string RiskLevel { get; set; } = "Low";
+}
+
+public class SectionCalibrationViewModel
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public double OverallAvgPercent { get; set; }
+    public double RecentAvgPercent { get; set; }
+    public double PriorAvgPercent { get; set; }
+    public double ScoreStdDev { get; set; }
+    public double ConfusionScore { get; set; }
+    public string DriftDirection { get; set; } = "Stable";
+    public int AuditCount { get; set; }
+}
+
+public class RiskRadarItemViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public string RiskCategory { get; set; } = string.Empty;
+    public double RiskScore { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public class CalibrationHeatmapRowViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public Dictionary<string, double> AgentAvgScores { get; set; } = new();
+    public double AgentSpread { get; set; }
+}

@@ -610,4 +610,285 @@ public class AnalyticsController : ControllerBase
             FailureReasonsInsight   = await frTask
         });
     }
+
+    // ── GET /api/analytics/decision-assurance ─────────────────────────────────
+
+    /// <summary>
+    /// Advanced analytics: Decision Confidence Scores, Agent Risk Profiles, Section
+    /// Calibration, Risk Radar items, and the Calibration Heatmap — all derived from
+    /// existing audit data with no additional schema changes.
+    /// Pass ?projectId=N to restrict analysis to a single project.
+    /// </summary>
+    [HttpGet("decision-assurance")]
+    [ProducesResponseType(typeof(DecisionAssuranceDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DecisionAssuranceDto>> GetDecisionAssurance([FromQuery] int? projectId = null)
+    {
+        var query = _db.EvaluationResults
+            .Include(r => r.Form).ThenInclude(f => f.Lob)
+            .Include(r => r.Scores).ThenInclude(s => s.Field).ThenInclude(f => f.Section)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (projectId.HasValue)
+            query = query.Where(r => r.Form.Lob != null && r.Form.Lob.ProjectId == projectId.Value);
+
+        var results = await query.ToListAsync();
+
+        if (results.Count == 0)
+            return Ok(new DecisionAssuranceDto());
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+        static double ScorePct(global::QAAutomation.API.Models.EvaluationResult r)
+        {
+            var max   = r.Scores.Where(s => s.Field?.FieldType == global::QAAutomation.API.Models.FieldType.Rating).Sum(s => s.Field.MaxRating);
+            var total = r.Scores.Sum(s => s.NumericValue ?? 0);
+            return max > 0 ? Math.Round(total / max * 100, 1) : 0;
+        }
+
+        static double StdDev(IEnumerable<double> values)
+        {
+            var list = values.ToList();
+            if (list.Count < 2) return 0;
+            var mean = list.Average();
+            return Math.Sqrt(list.Average(v => Math.Pow(v - mean, 2)));
+        }
+
+        static string RiskLevel(double score) =>
+            score >= 75 ? "Low" : score >= 50 ? "Medium" : "High";
+
+        static string TrendLabel(double momentum) =>
+            momentum >= 3 ? "Improving" : momentum <= -3 ? "Declining" : "Stable";
+
+        var now = DateTime.UtcNow;
+        var cutRecent = now.AddDays(-30);
+        var cutPrior  = now.AddDays(-60);
+
+        // ── 1. Decision Confidence Scores (per parameter) ─────────────────────
+        var paramScores = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue)
+                .Select(s => new
+                {
+                    Label   = s.Field.Label,
+                    Section = s.Field.Section?.Title ?? "",
+                    Pct     = Math.Round(s.NumericValue!.Value / s.Field.MaxRating * 100, 1)
+                }))
+            .GroupBy(x => new { x.Label, x.Section })
+            .Select(g =>
+            {
+                var pcts       = g.Select(x => x.Pct).ToList();
+                var avg        = Math.Round(pcts.Average(), 1);
+                var stdDev     = Math.Round(StdDev(pcts), 1);
+                var consistency= Math.Round(Math.Max(0, 1 - stdDev / 100), 3);
+                var confidence = Math.Round(avg * consistency, 1);
+                return new DecisionConfidenceDto
+                {
+                    ParameterLabel  = g.Key.Label,
+                    SectionTitle    = g.Key.Section,
+                    AvgScorePercent = avg,
+                    ScoreStdDev     = stdDev,
+                    ConsistencyScore= consistency,
+                    ConfidenceScore = confidence,
+                    RiskLevel       = RiskLevel(confidence),
+                    AuditCount      = g.Count()
+                };
+            })
+            .OrderBy(p => p.ConfidenceScore)
+            .ToList();
+
+        // ── 2. Agent Risk Profiles ─────────────────────────────────────────────
+        var agentProfiles = results
+            .Where(r => !string.IsNullOrWhiteSpace(r.AgentName))
+            .GroupBy(r => r.AgentName!)
+            .Select(g =>
+            {
+                var allPcts    = g.Select(ScorePct).ToList();
+                var avg        = Math.Round(allPcts.Average(), 1);
+
+                var recentPcts = g.Where(r => (r.CallDate ?? r.EvaluatedAt) >= cutRecent)
+                                  .Select(ScorePct).ToList();
+                var priorPcts  = g.Where(r =>
+                    {
+                        var d = r.CallDate ?? r.EvaluatedAt;
+                        return d >= cutPrior && d < cutRecent;
+                    })
+                                  .Select(ScorePct).ToList();
+
+                var recentAvg = recentPcts.Count > 0 ? Math.Round(recentPcts.Average(), 1) : avg;
+                var priorAvg  = priorPcts.Count  > 0 ? Math.Round(priorPcts.Average(),  1) : avg;
+                var momentum  = Math.Round(recentAvg - priorAvg, 1);
+
+                // Risk: declining trend or low overall score
+                var riskScore = avg - Math.Min(0, momentum * 3);
+                return new AgentRiskProfileDto
+                {
+                    AgentName       = g.Key,
+                    AuditCount      = g.Count(),
+                    AvgScorePercent = avg,
+                    RecentAvgPercent= recentAvg,
+                    PriorAvgPercent = priorAvg,
+                    Momentum        = momentum,
+                    Trend           = TrendLabel(momentum),
+                    RiskLevel       = RiskLevel(riskScore)
+                };
+            })
+            .OrderBy(a => a.AvgScorePercent)
+            .ToList();
+
+        // ── 3. Section Calibration ─────────────────────────────────────────────
+        var sectionCalibration = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field?.Section != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue)
+                .Select(s => new
+                {
+                    Section   = s.Field.Section!.Title,
+                    Pct       = Math.Round(s.NumericValue!.Value / s.Field.MaxRating * 100, 1),
+                    Date      = r.CallDate ?? r.EvaluatedAt
+                }))
+            .GroupBy(x => x.Section)
+            .Select(g =>
+            {
+                var all        = g.Select(x => x.Pct).ToList();
+                var avg        = Math.Round(all.Average(), 1);
+                var stdDev     = Math.Round(StdDev(all), 1);
+                var confusion  = Math.Round(avg > 0 ? stdDev / avg * 100 : 0, 1);
+
+                var recentAvg  = g.Where(x => x.Date >= cutRecent).Select(x => x.Pct).ToList()
+                                  is { Count: > 0 } rp ? Math.Round(rp.Average(), 1) : avg;
+                var priorAvg   = g.Where(x => x.Date >= cutPrior && x.Date < cutRecent).Select(x => x.Pct).ToList()
+                                  is { Count: > 0 } pp ? Math.Round(pp.Average(), 1) : avg;
+
+                var drift = recentAvg - priorAvg;
+                var driftLabel = stdDev > 20 ? "Volatile"
+                               : drift >=  3 ? "Improving"
+                               : drift <= -3 ? "Declining" : "Stable";
+
+                return new SectionCalibrationDto
+                {
+                    SectionTitle      = g.Key,
+                    OverallAvgPercent = avg,
+                    RecentAvgPercent  = recentAvg,
+                    PriorAvgPercent   = priorAvg,
+                    ScoreStdDev       = stdDev,
+                    ConfusionScore    = Math.Min(confusion, 100),
+                    DriftDirection    = driftLabel,
+                    AuditCount        = all.Count
+                };
+            })
+            .OrderByDescending(s => s.ConfusionScore)
+            .ToList();
+
+        // ── 4. Risk Radar ─────────────────────────────────────────────────────
+        var riskRadar = new List<RiskRadarItemDto>();
+
+        // PolicyConfusion: parameters with stddev > 25 (high inconsistency)
+        foreach (var p in paramScores.Where(p => p.ScoreStdDev > 25).Take(5))
+        {
+            riskRadar.Add(new RiskRadarItemDto
+            {
+                ParameterLabel = p.ParameterLabel,
+                SectionTitle   = p.SectionTitle,
+                RiskCategory   = "PolicyConfusion",
+                RiskScore      = Math.Min(100, p.ScoreStdDev * 2),
+                Description    = $"High score variability (StdDev={p.ScoreStdDev}%) suggests inconsistent policy interpretation."
+            });
+        }
+
+        // EscalationRisk: parameters with avg < 50 and audit count > 3
+        foreach (var p in paramScores.Where(p => p.AvgScorePercent < 50 && p.AuditCount >= 3).Take(5))
+        {
+            riskRadar.Add(new RiskRadarItemDto
+            {
+                ParameterLabel = p.ParameterLabel,
+                SectionTitle   = p.SectionTitle,
+                RiskCategory   = "EscalationRisk",
+                RiskScore      = Math.Round(100 - p.AvgScorePercent, 1),
+                Description    = $"Consistently low scores ({p.AvgScorePercent}%) may drive escalations or appeals."
+            });
+        }
+
+        // DecisionReversal: declining agent momentum
+        foreach (var a in agentProfiles.Where(a => a.Momentum <= -5).Take(5))
+        {
+            riskRadar.Add(new RiskRadarItemDto
+            {
+                ParameterLabel = a.AgentName,
+                SectionTitle   = "Agent",
+                RiskCategory   = "DecisionReversal",
+                RiskScore      = Math.Min(100, Math.Abs(a.Momentum) * 5),
+                Description    = $"{a.AgentName} score dropped {Math.Abs(a.Momentum)}% recently — risk of reversed decisions."
+            });
+        }
+
+        // BiasIndicator: sections with volatile drift
+        foreach (var s in sectionCalibration.Where(s => s.DriftDirection == "Volatile").Take(3))
+        {
+            riskRadar.Add(new RiskRadarItemDto
+            {
+                ParameterLabel = s.SectionTitle,
+                SectionTitle   = "Section",
+                RiskCategory   = "BiasIndicator",
+                RiskScore      = Math.Min(100, s.ConfusionScore),
+                Description    = $"Section '{s.SectionTitle}' shows volatile scoring (confusion={s.ConfusionScore}%) — possible evaluator bias."
+            });
+        }
+
+        riskRadar = riskRadar.OrderByDescending(r => r.RiskScore).ToList();
+
+        // ── 5. Calibration Heatmap ────────────────────────────────────────────
+        // Per-parameter per-agent avg score → reveals disagreement between evaluators
+        var agentNames = results
+            .Where(r => !string.IsNullOrWhiteSpace(r.AgentName))
+            .Select(r => r.AgentName!)
+            .Distinct().OrderBy(a => a).Take(8)
+            .ToList();
+
+        var heatmap = results
+            .SelectMany(r => r.Scores
+                .Where(s => s.Field != null && s.Field.MaxRating > 0 && s.NumericValue.HasValue
+                         && !string.IsNullOrWhiteSpace(r.AgentName) && agentNames.Contains(r.AgentName))
+                .Select(s => new
+                {
+                    Agent   = r.AgentName!,
+                    Label   = s.Field.Label,
+                    Section = s.Field.Section?.Title ?? "",
+                    Pct     = Math.Round(s.NumericValue!.Value / s.Field.MaxRating * 100, 1)
+                }))
+            .GroupBy(x => new { x.Label, x.Section })
+            .Where(g => g.Select(x => x.Agent).Distinct().Count() >= 2) // only params scored by ≥2 agents
+            .Select(g =>
+            {
+                var byAgent = agentNames.ToDictionary(
+                    a => a,
+                    a =>
+                    {
+                        var pcts = g.Where(x => x.Agent == a).Select(x => x.Pct).ToList();
+                        return pcts.Count > 0 ? Math.Round(pcts.Average(), 1) : (double?)null;
+                    })
+                    .Where(kv => kv.Value.HasValue)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value!.Value);
+
+                var spread = byAgent.Count >= 2 ? byAgent.Values.Max() - byAgent.Values.Min() : 0;
+                return new CalibrationHeatmapRowDto
+                {
+                    ParameterLabel = g.Key.Label,
+                    SectionTitle   = g.Key.Section,
+                    AgentAvgScores = byAgent,
+                    AgentSpread    = Math.Round(spread, 1)
+                };
+            })
+            .OrderByDescending(h => h.AgentSpread)
+            .Take(20)
+            .ToList();
+
+        return Ok(new DecisionAssuranceDto
+        {
+            TotalAudits          = results.Count,
+            DecisionConfidences  = paramScores,
+            AgentRiskProfiles    = agentProfiles,
+            SectionCalibration   = sectionCalibration,
+            RiskRadar            = riskRadar,
+            CalibrationHeatmap   = heatmap
+        });
+    }
 }

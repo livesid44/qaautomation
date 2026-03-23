@@ -590,6 +590,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
     }
 
+    public async Task<DecisionAssuranceViewModel?> GetDecisionAssurance(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/decision-assurance?projectId={projectId.Value}" : "api/analytics/decision-assurance";
+        try { return await _http.GetFromJsonAsync<DecisionAssuranceViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetDecisionAssurance failed"); return null; }
+    }
+
     // ── Audit Log ─────────────────────────────────────────────────────────────
 
     public async Task<AuditLogPageViewModel?> GetAuditLogs(

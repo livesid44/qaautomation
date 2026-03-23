@@ -224,6 +224,11 @@
                 <i class="bi bi-shield-check"></i> Explainability <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-primary)">XAI</span>
             </a>
 
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" && ViewContext.RouteData.Values["action"]?.ToString() == "DecisionAssurance" ? "active" : "")"
+               href="@Url.Action("DecisionAssurance", "Analytics")">
+                <i class="bi bi-shield-exclamation"></i> Decision Assurance <span class="badge ms-1" style="font-size:.6rem;background:#5a2d82;color:#fff">ADV</span>
+            </a>
+
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "InsightsChat" ? "active" : "")"
                href="@Url.Action("Index", "InsightsChat")">
                 <i class="bi bi-chat-dots"></i> Insights Chat
