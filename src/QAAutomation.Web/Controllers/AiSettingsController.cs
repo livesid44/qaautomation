@@ -64,4 +64,14 @@ public class AiSettingsController : Controller
         }
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpPost("test-llm")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TestLlm()
+    {
+        var result = await _api.TestLlmConnectionAsync();
+        if (result == null)
+            return Json(new { success = false, message = "Could not reach the backend API.", latencyMs = 0 });
+        return Json(new { success = result.Success, message = result.Message, latencyMs = result.LatencyMs });
+    }
 }

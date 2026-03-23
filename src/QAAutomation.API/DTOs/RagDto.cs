@@ -31,6 +31,14 @@ public class AiConfigDto
     public DateTime UpdatedAt { get; set; }
 }
 
+public class LlmTestResultDto
+{
+    public bool Success { get; set; }
+    /// <summary>LLM reply text on success, or error message on failure.</summary>
+    public string Message { get; set; } = string.Empty;
+    public long LatencyMs { get; set; }
+}
+
 public class KnowledgeSourceDto
 {
     public int Id { get; set; }

@@ -414,6 +414,11 @@
                 <i class="bi bi-save me-2"></i>Save Settings
             </button>
             <div class="text-muted small text-center mt-2">Settings are saved to the database immediately.</div>
+            <hr class="my-3" />
+            <button type="button" class="btn btn-outline-info w-100" id="testLlmBtn" onclick="testLlmConnection()">
+                <i class="bi bi-wifi me-2"></i>Test LLM Connection
+            </button>
+            <div id="testLlmResult" class="mt-2" style="display:none"></div>
         </div>
     </div>
 </form>
@@ -437,6 +442,36 @@
         document.getElementById('speechEndpointField').style.display = isGoogle ? 'none' : '';
         document.getElementById('speechApiKeyField').style.display   = isGoogle ? 'none' : '';
         document.getElementById('googleSttNote').style.display       = isGoogle ? '' : 'none';
+    }
+    async function testLlmConnection() {
+        const btn = document.getElementById('testLlmBtn');
+        const result = document.getElementById('testLlmResult');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Testing…';
+        result.style.display = 'none';
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const resp = await fetch('@Url.Action("TestLlm", "AiSettings")', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            });
+            const data = await resp.json();
+            result.style.display = '';
+            if (data.success) {
+                result.innerHTML = `<div class="alert alert-success py-2 mb-0 small"><i class="bi bi-check-circle-fill me-1"></i><strong>Connected</strong> (${Number.isInteger(data.latencyMs) ? data.latencyMs : 0}ms)<div class="mt-1 text-muted fst-italic">"${escapeHtml(data.message)}"</div></div>`;
+            } else {
+                result.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Failed</strong> (${Number.isInteger(data.latencyMs) ? data.latencyMs : 0}ms)<div class="mt-1">${escapeHtml(data.message)}</div></div>`;
+            }
+        } catch (e) {
+            result.style.display = '';
+            result.innerHTML = `<div class="alert alert-danger py-2 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i>Request error: ${escapeHtml(e.message)}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-wifi me-2"></i>Test LLM Connection';
+        }
+    }
+    function escapeHtml(text) {
+        return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 </script>
 }

@@ -382,6 +382,17 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "SaveAiSettings failed"); return false; }
     }
 
+    public async Task<LlmTestResultViewModel?> TestLlmConnectionAsync()
+    {
+        try
+        {
+            var resp = await _http.PostAsync("api/aiconfig/test", null);
+            if (!resp.IsSuccessStatusCode) return null;
+            return await resp.Content.ReadFromJsonAsync<LlmTestResultViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "TestLlmConnection failed"); return null; }
+    }
+
     // Knowledge Base sources
     public async Task<List<KnowledgeSourceViewModel>> GetKnowledgeSources(int? projectId = null)
     {

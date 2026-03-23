@@ -372,6 +372,13 @@ public class AiSettingsViewModel
 // Knowledge Base view models
 // ──────────────────────────────────────────────────────────────────────────────
 
+public class LlmTestResultViewModel
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public long LatencyMs { get; set; }
+}
+
 public class KnowledgeSourceViewModel
 {
     public int Id { get; set; }
