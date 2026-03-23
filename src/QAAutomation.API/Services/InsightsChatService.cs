@@ -164,7 +164,7 @@ public class InsightsChatService
         var selectIdx = cleaned.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
         if (selectIdx < 0) return string.Empty;
 
-        var sql = cleaned[selectIdx..].Trim();
+        var sql = cleaned[selectIdx..].Trim().TrimEnd(';').TrimEnd();
 
         // Reject any dangerous statements — block both SQLite and T-SQL dangerous keywords.
         // Note: xp_cmdshell and similar SQL Server extended procs are blocked via the EXEC/EXECUTE guard.
