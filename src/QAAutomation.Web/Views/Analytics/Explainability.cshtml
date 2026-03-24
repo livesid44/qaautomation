@@ -40,6 +40,11 @@
     .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
     .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
     .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
+    .ai-decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-top:.75rem; }
+    @media(max-width:991px) { .ai-decision-grid { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:575px) { .ai-decision-grid { grid-template-columns:1fr; } }
+    .ai-pointer { background:rgba(255,255,255,0.65); border-radius:8px; padding:12px 14px; }
+    .ai-pointer-title { font-size:.78rem; font-weight:700; color:#0d6efd; margin-bottom:5px; }
 </style>
 }
 
@@ -124,6 +129,30 @@ else
                         <div class="text-muted small">HITL Reviews Completed</div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── AI Decision Intelligence Insight ──────────────────────────────── -->
+    <div class="ai-insight-box mb-4">
+        <div class="ai-label mb-2"><i class="bi bi-stars me-1"></i>AI Decision Intelligence — Key Pointers</div>
+        <p class="mb-3" style="font-size:.85rem">Understanding how the AI system reaches, records, and defends its decisions across your QA data.</p>
+        <div class="ai-decision-grid">
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-diagram-3 me-1"></i>Signal-Weighted Scoring</div>
+                <p class="text-muted small mb-0">Each evaluation parameter is a distinct evidence signal. The AI aggregates normalised parameter scores — weighted by each parameter's configured max points — to produce a composite audit verdict. No single signal dominates unless explicitly weighted higher in the form configuration.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-person-check me-1"></i>Human-in-the-Loop Validation</div>
+                <p class="text-muted small mb-0">Every AI decision can be challenged by a human reviewer (HITL). Verdicts of <em>Agree</em>, <em>Disagree</em>, or <em>Uncertain</em> are recorded against the audit. A high disagreement rate signals that AI policy alignment or evaluator rubrics need recalibration — track this via the AI–Human Agreement Rate KPI above.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-exclamation-triangle me-1 text-danger"></i>Risk-Area Detection</div>
+                <p class="text-muted small mb-0">Parameters where the average score falls below <strong>60 %</strong> of maximum are automatically flagged as risk areas. These signals most frequently drove failing audit outcomes. The Decision Drivers chart below ranks all parameters so the highest-impact risks surface immediately — use this to prioritise coaching interventions.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-shield-lock me-1 text-warning"></i>Legal Defensibility Trail</div>
+                <p class="text-muted small mb-0">Every AI reasoning string, parameter score, sampling policy reference, and HITL verdict is persisted against each audit record. This combination of signal transparency, human oversight, and an immutable log satisfies most regulatory requirements for explainable and auditable AI decision systems.</p>
             </div>
         </div>
     </div>
