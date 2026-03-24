@@ -242,6 +242,12 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "SaveEvaluationForm failed"); return false; }
     }
 
+    public async Task<bool> UpdateEvaluationForm(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/evaluationforms/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateEvaluationForm failed"); return false; }
+    }
+
     public async Task<bool> DeleteEvaluationForm(int id)
     {
         try { var r = await _http.DeleteAsync($"api/evaluationforms/{id}"); return r.IsSuccessStatusCode; }

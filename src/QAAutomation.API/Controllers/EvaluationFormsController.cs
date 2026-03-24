@@ -66,6 +66,7 @@ public class EvaluationFormsController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             LobId = dto.LobId,
+            ScoringMethod = (QAAutomation.API.Models.ScoringMethod)dto.ScoringMethod,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             IsActive = true,
@@ -104,6 +105,7 @@ public class EvaluationFormsController : ControllerBase
         form.Description = dto.Description;
         form.IsActive = dto.IsActive;
         form.LobId = dto.LobId;
+        form.ScoringMethod = (QAAutomation.API.Models.ScoringMethod)dto.ScoringMethod;
         form.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

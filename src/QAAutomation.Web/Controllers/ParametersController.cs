@@ -6,7 +6,7 @@ using QAAutomation.Web.Services;
 namespace QAAutomation.Web.Controllers;
 
 [Authorize]
-public class ParametersController : Controller
+public class ParametersController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -14,7 +14,8 @@ public class ParametersController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var items = await _api.GetParameters();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var items = await _api.GetParameters(pid);
         return View(items);
     }
 
@@ -26,9 +27,11 @@ public class ParametersController : Controller
     public async Task<IActionResult> Create(CreateParameterViewModel model)
     {
         if (!ModelState.IsValid) return View(model);
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
         var success = await _api.CreateParameter(new
         {
-            model.Name, model.Description, model.Category, model.DefaultWeight, model.EvaluationType
+            model.Name, model.Description, model.Category, model.DefaultWeight, model.EvaluationType,
+            projectId = pid
         });
         if (!success) { ModelState.AddModelError("", "Failed to create parameter."); return View(model); }
         return RedirectToAction(nameof(Index));

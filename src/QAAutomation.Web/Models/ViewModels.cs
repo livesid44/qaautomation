@@ -144,6 +144,8 @@ public class EvaluationFormViewModel
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    /// <summary>Scoring method: 0 = Generic (proportional), 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public List<EvaluationFormSectionViewModel> Sections { get; set; } = new();
 }
 

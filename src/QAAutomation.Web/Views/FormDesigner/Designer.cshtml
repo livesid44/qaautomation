@@ -68,6 +68,7 @@
 <form method="post" action="@Url.Action("Designer", "FormDesigner")" id="formDesigner">
     @Html.AntiForgeryToken()
     <input type="hidden" name="formJson" id="formJsonInput" />
+    <input type="hidden" id="formId" value="@Model.Form.Id" />
 
     <div class="row g-4">
         <!-- Main editor column -->
@@ -90,6 +91,24 @@
                             <input type="text" id="formDescription" class="form-control"
                                    value="@Model.Form.Description" placeholder="Optional description"
                                    oninput="updatePreview()" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Scoring / Calculation Type
+                                <i class="bi bi-info-circle text-muted ms-1" title="Controls how the overall QA score is calculated from section scores."></i>
+                            </label>
+                            <select id="formScoringMethod" class="form-select">
+                                @{
+                                    var isGeneric = Model.Form.ScoringMethod == 0;
+                                    var isAutoFail = Model.Form.ScoringMethod == 1;
+                                }
+                                <option value="0" selected="@(isGeneric ? "selected" : null)">Generic (proportional sum)</option>
+                                <option value="1" selected="@(isAutoFail ? "selected" : null)">Section Auto-Fail (one zero zeroes the section)</option>
+                            </select>
+                            <div class="form-text">
+                                <strong>Generic:</strong> total = Σ scores / Σ max × 100. &nbsp;
+                                <strong>Section Auto-Fail:</strong> any 0 within a section sets that whole section to 0.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -335,8 +354,10 @@
             if (el) section.title = el.value;
         });
         const formData = {
+            id: parseInt(document.getElementById('formId').value) || 0,
             name: document.getElementById('formName').value,
             description: document.getElementById('formDescription').value,
+            scoringMethod: parseInt(document.getElementById('formScoringMethod').value) || 0,
             sections: sections.map((s, idx) => ({
                 title: s.title,
                 order: idx,
