@@ -2,7 +2,9 @@
 @{
     bool isEdit = ViewBag.PlanId != null;
     ViewData["Title"] = isEdit ? "Edit Training Plan" : "New Training Plan";
-    var formAction = isEdit ? $"/Training/Edit/{ViewBag.PlanId}" : "/Training/Create";
+    var formAction = isEdit
+        ? Url.Action("Edit", "Training", new { id = ViewBag.PlanId })
+        : Url.Action("Create", "Training");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
