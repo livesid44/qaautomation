@@ -401,7 +401,7 @@ CREATE TABLE dbo.CallPipelineItems
 (
     Id                 INT            IDENTITY(1,1) NOT NULL,
     JobId              INT            NOT NULL,
-    SourceReference    NVARCHAR(2000) NULL,
+    SourceReference    NVARCHAR(MAX)  NULL,
     AgentName          NVARCHAR(200)  NULL,
     CallReference      NVARCHAR(200)  NULL,
     CallDate           DATETIME2      NULL,

@@ -1428,5 +1428,24 @@ GO
 -- requires no changes for SQL Server compatibility.
 -- =============================================================================
 
+-- =============================================================================
+-- 4. COLUMN SIZE FIXES (run against existing databases)
+-- =============================================================================
+-- CallPipelineItems.SourceReference was originally NVARCHAR(2000).
+-- File-upload jobs store the full data-URI of the uploaded transcript in this
+-- column, which can far exceed 2000 characters.  Widen it to NVARCHAR(MAX).
+IF EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.CallPipelineItems')
+      AND name      = N'SourceReference'
+      AND max_length <> -1   -- -1 means MAX in sys.columns
+)
+BEGIN
+    ALTER TABLE [dbo].[CallPipelineItems]
+        ALTER COLUMN [SourceReference] NVARCHAR(MAX) NULL;
+    PRINT N'Widened CallPipelineItems.SourceReference to NVARCHAR(MAX).';
+END
+GO
+
 PRINT N'Migration completed successfully.';
 GO

@@ -15,9 +15,10 @@ public class CallPipelineItem
 
     /// <summary>
     /// For BatchUrl jobs: the original URL submitted by the caller.
+    /// For FileUpload jobs: the full data-URI of the uploaded file content.
     /// For connector-based jobs: a path/reference within the source system.
+    /// Stored as nvarchar(max) because inline file uploads can be arbitrarily large.
     /// </summary>
-    [MaxLength(2000)]
     public string? SourceReference { get; set; }
 
     /// <summary>Agent name extracted from the transcript or provided by the caller.</summary>
