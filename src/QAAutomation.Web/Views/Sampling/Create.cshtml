@@ -2,7 +2,9 @@
 @{
     ViewData["Title"] = "Create Sampling Policy";
     bool isEdit = ViewBag.PolicyId != null;
-    var formAction = isEdit ? $"/Sampling/Edit/{ViewBag.PolicyId}" : "/Sampling/Create";
+    var formAction = isEdit
+        ? Url.Action("Edit", "Sampling", new { id = ViewBag.PolicyId })
+        : Url.Action("Create", "Sampling");
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
