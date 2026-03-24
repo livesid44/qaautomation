@@ -19,15 +19,18 @@ public class CallPipelineController : ControllerBase
     private readonly ICallPipelineService _svc;
     private readonly PipelineProgressHub _progressHub;
     private readonly ILogger<CallPipelineController> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public CallPipelineController(
         ICallPipelineService svc,
         PipelineProgressHub progressHub,
-        ILogger<CallPipelineController> logger)
+        ILogger<CallPipelineController> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _svc = svc;
         _progressHub = progressHub;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     // ── List jobs ─────────────────────────────────────────────────────────────
@@ -118,10 +121,13 @@ public class CallPipelineController : ControllerBase
         }
 
         // Large batch — kick off in background and return accepted
+        var jobId = id;
         _ = Task.Run(async () =>
         {
-            try { await _svc.ProcessJobAsync(id); }
-            catch (Exception ex) { _logger.LogError(ex, "Background processing of job {Id} failed", id); }
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<ICallPipelineService>();
+            try { await svc.ProcessJobAsync(jobId); }
+            catch (Exception ex) { _logger.LogError(ex, "Background processing of job {Id} failed", jobId); }
         });
 
         return Accepted(new { message = $"Job {id} queued for background processing.", jobId = id });
@@ -181,10 +187,13 @@ public class CallPipelineController : ControllerBase
             jobName, formId, projectId, submittedBy ?? "web", items, HttpContext.RequestAborted);
 
         // Always process in background so the HTTP response returns immediately
+        var uploadedJobId = job.Id;
         _ = Task.Run(async () =>
         {
-            try { await _svc.ProcessJobAsync(job.Id); }
-            catch (Exception ex) { _logger.LogError(ex, "Background processing of uploaded job {Id} failed", job.Id); }
+            using var scope = _scopeFactory.CreateScope();
+            var svc = scope.ServiceProvider.GetRequiredService<ICallPipelineService>();
+            try { await svc.ProcessJobAsync(uploadedJobId); }
+            catch (Exception ex) { _logger.LogError(ex, "Background processing of uploaded job {Id} failed", uploadedJobId); }
         });
 
         return CreatedAtAction(nameof(GetById), new { id = job.Id }, job);
