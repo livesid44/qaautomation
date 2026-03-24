@@ -3,6 +3,8 @@
     ViewData["Title"] = "Analytics Dashboard";
     var insights = ViewBag.Insights as QAAutomation.Web.Models.AnalyticsInsightsViewModel
                    ?? new QAAutomation.Web.Models.AnalyticsInsightsViewModel();
+    var tni = ViewBag.TniSummary as QAAutomation.Web.Models.TniSummaryViewModel
+              ?? new QAAutomation.Web.Models.TniSummaryViewModel();
 
     // Serialise data for Chart.js — use explicit camelCase keys so JS property access works correctly
     var dailyLabels   = System.Text.Json.JsonSerializer.Serialize(Model.DailyScores.Select(d => d.Date));
@@ -42,6 +44,10 @@
 
     var distLabels = System.Text.Json.JsonSerializer.Serialize(new[] { "High (>=80%)", "Medium (60-79%)", "Low (<60%)" });
     var distData   = System.Text.Json.JsonSerializer.Serialize(new[] { agentHigh, agentMed, agentLow });
+
+    // Section Analysis chart data
+    var sectionLabels = System.Text.Json.JsonSerializer.Serialize(Model.SectionScores.Select(s => s.SectionTitle));
+    var sectionData   = System.Text.Json.JsonSerializer.Serialize(Model.SectionScores.Select(s => s.AvgScorePercent));
 }
 @section Styles {
 <style>
@@ -124,6 +130,16 @@ else
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-trends" data-bs-toggle="tab" data-bs-target="#pane-trends" type="button" role="tab">
                 <i class="bi bi-graph-up-arrow me-1"></i>Trends
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-sections" data-bs-toggle="tab" data-bs-target="#pane-sections" type="button" role="tab">
+                <i class="bi bi-layers me-1"></i>Section Analysis
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-tni" data-bs-toggle="tab" data-bs-target="#pane-tni" type="button" role="tab">
+                <i class="bi bi-mortarboard me-1"></i>TNI Dashboard
             </button>
         </li>
     </ul>
@@ -488,6 +504,244 @@ else
             }
         </div>
 
+        <!-- TAB 6: SECTION ANALYSIS -->
+        <div class="tab-pane fade" id="pane-sections" role="tabpanel">
+            @if (!Model.SectionScores.Any())
+            {
+                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No section data available yet.</div>
+            }
+            else
+            {
+                <div class="row g-3 mb-4">
+                    @foreach (var sec in Model.SectionScores)
+                    {
+                        var secColor = sec.AvgScorePercent >= 80 ? "success" : sec.AvgScorePercent >= 60 ? "warning" : "danger";
+                        <div class="col-sm-6 col-xl-4">
+                            <div class="card border-0 shadow-sm h-100 border-start border-4 border-@secColor">
+                                <div class="card-body">
+                                    <div class="fw-semibold mb-1">@sec.SectionTitle</div>
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="fs-4 fw-bold text-@secColor">@sec.AvgScorePercent<small class="fs-6">%</small></span>
+                                        <span class="text-muted small">avg score</span>
+                                    </div>
+                                    <div class="progress mb-1" style="height:6px">
+                                        <div class="progress-bar bg-@secColor" style="width:@sec.AvgScorePercent%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted small mt-1">
+                                        <span><i class="bi bi-clipboard2-check me-1"></i>@sec.AuditCount audit@(sec.AuditCount != 1 ? "s" : "")</span>
+                                        <span><i class="bi bi-sliders me-1"></i>@sec.ParameterCount param@(sec.ParameterCount != 1 ? "s" : "")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white fw-semibold small">Section Score Comparison</div>
+                    <div class="card-body"><canvas id="sectionScoreChart" height="180"></canvas></div>
+                </div>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold small">Section Details</div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Section</th>
+                                    <th class="text-center">Avg Score</th>
+                                    <th class="text-center">Audits</th>
+                                    <th class="text-center">Parameters</th>
+                                    <th>Performance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sec in Model.SectionScores.OrderBy(s => s.AvgScorePercent))
+                                {
+                                    var c2 = sec.AvgScorePercent >= 80 ? "success" : sec.AvgScorePercent >= 60 ? "warning" : "danger";
+                                    <tr>
+                                        <td class="fw-semibold">@sec.SectionTitle</td>
+                                        <td class="text-center"><span class="badge bg-@c2">@sec.AvgScorePercent%</span></td>
+                                        <td class="text-center">@sec.AuditCount</td>
+                                        <td class="text-center">@sec.ParameterCount</td>
+                                        <td style="min-width:120px">
+                                            <div class="progress" style="height:5px">
+                                                <div class="progress-bar bg-@c2" style="width:@sec.AvgScorePercent%"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- TAB 7: TNI DASHBOARD -->
+        <div class="tab-pane fade" id="pane-tni" role="tabpanel">
+            @{
+                var tniOpenRate = tni.TotalPlans > 0 ? Math.Round(tni.OpenPlans * 100.0 / tni.TotalPlans, 1) : 0.0;
+                var tniDoneRate = tni.TotalPlans > 0 ? Math.Round(tni.CompletedPlans * 100.0 / tni.TotalPlans, 1) : 0.0;
+            }
+            <!-- KPI row -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                                <i class="bi bi-mortarboard fs-4 text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold">@tni.TotalPlans</div>
+                                <div class="text-muted small">Total TNI Plans</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                                <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-warning">@tni.OpenPlans</div>
+                                <div class="text-muted small">Open Plans</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                <i class="bi bi-check2-circle fs-4 text-success"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-success">@tni.CompletedPlans</div>
+                                <div class="text-muted small">Completed Plans</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 @(tni.OverduePlans > 0 ? "border border-danger" : "")">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                                <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
+                            </div>
+                            <div>
+                                <div class="fs-2 fw-bold text-danger">@tni.OverduePlans</div>
+                                <div class="text-muted small">Overdue Plans</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (tni.TotalPlans == 0)
+            {
+                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No training plans found. They are auto-created when an audit scores below 100%.</div>
+            }
+            else
+            {
+                <div class="row g-3 mb-4">
+                    <!-- Status breakdown -->
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-semibold small">Plans by Status</div>
+                            <div class="card-body">
+                                @foreach (var s in tni.ByStatus)
+                                {
+                                    var sc = s.Status is "Completed" or "Closed" ? "success" : s.Status is "InProgress" or "Active" ? "primary" : s.Status == "Draft" ? "secondary" : "warning";
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span><span class="badge bg-@sc me-2">@s.Status</span></span>
+                                        <span class="fw-bold">@s.Count</span>
+                                    </div>
+                                    <div class="progress mb-2" style="height:4px">
+                                        <div class="progress-bar bg-@sc" style="width:@(tni.TotalPlans > 0 ? s.Count * 100.0 / tni.TotalPlans : 0)%"></div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Recent plans -->
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-semibold small d-flex justify-content-between">
+                                <span>Recent Plans</span>
+                                <a href="@Url.Action("Index", "Training")" class="btn btn-outline-primary btn-sm py-0">View All</a>
+                            </div>
+                            <div class="card-body p-0" style="max-height:260px;overflow-y:auto">
+                                <table class="table table-hover table-sm mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr><th>Agent</th><th>Title</th><th>Status</th><th>Due</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var p in tni.RecentPlans)
+                                        {
+                                            var pc = p.Status is "Completed" or "Closed" ? "success" : p.Status is "InProgress" or "Active" ? "primary" : "secondary";
+                                            <tr>
+                                                <td class="small">@p.AgentName</td>
+                                                <td class="small">
+                                                    <a href="@Url.Action("Detail", "Training", new { id = p.Id })">
+                                                        @(p.Title.Length > 35 ? p.Title[..35] + "…" : p.Title)
+                                                    </a>
+                                                    @if (p.IsAutoGenerated) { <span class="badge bg-info ms-1" style="font-size:.55rem">AUTO</span> }
+                                                </td>
+                                                <td><span class="badge bg-@pc" style="font-size:.65rem">@p.Status</span></td>
+                                                <td class="small text-muted">@(p.DueDate.HasValue ? p.DueDate.Value.ToString("dd MMM") : "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Per-agent TNI table -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold small">Agent TNI Summary</div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Agent</th>
+                                    <th class="text-center">Total Plans</th>
+                                    <th class="text-center">Open</th>
+                                    <th class="text-center">Completed</th>
+                                    <th>Completion Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in tni.ByAgent)
+                                {
+                                    var ac = a.CompletionRate >= 80 ? "success" : a.CompletionRate >= 50 ? "warning" : "danger";
+                                    <tr>
+                                        <td class="fw-semibold">@a.AgentName</td>
+                                        <td class="text-center">@a.TotalPlans</td>
+                                        <td class="text-center">
+                                            @if (a.OpenPlans > 0) { <span class="badge bg-warning text-dark">@a.OpenPlans</span> }
+                                            else { <span class="text-muted">—</span> }
+                                        </td>
+                                        <td class="text-center">@a.CompletedPlans</td>
+                                        <td style="min-width:160px">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height:6px">
+                                                    <div class="progress-bar bg-@ac" style="width:@a.CompletionRate%"></div>
+                                                </div>
+                                                <span class="small text-@ac fw-semibold">@a.CompletionRate%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+
     </div>
 }
 
@@ -513,6 +767,8 @@ else
     const sectionTrendRaw = @Html.Raw(sectionTrendJson);
     const distLabels = @Html.Raw(distLabels);
     const distData   = @Html.Raw(distData);
+    const sectionLabels = @Html.Raw(sectionLabels);
+    const sectionData   = @Html.Raw(sectionData);
 
     const charts = {};
 
@@ -649,6 +905,43 @@ else
         buildAgentTrendChart(agentTrendRaw);
         buildSectionTrendChart(sectionTrendRaw);
     });
+
+    // Build section score chart when Section Analysis tab becomes visible
+    document.getElementById('tab-sections')?.addEventListener('shown.bs.tab', () => {
+        buildSectionScoreChart(sectionLabels, sectionData);
+    });
+
+    function buildSectionScoreChart(labels, data) {
+        const el = document.getElementById('sectionScoreChart');
+        if (!el) return;
+        if (charts['sectionScore']) { charts['sectionScore'].destroy(); }
+        charts['sectionScore'] = new Chart(el.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Avg Score %',
+                    data,
+                    backgroundColor: data.map(v => scoreColorBg(v)),
+                    borderColor: data.map(v => scoreColor(v)),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        min: 0, max: 100,
+                        ticks: { callback: v => v + '%' },
+                        grid: { color: gridColor }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
 
     // Filter logic
     document.getElementById('applyFilter')?.addEventListener('click', applyFilter);

@@ -273,10 +273,16 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAuditsByForm failed"); return new(); }
     }
 
-    public async Task<bool> CreateAudit(object dto)
+    public async Task<int?> CreateAudit(object dto)
     {
-        try { var r = await _http.PostAsJsonAsync("api/evaluationresults", dto); return r.IsSuccessStatusCode; }
-        catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return false; }
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/evaluationresults", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            var result = await r.Content.ReadFromJsonAsync<AuditViewModel>(_jsonOptions);
+            return result?.Id;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return null; }
     }
 
     /// <summary>Deserializes the JSON AI-data blobs stored on an AuditViewModel into their typed properties.</summary>
@@ -588,6 +594,13 @@ public class ApiClient
         var url = projectId.HasValue ? $"api/analytics/insights?projectId={projectId.Value}" : "api/analytics/insights";
         try { return await _http.GetFromJsonAsync<AnalyticsInsightsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
+    }
+
+    public async Task<TniSummaryViewModel?> GetTniSummary(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/tni?projectId={projectId.Value}" : "api/analytics/tni";
+        try { return await _http.GetFromJsonAsync<TniSummaryViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetTniSummary failed"); return null; }
     }
 
     public async Task<DecisionAssuranceViewModel?> GetDecisionAssurance(int? projectId = null)
