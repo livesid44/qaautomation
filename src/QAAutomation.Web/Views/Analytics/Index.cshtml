@@ -54,6 +54,11 @@
     .ai-insight-box { background: linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border: 1px solid #b3d9f7; border-radius: 10px; padding: 14px 18px; margin-bottom: 1rem; font-size: .9rem; }
     .ai-insight-box .ai-label { font-size: .7rem; font-weight: 700; letter-spacing: .05em; color: #0d6efd; text-transform: uppercase; margin-bottom: 4px; }
     .ai-insight-box p { margin: 0; color: #2c3e50; line-height: 1.55; }
+    .ai-insight-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-top:.75rem; }
+    @@media(max-width:767px) { .ai-insight-grid { grid-template-columns:1fr; } }
+    .ai-insight-section { background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 14px; border-left:3px solid #b3d9f7; }
+    .ai-insight-section .section-tag { font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-section p { font-size:.84rem; }
     .tab-content { padding-top: 1.5rem; }
     .nav-tabs .nav-link { font-size: .9rem; font-weight: 500; color: #495057; }
     .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 600; }
@@ -247,13 +252,23 @@ else
                 </div>
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(insights.DailyTrendInsight))
-            {
-                <div class="ai-insight-box">
-                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Daily QA Trend</div>
-                    <p>@insights.DailyTrendInsight</p>
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Daily QA Trend &amp; Score Distribution</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>The daily line chart plots <strong>average score % per audit date</strong>: sum of all numeric field values ÷ sum of max ratings × 100, grouped by call date. The distribution doughnut categorises each agent into <strong>High (≥80%), Medium (60–79%), or Low (&lt;60%)</strong> performance bands based on their overall average.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>A declining daily trend directly reduces the overall portfolio average. Distribution skewed towards the Low band means the average is weighed down by systemic underperformance — even a small shift of agents from Low to Medium has a disproportionate positive effect on the overall score.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : "Monitor for sustained 3+ day downward trends and investigate root causes promptly. Focus coaching on agents in the Low band — moving them to Medium yields the highest overall score uplift. Aim for ≥80% of agents in the High band.")</p>
+                    </div>
                 </div>
-            }
+            </div>
 
             <div class="row g-4">
                 <div class="col-lg-8">
@@ -279,13 +294,23 @@ else
 
         <!-- TAB 2: AGENT PERFORMANCE -->
         <div class="tab-pane fade" id="pane-agent" role="tabpanel">
-            @if (!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight))
-            {
-                <div class="ai-insight-box">
-                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Agent Performance</div>
-                    <p>@insights.AgentPerformanceInsight</p>
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Agent Performance</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Each agent's <strong>average score %</strong> = total numeric score ÷ total max rating × 100, aggregated across all audits in the selected date range. Agents with fewer than 5 audits are included but flagged for low statistical confidence. The bar chart orders agents from highest to lowest scorer.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>Individual agent scores combine to form the overall quality average. Agents below <strong>60%</strong> disproportionately drag down the portfolio score and represent the highest ROI for coaching — each percentage point gained by a low scorer improves the overall average by more than an equivalent gain for a high scorer.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : "Prioritise training for agents below 60%. Track weekly progress and pair low-performing agents with top performers for peer coaching. Set a 30-day target of reaching 70% for any agent currently below 60%.")</p>
+                    </div>
                 </div>
-            }
+            </div>
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
                     <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Agent Performance Overview</h6>
@@ -335,13 +360,23 @@ else
 
         <!-- TAB 3: PARAMETER ANALYSIS -->
         <div class="tab-pane fade" id="pane-param" role="tabpanel">
-            @if (!string.IsNullOrWhiteSpace(insights.ParameterInsight))
-            {
-                <div class="ai-insight-box">
-                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Parameter &amp; Section Performance</div>
-                    <p>@insights.ParameterInsight</p>
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Parameter &amp; Section Performance</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Each parameter's <strong>average score %</strong> = numeric value ÷ max rating × 100, averaged across all audits in the date range. Parameters are grouped by their parent section. Parameters with consistently low scores indicate criteria that agents most frequently fail to satisfy.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>The <strong>weakest parameter defines the ceiling</strong> for audit scores. Systemic parameter failures reduce scores across all agents and forms simultaneously — improving a single low-scoring parameter lifts the entire quality average more than improving an already high-performing one.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : "Focus training on the bottom 3 parameters. Review whether low-scoring parameters have ambiguous rubrics — a calibration session may be more effective than individual coaching. Target ≥75% for every parameter within 60 days.")</p>
+                    </div>
                 </div>
-            }
+            </div>
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
                     <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-warning"></i>Parameter-wise Performance</h6>
@@ -390,13 +425,23 @@ else
 
         <!-- TAB 4: CALL TYPE / FORM -->
         <div class="tab-pane fade" id="pane-calltype" role="tabpanel">
-            @if (!string.IsNullOrWhiteSpace(insights.CallTypeInsight))
-            {
-                <div class="ai-insight-box">
-                    <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Call Type / Form Performance</div>
-                    <p>@insights.CallTypeInsight</p>
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Call Type / Form Performance</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Average score % is calculated per evaluation form using each form's own parameter weights and max ratings — forms with different parameter sets are independent scoring contexts. The doughnut shows the proportional score distribution across all forms; the detail table ranks each form by average score with audit volume.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>High-volume forms with below-average scores have an <strong>outsized effect</strong> on the overall QA score. Form-specific scoring patterns reveal whether quality issues are policy-related (all agents on that form underperform) or agent-related (specific agents underperform on a given form).</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : "Investigate low-scoring high-volume forms for rubric clarity or training gaps specific to that call type. If all agents score poorly on the same form, the form criteria may need recalibration. Prioritise form redesign for any form averaging below 65%.")</p>
+                    </div>
                 </div>
-            }
+            </div>
             <div class="row g-4">
                 <div class="col-lg-5">
                     <div class="card border-0 shadow-sm h-100">
@@ -450,6 +495,23 @@ else
 
         <!-- TAB 5: TRENDS -->
         <div class="tab-pane fade" id="pane-trends" role="tabpanel">
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Performance Trends</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Each data point is the <strong>daily average score %</strong> per agent and per evaluation section, calculated as sum of numeric scores ÷ sum of max ratings × 100 for all audits on that date. Multi-series lines allow direct visual comparison of trajectories across agents and sections over time.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>Diverging agent or section trends indicate <strong>performance drift</strong> — an agent or section moving consistently downward will eventually pull the overall average below acceptable thresholds. Trend analysis identifies deterioration early, before it appears in aggregate KPIs.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>Flag any agent or section showing a downward trend for <strong>3 or more consecutive days</strong> for investigation. Use trend data to assess whether coaching interventions are taking effect — expect a visible upward shift within 5–7 audit days of a targeted session.</p>
+                    </div>
+                </div>
+            </div>
             @if (Model.AgentDailyTrends.Count > 0)
             {
                 <div class="card border-0 shadow-sm mb-4">
@@ -506,6 +568,23 @@ else
 
         <!-- TAB 6: SECTION ANALYSIS -->
         <div class="tab-pane fade" id="pane-sections" role="tabpanel">
+            <div class="ai-insight-box">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Section Score Comparison</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Section average score % = mean of all parameter scores within that section across all audits, weighted by each parameter's configured max rating. Sections with more parameters or higher max ratings contribute proportionally more to the overall audit score.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>Sections with consistently low scores <strong>drag down the overall audit average</strong> in proportion to their weight in the evaluation form. A high-weight section scoring below 60% can prevent an overall pass even when all other sections perform well, making section-level analysis essential for targeted improvement.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>Address the lowest-scoring section first for maximum overall score impact. Verify that parameters in that section are correctly weighted in the evaluation form. Run targeted training on the specific compliance or quality topics covered by that section before re-auditing.</p>
+                    </div>
+                </div>
+            </div>
             @if (!Model.SectionScores.Any())
             {
                 <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No section data available yet.</div>

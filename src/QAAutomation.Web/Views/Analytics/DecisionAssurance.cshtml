@@ -184,15 +184,15 @@ else
                 <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Decision Quality</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-cpu me-1"></i>How AI Infers</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
                         <p>The <strong>Decision Confidence Score</strong> is a 50/50 blend of average score quality and evaluator consistency: <em>Confidence = (AvgScore% × 0.5) + (ConsistencyScore × 50)</em>, where Consistency = 1 − normalised standard deviation. A parameter that scores well <em>and</em> consistently across all evaluators earns maximum confidence; one that scores well on average but varies wildly across reviewers is penalised accordingly.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-bar-chart me-1"></i>Background</div>
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
                         <p>This chart ranks all evaluation parameters from lowest to highest confidence so the most unreliable AI decision signals are immediately visible. The dual bars distinguish two failure modes: <em>consistently bad</em> (low avg, high confidence) and <em>unpredictably scored</em> (higher avg, low confidence — often a rubric clarity issue). Parameters below a confidence of <strong>50</strong> are classified <strong>High Risk</strong> and appear highlighted in the detail table.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendations</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
                         <p>Prioritise coaching on <strong>High Risk</strong> parameters first. If a parameter has a high average but low confidence, the evaluator rubric is likely ambiguous — run a calibration session with gold-standard examples. If both average and confidence are low, it is a genuine performance gap requiring targeted training. Target a confidence score of <strong>≥ 75</strong> across all parameters to ensure trustworthy AI decisions.</p>
                     </div>
                 </div>
@@ -269,15 +269,15 @@ else
                 <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Creator Impact</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-cpu me-1"></i>How AI Infers</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
                         <p><strong>Momentum</strong> = Recent 30-day avg − Prior 30-day avg. Risk level is derived from a combination of overall average score and trend direction: a declining agent already below 70 % is classified <strong>High Risk</strong>; an improving agent above 80 % is <strong>Low Risk</strong>. Agents are only assigned a momentum score when they have at least one audit recorded in each 30-day window, ensuring the signal is statistically meaningful.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-bar-chart me-1"></i>Background</div>
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
                         <p>Each agent cluster shows overall average, recent 30-day average, and the momentum delta side-by-side. Agents are ordered by lowest overall average so the highest-risk creators surface at the top. The momentum axis (right-hand scale) supports positive and negative values — a negative bar means quality has fallen compared with the prior period, even if absolute scores still appear acceptable.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendations</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
                         <p>Schedule coaching for agents with <strong>negative momentum</strong>, especially those already below 75 %. Agents with positive momentum who are still below 75 % are recovering — reinforce progress with targeted support rather than corrective action. Any agent with a <strong>Declining</strong> trend for two consecutive periods should be escalated to management review. Export the Creator Risk Profiles table to share a ranked action list with team leads.</p>
                     </div>
                 </div>
@@ -348,15 +348,15 @@ else
                 <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Calibration Intelligence</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-cpu me-1"></i>How AI Infers</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
                         <p><strong>Confusion Score</strong> = (ScoreStdDev / SectionMean) × 100 — the coefficient of variation expressed as a percentage. Zero means perfect evaluator agreement; 40+ signals significant policy ambiguity. <strong>Drift direction</strong> is assigned by comparing the two 30-day rolling averages (Improving / Stable / Declining / Volatile). The <strong>Calibration Heatmap</strong> computes each agent's average score per parameter to reveal individual-level misalignment across the team.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-bar-chart me-1"></i>Background</div>
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
                         <p>The <strong>Policy Confusion</strong> chart identifies sections where evaluators interpret the rubric differently — high confusion means the AI cannot reliably predict which score a parameter will receive, undermining decision consistency. The <strong>Drift</strong> chart detects systematic shifts in grading standards that may indicate policy changes, evaluator turnover, or seasonal effects. The <strong>Calibration Heatmap</strong> is the most actionable view: each cell is a unique agent × parameter intersection coloured green–amber–red by score.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendations</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
                         <p>Schedule a calibration session for any section with <strong>Confusion ≥ 40</strong>. Use the heatmap to create targeted gold-standard examples for the specific agent × parameter pairs showing the highest spread. Sections with a <strong>Declining</strong> drift need urgent investigation — check whether a policy update, new evaluator cohort, or product change explains the drop. Aim to reduce all Confusion scores below <strong>20</strong> within two calibration cycles for reliable AI decision outputs.</p>
                     </div>
                 </div>
@@ -497,15 +497,15 @@ else
                 <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Risk Radar</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-cpu me-1"></i>How AI Infers</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
                         <p>Each risk signal is scored 0–100 using category-specific formulas: <strong>PolicyConfusion</strong> maps directly to the section's confusion score; <strong>EscalationRisk</strong> is the inverse of a parameter's low-score frequency (high miss rate = high risk); <strong>DecisionReversal</strong> uses the magnitude of an agent's negative momentum; <strong>BiasIndicator</strong> measures score distribution volatility over time. Signals above 70 are flagged urgent; 40–69 are moderate priority.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-bar-chart me-1"></i>Background</div>
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
                         <p>The Risk Radar aggregates the highest-priority risk signals across all QA dimensions — parameter quality, agent trends, calibration gaps, and evaluation consistency — and surfaces them in a single ranked view. This gives QA leadership a single pane of glass to identify where the AI decision system is most vulnerable to errors, reversals, or regulatory challenge, without needing to cross-reference multiple reports.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendations</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
                         <p>Treat any signal with <strong>Risk Score ≥ 70</strong> as urgent — assign a responsible owner and set a remediation deadline. <strong>Escalation Risk</strong> signals identify creators likely to generate customer complaints or decision reversals; schedule coaching within 48 hours. <strong>BiasIndicator</strong> signals may reflect systematic evaluator bias — trigger blind calibration exercises where evaluators score the same interaction independently before discussing results. Export the Risk Signal Register for governance reporting.</p>
                     </div>
                 </div>
