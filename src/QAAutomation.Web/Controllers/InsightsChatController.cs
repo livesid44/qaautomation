@@ -25,9 +25,7 @@ public class InsightsChatController : ProjectAwareController
         var projectId = CurrentProjectId > 0 ? (int?)CurrentProjectId : req.ProjectId;
         var result = await _api.InsightsChat(req.Question, projectId);
 
-        if (result == null)
-            return StatusCode(502, new { error = "Failed to reach the API." });
-
+        // result is never null — errors are now reported via result.Error
         return Json(result);
     }
 

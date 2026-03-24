@@ -897,10 +897,36 @@ public class ApiClient
         {
             var payload = new { question, projectId };
             var r = await _http.PostAsJsonAsync("api/insightschat", payload);
-            if (!r.IsSuccessStatusCode) return null;
+            if (!r.IsSuccessStatusCode)
+            {
+                // Attempt to surface the real error from the response body so the user
+                // sees a meaningful message rather than the generic "Failed to reach the API."
+                var body = await r.Content.ReadAsStringAsync();
+                _logger.LogError("InsightsChat API returned {Status}. Body: {Body}", (int)r.StatusCode, body);
+
+                // Try to parse a structured { error: "..." } body first, then fall back to raw text.
+                string? errorMessage = null;
+                try
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(body);
+                    if (doc.RootElement.TryGetProperty("error", out var prop))
+                        errorMessage = prop.GetString();
+                }
+                catch { /* not JSON — use raw body */ }
+
+                return new InsightsChatResultViewModel
+                {
+                    Question = question,
+                    Error = errorMessage ?? (!string.IsNullOrWhiteSpace(body) ? body : $"API returned {(int)r.StatusCode}.")
+                };
+            }
             return await r.Content.ReadFromJsonAsync<InsightsChatResultViewModel>(_jsonOptions);
         }
-        catch (Exception ex) { _logger.LogError(ex, "InsightsChat failed"); return null; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "InsightsChat failed");
+            return new InsightsChatResultViewModel { Question = question, Error = $"Failed to reach the API: {ex.Message}" };
+        }
     }
 }
 

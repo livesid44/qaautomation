@@ -263,6 +263,29 @@ public class InsightsChatService
     }
 
     /// <summary>
+    /// Converts a value read from a <see cref="System.Data.IDataReader"/> into a type that
+    /// <see cref="System.Text.Json.JsonSerializer"/> can serialize without a custom converter.
+    /// <list type="bullet">
+    ///   <item>Primitive types already supported by STJ (bool, int, long, decimal, float, double, string) are returned as-is.</item>
+    ///   <item>Types that STJ cannot handle natively (TimeSpan, byte[], Guid, DateTime, DateTimeOffset, …) are converted to a string representation.</item>
+    /// </list>
+    /// </summary>
+    private static object? ToJsonSafeValue(object value)
+    {
+        return value switch
+        {
+            bool or int or long or short or byte or decimal or float or double => value,
+            string s => s,
+            DateTime dt => dt.ToString("o"),          // ISO-8601
+            DateTimeOffset dto => dto.ToString("o"),
+            TimeSpan ts => ts.ToString(),
+            Guid g => g.ToString(),
+            byte[] bytes => Convert.ToBase64String(bytes),
+            _ => value.ToString()
+        };
+    }
+
+    /// <summary>
     /// Finds and removes the last top-level ORDER BY clause from a SELECT statement,
     /// returning the stripped SQL and the ORDER BY clause separately.
     /// This is required for SQL Server, which rejects ORDER BY inside a CTE body
@@ -324,7 +347,7 @@ public class InsightsChatService
             {
                 var row = new List<object?>();
                 for (var i = 0; i < reader.FieldCount; i++)
-                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                    row.Add(reader.IsDBNull(i) ? null : ToJsonSafeValue(reader.GetValue(i)));
                 rows.Add(row);
             }
         }
@@ -349,7 +372,7 @@ public class InsightsChatService
             {
                 var row = new List<object?>();
                 for (var i = 0; i < reader.FieldCount; i++)
-                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                    row.Add(reader.IsDBNull(i) ? null : ToJsonSafeValue(reader.GetValue(i)));
                 rows.Add(row);
             }
         }
