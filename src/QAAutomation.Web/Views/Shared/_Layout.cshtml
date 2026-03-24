@@ -20,45 +20,40 @@
 
         body { background: #f0f2f5; }
 
-        /* ── Sidebar ──────────────────────────────────────────────────────── */
+        /* ── Sidebar (offcanvas drawer) ───────────────────────────────────── */
         .sidebar {
-            height: 100vh;
             background: #ffffff;
             border-right: 1px solid #e5e7eb;
-            width: 250px;
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 100;
-            padding-top: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            width: 250px !important;
         }
-        .sidebar nav {
-            flex: 1;
+        .sidebar .offcanvas-header {
+            background: #f8f9fa;
+            border-bottom: 2px solid var(--brand-red);
+            padding: 0;
+        }
+        .sidebar .offcanvas-body {
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
             scrollbar-color: rgba(0,0,0,.12) transparent;
+            padding: 0;
         }
-        /* Thin scrollbar styled to match the light sidebar */
-        .sidebar nav::-webkit-scrollbar { width: 4px; }
-        .sidebar nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar nav::-webkit-scrollbar-thumb {
+        .sidebar .offcanvas-body::-webkit-scrollbar { width: 4px; }
+        .sidebar .offcanvas-body::-webkit-scrollbar-track { background: transparent; }
+        .sidebar .offcanvas-body::-webkit-scrollbar-thumb {
             background: rgba(0,0,0,.12);
             border-radius: 2px;
         }
-        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+        .sidebar .offcanvas-body::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
 
         /* Brand / logo area */
         .sidebar-brand {
             padding: 14px 16px 12px;
-            background: #f8f9fa;
             display: flex;
             align-items: center;
             gap: 10px;
             text-decoration: none;
-            border-bottom: 2px solid var(--brand-red);
+            flex-grow: 1;
         }
         .sidebar-brand img {
             height: 42px;
@@ -139,7 +134,6 @@
 
         /* ── Main content ─────────────────────────────────────────────────── */
         .main-content {
-            margin-left: 250px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -178,29 +172,27 @@
             position: fixed;
             bottom: 0;
             right: 0;
-            left: 250px;
+            left: 0;
             z-index: 98;
         }
         .app-footer span { color: var(--brand-red); font-weight: 600; }
 
         /* extra bottom padding so page content isn't hidden behind fixed footer */
         .page-content { padding-bottom: 50px; }
-
-        @@media (max-width: 768px) {
-            .sidebar { width: 100%; min-height: auto; position: static; }
-            .main-content { margin-left: 0; }
-            .app-footer { left: 0; }
-        }
     </style>
     @RenderSection("Styles", required: false)
 </head>
 <body>
 @if (User.Identity?.IsAuthenticated == true)
 {
-    <div class="sidebar">
-        <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")">
-            <img src="~/asset1.png" alt="AuraAI" />
-        </a>
+    <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+        <div class="offcanvas-header">
+            <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")" id="sidebarMenuLabel">
+                <img src="~/asset1.png" alt="AuraAI" />
+            </a>
+            <button type="button" class="btn-close me-1" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
         <nav class="flex-column mt-1">
             @{
                 var _ctrl   = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
@@ -352,12 +344,20 @@
                 </div>
             }
         </nav>
+        </div>
     </div>
     <div class="main-content">
         <div class="topbar">
-            <span class="page-title">
-                @ViewData["Title"]
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu"
+                        aria-controls="sidebarMenu" title="Open menu">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <span class="page-title">
+                    @ViewData["Title"]
+                </span>
+            </div>
             <div class="d-flex align-items-center gap-3">
                 @{
                     var projectId = int.TryParse(User.FindFirst("project_id")?.Value, out var pid) ? pid : 0;
