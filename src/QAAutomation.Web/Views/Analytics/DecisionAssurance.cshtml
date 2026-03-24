@@ -34,6 +34,13 @@
     var volatileSections = Model.SectionCalibration.Count(s => s.DriftDirection == "Volatile");
     var avgConfidence    = Model.DecisionConfidences.Count > 0
         ? Math.Round(Model.DecisionConfidences.Average(d => d.ConfidenceScore), 1) : 0.0;
+
+    // Data-linked variables for "Recommendation to Improve" panels
+    var _lowestConfParam  = Model.DecisionConfidences.OrderBy(d => d.ConfidenceScore).FirstOrDefault();
+    var _topDeclining     = Model.AgentRiskProfiles.Where(a => a.Trend == "Declining").OrderBy(a => a.AvgScorePercent).FirstOrDefault();
+    var _mostConfused     = Model.SectionCalibration.OrderByDescending(s => s.ConfusionScore).FirstOrDefault();
+    var _urgentRiskCount  = Model.RiskRadar.Count(r => r.RiskScore >= 70);
+    var _topRiskSignal    = Model.RiskRadar.OrderByDescending(r => r.RiskScore).FirstOrDefault();
 }
 @section Styles {
 <style>
@@ -193,7 +200,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Prioritise coaching on <strong>High Risk</strong> parameters first. If a parameter has a high average but low confidence, the evaluator rubric is likely ambiguous — run a calibration session with gold-standard examples. If both average and confidence are low, it is a genuine performance gap requiring targeted training. Target a confidence score of <strong>≥ 75</strong> across all parameters to ensure trustworthy AI decisions.</p>
+                        <p>@highRiskParams High Risk parameter(s) (confidence &lt; 50); overall avg confidence @avgConfidence. @(_lowestConfParam != null ? $"Lowest: {_lowestConfParam.ParameterLabel} at {_lowestConfParam.ConfidenceScore} — {(_lowestConfParam.ScoreStdDev > 25 ? "high variability suggests rubric ambiguity." : "low average score indicates a performance gap.")}" : "")</p>
                     </div>
                 </div>
             </div>
@@ -278,7 +285,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Schedule coaching for agents with <strong>negative momentum</strong>, especially those already below 75 %. Agents with positive momentum who are still below 75 % are recovering — reinforce progress with targeted support rather than corrective action. Any agent with a <strong>Declining</strong> trend for two consecutive periods should be escalated to management review. Export the Creator Risk Profiles table to share a ranked action list with team leads.</p>
+                        <p>@highRiskAgents High Risk agent(s), @decliningAgents declining. @(_topDeclining != null ? $"Priority: {_topDeclining.AgentName} at {_topDeclining.AvgScorePercent}% overall with momentum {(_topDeclining.Momentum >= 0 ? "+" : "")}{_topDeclining.Momentum}% — schedule coaching immediately." : "No agents show a declining trend at this time.")</p>
                     </div>
                 </div>
             </div>
@@ -357,7 +364,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Schedule a calibration session for any section with <strong>Confusion ≥ 40</strong>. Use the heatmap to create targeted gold-standard examples for the specific agent × parameter pairs showing the highest spread. Sections with a <strong>Declining</strong> drift need urgent investigation — check whether a policy update, new evaluator cohort, or product change explains the drop. Aim to reduce all Confusion scores below <strong>20</strong> within two calibration cycles for reliable AI decision outputs.</p>
+                        <p>@volatileSections Volatile section(s) detected. @(_mostConfused != null ? $"Highest confusion: {_mostConfused.SectionTitle} (score {_mostConfused.ConfusionScore}, {_mostConfused.DriftDirection} drift, StdDev ±{_mostConfused.ScoreStdDev}%) — schedule a calibration session for this section." : "All sections are within acceptable calibration bounds.")</p>
                     </div>
                 </div>
             </div>
@@ -506,7 +513,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Treat any signal with <strong>Risk Score ≥ 70</strong> as urgent — assign a responsible owner and set a remediation deadline. <strong>Escalation Risk</strong> signals identify creators likely to generate customer complaints or decision reversals; schedule coaching within 48 hours. <strong>BiasIndicator</strong> signals may reflect systematic evaluator bias — trigger blind calibration exercises where evaluators score the same interaction independently before discussing results. Export the Risk Signal Register for governance reporting.</p>
+                        <p>@_urgentRiskCount urgent signal(s) (score ≥70). @(_topRiskSignal != null ? $"Highest: {_topRiskSignal.ParameterLabel} — {_topRiskSignal.RiskCategory} at {_topRiskSignal.RiskScore}. {_topRiskSignal.Description}" : "No active risk signals detected.")</p>
                     </div>
                 </div>
             </div>

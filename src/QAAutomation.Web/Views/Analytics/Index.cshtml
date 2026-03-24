@@ -42,6 +42,16 @@
     var agentMed  = Model.AgentScores.Count(a => a.AvgScorePercent >= 60 && a.AvgScorePercent < 80);
     var agentHigh = Model.AgentScores.Count(a => a.AvgScorePercent >= 80);
 
+    // Data-linked fallback summaries (used when LLM insight is not available)
+    var _dailyFirst      = Model.DailyScores.FirstOrDefault()?.AvgScorePercent ?? 0;
+    var _dailyLast       = Model.DailyScores.LastOrDefault()?.AvgScorePercent ?? 0;
+    var _dailyTrendLabel = _dailyLast > _dailyFirst + 1 ? "improving" : _dailyLast < _dailyFirst - 1 ? "declining" : "stable";
+    var _bottomAgent     = Model.AgentScores.OrderBy(a => a.AvgScorePercent).FirstOrDefault();
+    var _bottom3Params   = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).Take(3).ToList();
+    var _lowParamCount   = Model.ParameterTrends.Count(p => p.AvgScorePercent < 60);
+    var _worstForm       = Model.CallTypeScores.OrderBy(c => c.AvgScorePercent).FirstOrDefault();
+    var _lowFormCount    = Model.CallTypeScores.Count(c => c.AvgScorePercent < 70);
+
     var distLabels = System.Text.Json.JsonSerializer.Serialize(new[] { "High (>=80%)", "Medium (60-79%)", "Low (<60%)" });
     var distData   = System.Text.Json.JsonSerializer.Serialize(new[] { agentHigh, agentMed, agentLow });
 
@@ -265,7 +275,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : "Monitor for sustained 3+ day downward trends and investigate root causes promptly. Focus coaching on agents in the Low band — moving them to Medium yields the highest overall score uplift. Aim for ≥80% of agents in the High band.")</p>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : $"Scores are {_dailyTrendLabel} over {Model.DailyScores.Count} day(s) — {_dailyFirst}% → {_dailyLast}%. {(agentLow > 0 ? $"{agentLow} agent(s) in the Low band (<60%) — coaching here delivers the highest score uplift." : "All agents are currently at or above 60%.")}")</p>
                     </div>
                 </div>
             </div>
@@ -307,7 +317,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : "Prioritise training for agents below 60%. Track weekly progress and pair low-performing agents with top performers for peer coaching. Set a 30-day target of reaching 70% for any agent currently below 60%.")</p>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : $"{agentHigh} agent(s) High (≥80%), {agentMed} Medium, {agentLow} Low (<60%). {(topAgent != null ? $"Top: {topAgent.AgentName} at {topAgent.AvgScorePercent}% ({topAgent.AuditCount} audit(s)). " : "")}{(_bottomAgent != null && _bottomAgent.AvgScorePercent < 60 ? $"Lowest: {_bottomAgent.AgentName} at {_bottomAgent.AvgScorePercent}% — prioritise coaching." : "")}")</p>
                     </div>
                 </div>
             </div>
@@ -373,7 +383,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : "Focus training on the bottom 3 parameters. Review whether low-scoring parameters have ambiguous rubrics — a calibration session may be more effective than individual coaching. Target ≥75% for every parameter within 60 days.")</p>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : $"{_lowParamCount} parameter(s) score below 60%. {(_bottom3Params.Count > 0 ? $"Lowest: {string.Join(", ", _bottom3Params.Select(p => $"{p.ParameterLabel} ({p.AvgScorePercent}%)"))}" + (weakestParam != null ? $" — {weakestParam.ParameterLabel} is the weakest parameter and should be addressed first." : ".") : "All parameters are at or above 60%.")}")</p>
                     </div>
                 </div>
             </div>
@@ -438,7 +448,7 @@ else
                     </div>
                     <div class="ai-insight-section">
                         <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : "Investigate low-scoring high-volume forms for rubric clarity or training gaps specific to that call type. If all agents score poorly on the same form, the form criteria may need recalibration. Prioritise form redesign for any form averaging below 65%.")</p>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : $"{(bestForm != null ? $"{bestForm.FormName} leads at {bestForm.AvgScorePercent}% ({bestForm.AuditCount} audit(s)). " : "")}{(_lowFormCount > 0 ? $"{_lowFormCount} form(s) average below 70%: {(_worstForm != null ? $"{_worstForm.FormName} at {_worstForm.AvgScorePercent}% is the lowest-scoring form." : "review the call-type table.")}" : "All call types are at or above 70%.")}")</p>
                     </div>
                 </div>
             </div>

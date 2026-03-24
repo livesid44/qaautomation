@@ -25,6 +25,14 @@
         .ToList();
     var hitlLabels = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Verdict));
     var hitlCounts = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Count));
+
+    // Data-linked fallback summaries (used when LLM insight is not available)
+    var _riskAreaCount  = Model.DecisionDrivers.Count(d => d.IsRiskArea);
+    var _topRiskParam   = Model.DecisionDrivers.OrderByDescending(d => d.LowScoreCount).FirstOrDefault();
+    var _highMissCount  = Model.SignalUsage.Count(s => s.MissRate > 20);
+    var _topMissParam   = Model.SignalUsage.OrderByDescending(s => s.MissRate).FirstOrDefault();
+    var _top3Failures   = Model.FailureReasons.Take(3).ToList();
+    var _hitlQuality    = Model.AiHitlAgreementRate >= 80 ? "strong" : Model.AiHitlAgreementRate >= 60 ? "moderate" : "low";
 }
 @section Styles {
 <style>
@@ -176,7 +184,7 @@ else
             </div>
             <div class="ai-insight-section">
                 <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                <p>@(!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight) ? insights.DecisionDriversInsight : "Prioritise coaching on risk-area parameters. Review the evaluation rubric for any parameter with high variability — inconsistent scoring may indicate rubric ambiguity rather than an agent performance gap. Target ≥75% average for all parameters.")</p>
+                <p>@(!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight) ? insights.DecisionDriversInsight : $"{_riskAreaCount} risk-area parameter(s) (avg < 60%). {(_topRiskParam != null ? $"Most low-score incidents: {_topRiskParam.ParameterLabel} ({_topRiskParam.LowScoreCount} times, avg {_topRiskParam.AvgScorePercent}%)." : "")}")</p>
             </div>
         </div>
     </div>
@@ -229,7 +237,7 @@ else
             </div>
             <div class="ai-insight-section">
                 <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                <p>@(!string.IsNullOrWhiteSpace(insights.SignalUsageInsight) ? insights.SignalUsageInsight : "Target parameters with miss rates above 20% for immediate coaching focus. Review whether the criteria are clearly defined in agent training materials. Trigger a calibration session if HITL reviewers score the same parameter inconsistently.")</p>
+                <p>@(!string.IsNullOrWhiteSpace(insights.SignalUsageInsight) ? insights.SignalUsageInsight : $"{_highMissCount} parameter(s) with miss rate >20%. {(_topMissParam != null ? $"Highest: {_topMissParam.ParameterLabel} missed {_topMissParam.MissRate}%, full-score {_topMissParam.FullScoreRate}%." : "")}")</p>
             </div>
         </div>
     </div>
@@ -352,7 +360,7 @@ else
                 </div>
                 <div class="ai-insight-section">
                     <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                    <p>@(!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight) ? insights.FailureReasonsInsight : "Focus coaching on the top 3 failure-contributing parameters. Set a target of reducing each parameter's failure contribution by 50% within 60 days through targeted training and weekly monitoring. Export this table to share a ranked action list with team leads.")</p>
+                    <p>@(!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight) ? insights.FailureReasonsInsight : $"{(_top3Failures.Count > 0 ? $"Top failure driver(s): {string.Join("; ", _top3Failures.Select(f => $"{f.ParameterLabel} ({f.ContributionPercent}% of failures, avg {f.AvgScoreInFailedAudits}%)"))}." : "No failure data for this period.")}")</p>
                 </div>
             </div>
         </div>
@@ -426,7 +434,7 @@ else
                 </div>
                 <div class="ai-insight-section">
                     <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                    <p>@(!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight) ? insights.HitlAgreementInsight : "Investigate every Disagree verdict to determine whether the AI or the human reviewer was incorrect. Trigger rubric recalibration sessions when the Agree rate falls below 80%. Blind calibration exercises — where reviewers score independently before discussing — are the most effective corrective measure.")</p>
+                    <p>@(!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight) ? insights.HitlAgreementInsight : $"AI–Human agreement: {Model.AiHitlAgreementRate}% across {Model.TotalReviewed} review(s) — {_hitlQuality}. {(Model.AiHitlAgreementRate < 80 && Model.TotalReviewed > 0 ? "Review Disagree verdicts to identify rubric gaps and run a calibration session." : "")}")</p>
                 </div>
             </div>
         </div>
