@@ -93,7 +93,12 @@ public class InsightsChatService
         List<List<object?>> rows;
         try
         {
-            (columns, rows) = ExecuteQuery(fullSql, _db.Database.GetDbConnection().ConnectionString, isSqlServer);
+            // Use the raw connection string from configuration rather than from the open
+            // DbConnection; SqlConnection strips the password from ConnectionString after
+            // the connection is opened, which would cause "Login failed" when opening a
+            // fresh SqlConnection for the query.
+            var connStr = _config.GetConnectionString("DefaultConnection");
+            (columns, rows) = ExecuteQuery(fullSql, connStr, isSqlServer);
         }
         catch (Exception ex)
         {
