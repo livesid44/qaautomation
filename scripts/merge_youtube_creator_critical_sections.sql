@@ -14,9 +14,9 @@
 --     "Creator Critical – Engagement"     ─┘
 --
 -- ⚠️  DATABASE COMPATIBILITY ⚠️
---   Written for SQLite (the default database used by this project).
---   For SQL Server replace every  LIMIT 1  inside a sub-select with
---   the equivalent  SELECT TOP 1 ...  syntax.
+--   Written for SQL Server (MSSQL).
+--   Uses TOP 1 instead of LIMIT 1, and [Order] bracket-quoting instead of
+--   the SQLite-style "Order" double-quote quoting.
 --
 -- ⚠️  DASH VARIANTS ⚠️
 --   The original seed may have used either:
@@ -25,10 +25,11 @@
 --   LIKE '%Creator Critical%Effectiveness%' matches both automatically.
 --
 -- ⚠️  FIX NOTES (vs previous version) ⚠️
---   • Fixed: SQLite does not allow a correlated reference to the table being
---     updated (FormFields."Order") inside a scalar sub-select in the SET
---     clause. The old MAX()+1+FormFields."Order" pattern caused an error.
---     Solution: use fixed offsets (+100 / +200) instead — no sub-select needed.
+--   • Fixed: SQL Server does not support LIMIT — replaced with TOP 1.
+--   • Fixed: SQL Server requires bracket-quoting [Order] instead of "Order".
+--   • Fixed: correlated reference to the table being updated ([Order]) inside
+--     a scalar sub-select in the SET clause avoided by using fixed offsets
+--     (+100 / +200) instead — no sub-select needed.
 --   • Added: ParameterClubs / ParameterClubItems merge (Part 2) so that the
 --     three separate clubs are consolidated into one "Creator Critical" club.
 --
@@ -49,14 +50,13 @@
 UPDATE FormFields
 SET
     SectionId = (
-        SELECT fs.Id
+        SELECT TOP 1 fs.Id
         FROM FormSections fs
         INNER JOIN EvaluationForms ef ON ef.Id = fs.FormId
         WHERE fs.Title LIKE '%Creator Critical%Effectiveness%'
           AND ef.Name LIKE '%YouTube%'
-        LIMIT 1
     ),
-    "Order" = "Order" + 100
+    [Order] = [Order] + 100
 WHERE SectionId IN (
     SELECT fs.Id
     FROM FormSections fs
@@ -69,14 +69,13 @@ WHERE SectionId IN (
 UPDATE FormFields
 SET
     SectionId = (
-        SELECT fs.Id
+        SELECT TOP 1 fs.Id
         FROM FormSections fs
         INNER JOIN EvaluationForms ef ON ef.Id = fs.FormId
         WHERE fs.Title LIKE '%Creator Critical%Effectiveness%'
           AND ef.Name LIKE '%YouTube%'
-        LIMIT 1
     ),
-    "Order" = "Order" + 200
+    [Order] = [Order] + 200
 WHERE SectionId IN (
     SELECT fs.Id
     FROM FormSections fs
@@ -112,19 +111,18 @@ WHERE Title LIKE '%Creator Critical%Effort%'
 UPDATE ParameterClubItems
 SET
     ClubId  = (
-        SELECT Id FROM ParameterClubs
+        SELECT TOP 1 Id FROM ParameterClubs
         WHERE Name LIKE '%Creator Critical%Effectiveness%'
           AND ProjectId = (
-              SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+              SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
           )
-        LIMIT 1
     ),
-    "Order" = "Order" + 100
+    [Order] = [Order] + 100
 WHERE ClubId IN (
     SELECT Id FROM ParameterClubs
     WHERE Name LIKE '%Creator Critical%Effort%'
       AND ProjectId = (
-          SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+          SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
       )
 );
 
@@ -132,19 +130,18 @@ WHERE ClubId IN (
 UPDATE ParameterClubItems
 SET
     ClubId  = (
-        SELECT Id FROM ParameterClubs
+        SELECT TOP 1 Id FROM ParameterClubs
         WHERE Name LIKE '%Creator Critical%Effectiveness%'
           AND ProjectId = (
-              SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+              SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
           )
-        LIMIT 1
     ),
-    "Order" = "Order" + 200
+    [Order] = [Order] + 200
 WHERE ClubId IN (
     SELECT Id FROM ParameterClubs
     WHERE Name LIKE '%Creator Critical%Engagement%'
       AND ProjectId = (
-          SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+          SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
       )
 );
 
@@ -155,14 +152,14 @@ SET
     Description = 'Measures whether the creator received the right solution with the right effort and the right communication style.'
 WHERE Name LIKE '%Creator Critical%Effectiveness%'
   AND ProjectId = (
-      SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+      SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
   );
 
 -- 2d. Delete the now-empty donor clubs
 DELETE FROM ParameterClubs
 WHERE (Name LIKE '%Creator Critical%Effort%' OR Name LIKE '%Creator Critical%Engagement%')
   AND ProjectId = (
-      SELECT Id FROM Projects WHERE Name LIKE '%YouTube%' LIMIT 1
+      SELECT TOP 1 Id FROM Projects WHERE Name LIKE '%YouTube%'
   );
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -173,14 +170,14 @@ WHERE (Name LIKE '%Creator Critical%Effort%' OR Name LIKE '%Creator Critical%Eng
 -- 3a. Form sections and field counts
 SELECT
     fs.Title      AS SectionTitle,
-    fs."Order"    AS SectionOrder,
+    fs.[Order]    AS SectionOrder,
     COUNT(ff.Id)  AS FieldCount
 FROM FormSections fs
 LEFT JOIN FormFields ff ON ff.SectionId = fs.Id
 INNER JOIN EvaluationForms ef ON ef.Id = fs.FormId
 WHERE ef.Name LIKE '%YouTube%'
-GROUP BY fs.Id, fs.Title, fs."Order"
-ORDER BY fs."Order";
+GROUP BY fs.Id, fs.Title, fs.[Order]
+ORDER BY fs.[Order];
 -- Expected:
 --   "Creator Critical"    11 fields  (3 Effectiveness + 5 Effort + 3 Engagement)
 --   "Business Critical"    2 fields
