@@ -348,12 +348,33 @@ public class ApiClient
             var resp = await _http.PostAsJsonAsync("api/autoaudit/analyze", request);
             if (!resp.IsSuccessStatusCode)
             {
-                _logger.LogError("AutoAnalyze failed: {Status}", resp.StatusCode);
-                return null;
+                var body = await resp.Content.ReadAsStringAsync();
+                _logger.LogError("AutoAnalyze failed: {Status} — {Body}", resp.StatusCode, body);
+                // Propagate a structured error in the view model so the controller
+                // can surface a meaningful message rather than a generic one.
+                return new AutoAuditReviewViewModel
+                {
+                    AnalysisError = $"API returned {(int)resp.StatusCode}: {body}"
+                };
             }
             return await resp.Content.ReadFromJsonAsync<AutoAuditReviewViewModel>(_jsonOptions);
         }
-        catch (Exception ex) { _logger.LogError(ex, "AutoAnalyze failed"); return null; }
+        catch (TaskCanceledException)
+        {
+            _logger.LogError("AutoAnalyze timed out — consider increasing the HttpClient timeout");
+            return new AutoAuditReviewViewModel
+            {
+                AnalysisError = "timeout"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AutoAnalyze failed");
+            return new AutoAuditReviewViewModel
+            {
+                AnalysisError = ex.Message
+            };
+        }
     }
 
     // Sentiment & Emotion analysis

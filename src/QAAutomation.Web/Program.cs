@@ -37,7 +37,10 @@ builder.Services.AddSession(options =>
 builder.Services.AddHttpClient<ApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(30);
+    // LLM-backed endpoints (AutoAudit, Sentiment) can take 60–90 s for a full
+    // transcript analysis. 30 s is too short and causes TaskCanceledException
+    // which surfaces as "The analysis service returned an error". Use 3 minutes.
+    client.Timeout = TimeSpan.FromSeconds(180);
 }).ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();

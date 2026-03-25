@@ -94,12 +94,40 @@ public class AutoAuditController : ProjectAwareController
         var review = await reviewTask;
         var sentiment = await sentimentTask;
 
-        if (review == null)
+        // review is null only on a catastrophic deserialization failure;
+        // connection errors and HTTP errors now return a stub with AnalysisError set.
+        if (review == null || !string.IsNullOrWhiteSpace(review.AnalysisError))
         {
             var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
             var forms = await _api.GetLegacyForms(pid);
             ViewBag.Forms = forms;
-            ModelState.AddModelError("", "The analysis service returned an error. Please try again.");
+
+            string userMessage;
+            var errorDetail = review?.AnalysisError ?? "";
+            if (errorDetail == "timeout")
+            {
+                userMessage = "The AI analysis timed out. Try using a shorter transcript (under 6 000 characters) or simplify the evaluation form.";
+            }
+            else if (errorDetail.Contains("404"))
+            {
+                userMessage = "The selected evaluation form was not found. Please select a valid active form and try again.";
+            }
+            else if (errorDetail.Contains("400"))
+            {
+                // Strip the HTTP prefix and show the API validation message directly
+                var detail = errorDetail.Contains(":") ? errorDetail[(errorDetail.IndexOf(':') + 1)..].Trim() : errorDetail;
+                userMessage = $"Analysis request was rejected: {detail}";
+            }
+            else if (!string.IsNullOrWhiteSpace(errorDetail))
+            {
+                userMessage = $"Analysis failed: {errorDetail}";
+            }
+            else
+            {
+                userMessage = "The analysis service returned an error. Please try again.";
+            }
+
+            ModelState.AddModelError("", userMessage);
             return View(model);
         }
 
