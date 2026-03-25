@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<HumanReviewItem> HumanReviewItems => Set<HumanReviewItem>();
     public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
     public DbSet<TrainingPlanItem> TrainingPlanItems => Set<TrainingPlanItem>();
+    public DbSet<TniAssessmentAttempt> TniAssessmentAttempts => Set<TniAssessmentAttempt>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -287,6 +288,19 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ItemType).HasMaxLength(30);
             entity.Property(e => e.Status).HasMaxLength(20);
             entity.Property(e => e.CompletedBy).HasMaxLength(200);
+        });
+
+        modelBuilder.Entity<TniAssessmentAttempt>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.AgentUsername).HasMaxLength(200);
+            entity.Property(e => e.Result).HasMaxLength(10);
+            entity.HasOne(e => e.TrainingPlan)
+                  .WithMany(p => p.AssessmentAttempts)
+                  .HasForeignKey(e => e.TrainingPlanId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            // Index for fast per-agent dashboard queries
+            entity.HasIndex(e => new { e.TrainingPlanId, e.AgentUsername });
         });
 
         modelBuilder.Entity<AuditLog>(entity =>
