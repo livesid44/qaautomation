@@ -278,6 +278,7 @@ public class TrainingController : ProjectAwareController
     // ── CompleteItem (trainer marks an item done) ─────────────────────────────
 
     [HttpPost]
+    [Route("Training/CompleteItem/{planId}/{itemId}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteItem(int planId, int itemId, string? completionNotes)
     {
