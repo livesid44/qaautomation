@@ -321,12 +321,25 @@ else
                     </div>
                 </div>
             </div>
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-success"></i>Agent Performance Overview</h6>
-                    <small class="text-muted">Average score % per agent</small>
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-success"></i>Top 5 Agents</h6>
+                            <small class="text-muted">Highest average score %</small>
+                        </div>
+                        <div class="card-body"><canvas id="top5Chart"></canvas></div>
+                    </div>
                 </div>
-                <div class="card-body"><canvas id="agentChart"></canvas></div>
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-circle me-2 text-danger"></i>Bottom 5 Agents</h6>
+                            <small class="text-muted">Lowest average score % — coaching priority</small>
+                        </div>
+                        <div class="card-body"><canvas id="bottom5Chart"></canvas></div>
+                    </div>
+                </div>
             </div>
             @if (Model.AgentScores.Count > 0)
             {
@@ -900,17 +913,40 @@ else
         });
     }
 
-    function buildAgentChart(labels, data, counts) {
-        const el = document.getElementById('agentChart');
-        if (!el || !labels.length) return;
-        if (charts.agent) charts.agent.destroy();
-        el.style.height = Math.max(300, labels.length * 28) + 'px';
-        charts.agent = new Chart(el, {
+    function buildTop5Bottom5Charts(labels, data, counts) {
+        const items = labels.map((l, i) => ({ label: l, score: data[i], count: counts[i] }));
+        items.sort((a, b) => b.score - a.score);
+        const top5    = items.slice(0, 5);
+        const bottom5 = items.slice(-5).reverse();
+        buildTop5Chart(top5);
+        buildBottom5Chart(bottom5);
+    }
+
+    function buildTop5Chart(items) {
+        const el = document.getElementById('top5Chart');
+        if (!el || !items.length) return;
+        if (charts.top5) charts.top5.destroy();
+        charts.top5 = new Chart(el, {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Avg Score %', data, backgroundColor: data.map(v => scoreColor(v)), borderRadius: 5 }] },
+            data: { labels: items.map(i => i.label), datasets: [{ label: 'Avg Score %', data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
             options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${counts[ctx.dataIndex]}` } } },
+                indexAxis: 'y', responsive: true,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${items[ctx.dataIndex].count}` } } },
+                scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } }, y: { grid: { display: false } } }
+            }
+        });
+    }
+
+    function buildBottom5Chart(items) {
+        const el = document.getElementById('bottom5Chart');
+        if (!el || !items.length) return;
+        if (charts.bottom5) charts.bottom5.destroy();
+        charts.bottom5 = new Chart(el, {
+            type: 'bar',
+            data: { labels: items.map(i => i.label), datasets: [{ label: 'Avg Score %', data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
+            options: {
+                indexAxis: 'y', responsive: true,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${items[ctx.dataIndex].count}` } } },
                 scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } }, y: { grid: { display: false } } }
             }
         });
@@ -984,7 +1020,7 @@ else
     // Build all charts on load
     buildDailyChart(dailyLabels, dailyData, dailyCounts);
     buildDistChart();
-    buildAgentChart(agentLabels, agentData, agentCounts);
+    buildTop5Bottom5Charts(agentLabels, agentData, agentCounts);
     buildParamChart(paramLabels, paramSections, paramData);
     buildCallTypeChart(ctLabels, ctData, ctCounts);
     buildAgentTrendChart(agentTrendRaw);
@@ -1050,7 +1086,7 @@ else
 
         // Filter agents by score
         const aIdx = agentLabels.reduce((acc, _, i) => { if (agentData[i] >= minScore && agentData[i] <= effectiveMax) acc.push(i); return acc; }, []);
-        buildAgentChart(aIdx.map(i => agentLabels[i]), aIdx.map(i => agentData[i]), aIdx.map(i => agentCounts[i]));
+        buildTop5Bottom5Charts(aIdx.map(i => agentLabels[i]), aIdx.map(i => agentData[i]), aIdx.map(i => agentCounts[i]));
 
         // Filter trend data
         const fTrend   = agentTrendRaw.filter(r => (!from || r.date >= from) && (!to || r.date <= to) && r.avgScorePercent >= minScore && r.avgScorePercent <= effectiveMax);
@@ -1064,7 +1100,7 @@ else
     function clearFilter() {
         ['filterFrom','filterTo','filterMinScore','filterMaxScore'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         buildDailyChart(dailyLabels, dailyData, dailyCounts);
-        buildAgentChart(agentLabels, agentData, agentCounts);
+        buildTop5Bottom5Charts(agentLabels, agentData, agentCounts);
         buildAgentTrendChart(agentTrendRaw);
         buildSectionTrendChart(sectionTrendRaw);
         document.getElementById('filterStatus').textContent = '';
