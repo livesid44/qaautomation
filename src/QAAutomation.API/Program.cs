@@ -256,6 +256,30 @@ using (var scope = app.Services.CreateScope())
 
     // For existing databases: ensure all data is associated to default project/LOB
     await MigrateExistingDataToDefaultProjectAsync(db, logger);
+
+    // ── Restart recovery: reset stale pipeline job states ──────────────────
+    // Any job left in "Running" state was interrupted by a previous application
+    // shutdown (the background Task.Run was killed).  Reset these jobs back to
+    // "Pending" so they can be re-triggered by the user.  Items that were
+    // mid-flight ("Processing") are also reset to "Pending" so they are retried.
+    var staleJobs = await db.CallPipelineJobs
+        .Include(j => j.Items)
+        .Where(j => j.Status == "Running")
+        .ToListAsync();
+
+    if (staleJobs.Count > 0)
+    {
+        foreach (var staleJob in staleJobs)
+        {
+            staleJob.Status = "Pending";
+            foreach (var item in staleJob.Items.Where(i => i.Status == "Processing"))
+                item.Status = "Pending";
+        }
+        await db.SaveChangesAsync();
+        logger.LogWarning(
+            "Startup recovery: reset {Count} stale Running pipeline job(s) to Pending so they can be re-triggered.",
+            staleJobs.Count);
+    }
 }
 
 app.UseSwagger();

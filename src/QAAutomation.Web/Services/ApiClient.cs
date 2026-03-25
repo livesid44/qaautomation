@@ -727,6 +727,17 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "TriggerPipelineProcess failed"); return null; }
     }
 
+    public async Task<CallPipelineJobViewModel?> ResumePipelineJob(int jobId)
+    {
+        try
+        {
+            var r = await _http.PostAsync($"api/callpipeline/{jobId}/resume", null);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "ResumePipelineJob failed"); return null; }
+    }
+
     // ── Sampling Policies ─────────────────────────────────────────────────────
 
     public async Task<List<SamplingPolicyViewModel>> GetSamplingPolicies(int? projectId = null)

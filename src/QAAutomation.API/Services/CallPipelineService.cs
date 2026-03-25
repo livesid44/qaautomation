@@ -26,6 +26,15 @@ public interface ICallPipelineService
     Task<CallPipelineJobDto> CreateFileUploadJobAsync(string name, int formId, int? projectId, string submittedBy,
         List<BatchUrlItemDto> items, CancellationToken ct = default);
     Task ProcessJobAsync(int jobId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resets a stale "Running" pipeline job (e.g. interrupted by an app restart)
+    /// back to "Pending" and resets any items that are stuck in "Processing" to "Pending"
+    /// so that a subsequent <see cref="ProcessJobAsync"/> call will re-process them.
+    /// Returns false if the job is not found or is not in a resumable state.
+    /// </summary>
+    Task<bool> ResetStalledJobAsync(int jobId, CancellationToken ct = default);
+
     Task<CallPipelineJobDto?> GetJobAsync(int id);
     Task<List<CallPipelineJobDto>> ListJobsAsync(int? projectId = null);
 }
@@ -267,6 +276,40 @@ public class CallPipelineService : ICallPipelineService
     }
 
     // ── Read ──────────────────────────────────────────────────────────────────
+
+    public async Task<bool> ResetStalledJobAsync(int jobId, CancellationToken ct = default)
+    {
+        var job = await _db.CallPipelineJobs
+            .Include(j => j.Items)
+            .FirstOrDefaultAsync(j => j.Id == jobId, ct);
+
+        if (job is null)
+        {
+            _logger.LogWarning("ResetStalledJobAsync: job {JobId} not found", jobId);
+            return false;
+        }
+
+        // Only reset jobs that are genuinely stalled — i.e. "Running" but
+        // not actively being processed (detected by having unfinished items).
+        // Completed/Failed jobs must not be reset.
+        if (job.Status != "Running")
+        {
+            _logger.LogWarning(
+                "ResetStalledJobAsync: job {JobId} has status '{Status}' — only Running jobs can be reset",
+                jobId, job.Status);
+            return false;
+        }
+
+        job.Status = "Pending";
+        // Items stuck mid-flight are re-queued; already completed/failed items are kept.
+        foreach (var item in job.Items.Where(i => i.Status == "Processing"))
+            item.Status = "Pending";
+
+        await _db.SaveChangesAsync(ct);
+        _logger.LogInformation(
+            "ResetStalledJobAsync: job {JobId} reset to Pending for re-processing", jobId);
+        return true;
+    }
 
     public async Task<CallPipelineJobDto?> GetJobAsync(int id)
     {
