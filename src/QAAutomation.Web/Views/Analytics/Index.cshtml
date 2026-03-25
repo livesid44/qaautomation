@@ -58,13 +58,40 @@
     // Section Analysis chart data
     var sectionLabels = System.Text.Json.JsonSerializer.Serialize(Model.SectionScores.Select(s => s.SectionTitle));
     var sectionData   = System.Text.Json.JsonSerializer.Serialize(Model.SectionScores.Select(s => s.AvgScorePercent));
+
+    // Additional data facts for fully data-driven insight boxes and Leadership Summary
+    var _dateFrom         = Model.DailyScores.Select(d => d.Date).OrderBy(d => d).FirstOrDefault() ?? "—";
+    var _dateTo           = Model.DailyScores.Select(d => d.Date).OrderByDescending(d => d).FirstOrDefault() ?? "—";
+    var _totalDays        = Model.DailyScores.Count;
+    var _totalAgents      = Model.AgentScores.Count;
+    var _totalParams      = Model.ParameterTrends.Count;
+    var _totalForms       = Model.CallTypeScores.Count;
+    var _worstSection     = Model.SectionScores.OrderBy(s => s.AvgScorePercent).FirstOrDefault();
+    var _bestSection      = Model.SectionScores.OrderByDescending(s => s.AvgScorePercent).FirstOrDefault();
+    var _healthColor      = overallAvg >= 80 ? "success" : overallAvg >= 60 ? "warning" : "danger";
+    var _healthLabel      = overallAvg >= 80 ? "Good" : overallAvg >= 60 ? "Needs Attention" : "Critical";
+    var _trackedAgents    = Model.AgentDailyTrends.Select(t => t.AgentName).Distinct().Count();
+    var _agentTrends      = Model.AgentDailyTrends
+                                .GroupBy(t => t.AgentName)
+                                .Select(g => {
+                                    var sorted = g.OrderBy(x => x.Date).ToList();
+                                    var first  = sorted.First().AvgScorePercent;
+                                    var last   = sorted.Last().AvgScorePercent;
+                                    return new { AgentName = g.Key, Change = Math.Round(last - first, 1) };
+                                })
+                                .ToList();
+    var _mostImproved     = _agentTrends.OrderByDescending(a => a.Change).FirstOrDefault();
+    var _mostDeclining    = _agentTrends.OrderBy(a => a.Change).FirstOrDefault();
+    var _top5Agents       = Model.AgentScores.OrderByDescending(a => a.AvgScorePercent).Take(5).ToList();
+    var _bottom5Agents    = Model.AgentScores.OrderBy(a => a.AvgScorePercent).Take(5).ToList();
+    var _top3Params       = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).Take(3).ToList();
 }
 @section Styles {
 <style>
     .ai-insight-box { background: linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border: 1px solid #b3d9f7; border-radius: 10px; padding: 14px 18px; margin-bottom: 1rem; font-size: .9rem; }
     .ai-insight-box .ai-label { font-size: .7rem; font-weight: 700; letter-spacing: .05em; color: #0d6efd; text-transform: uppercase; margin-bottom: 4px; }
     .ai-insight-box p { margin: 0; color: #2c3e50; line-height: 1.55; }
-    .ai-insight-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-top:.75rem; }
+    .ai-insight-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.85rem; margin-top:.75rem; }
     @@media(max-width:767px) { .ai-insight-grid { grid-template-columns:1fr; } }
     .ai-insight-section { background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 14px; border-left:3px solid #b3d9f7; }
     .ai-insight-section .section-tag { font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
@@ -74,6 +101,9 @@
     .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 600; }
     .filter-bar { background: #f8f9fa; border-radius: 8px; padding: 12px 16px; margin-bottom: 1.25rem; }
     .export-btn { font-size: .8rem; }
+    .inference-list li { padding: .35rem 0; border-bottom: 1px solid rgba(0,0,0,.05); }
+    .inference-list li:last-child { border-bottom: none; }
+    .health-badge { font-size: 1.15rem; font-weight: 700; padding: .45rem 1.1rem; border-radius: 50px; }
 </style>
 }
 
@@ -155,6 +185,11 @@ else
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-tni" data-bs-toggle="tab" data-bs-target="#pane-tni" type="button" role="tab">
                 <i class="bi bi-mortarboard me-1"></i>TNI Dashboard
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-leadership" data-bs-toggle="tab" data-bs-target="#pane-leadership" type="button" role="tab">
+                <i class="bi bi-clipboard2-data me-1"></i>Leadership Summary
             </button>
         </li>
     </ul>
@@ -263,19 +298,15 @@ else
             </div>
 
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Daily QA Trend &amp; Score Distribution</div>
+                <div class="ai-label"><i class="bi bi-bar-chart-line me-1"></i>QA Portfolio Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>The daily line chart plots <strong>average score % per audit date</strong>: sum of all numeric field values ÷ sum of max ratings × 100, grouped by call date. The distribution doughnut categorises each agent into <strong>High (≥80%), Medium (60–79%), or Low (&lt;60%)</strong> performance bands based on their overall average.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@Model.TotalAudits audit(s)</strong> across <strong>@_totalDays day(s)</strong> (@_dateFrom → @_dateTo). Portfolio average: <strong>@overallAvg%</strong>. Score trend is <strong>@_dailyTrendLabel</strong> (@_dailyFirst% → @_dailyLast%). Agent distribution: <strong class="text-success">@agentHigh High (≥80%)</strong>, <strong class="text-warning">@agentMed Medium (60–79%)</strong>, <strong class="text-danger">@agentLow Low (&lt;60%)</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>A declining daily trend directly reduces the overall portfolio average. Distribution skewed towards the Low band means the average is weighed down by systemic underperformance — even a small shift of agents from Low to Medium has a disproportionate positive effect on the overall score.</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : $"Scores are {_dailyTrendLabel} over {Model.DailyScores.Count} day(s) — {_dailyFirst}% → {_dailyLast}%. {(agentLow > 0 ? $"{agentLow} agent(s) in the Low band (<60%) — coaching here delivers the highest score uplift." : "All agents are currently at or above 60%.")}")</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : $"Scores are {_dailyTrendLabel} ({_dailyFirst}% → {_dailyLast}%). {(agentLow > 0 ? $"Prioritise coaching for the {agentLow} agent(s) below 60% — this band delivers the highest per-session score uplift." : "All agents are at or above 60%.")}")</p>
                     </div>
                 </div>
             </div>
@@ -305,19 +336,15 @@ else
         <!-- TAB 2: AGENT PERFORMANCE -->
         <div class="tab-pane fade" id="pane-agent" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Agent Performance</div>
+                <div class="ai-label"><i class="bi bi-people me-1"></i>Agent Performance Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>Each agent's <strong>average score %</strong> = total numeric score ÷ total max rating × 100, aggregated across all audits in the selected date range. Agents with fewer than 5 audits are included but flagged for low statistical confidence. The bar chart orders agents from highest to lowest scorer.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@_totalAgents agent(s)</strong> audited (@Model.TotalAudits total audits). Top performer: <strong>@(topAgent?.AgentName ?? "—")</strong> at <strong>@(topAgent?.AvgScorePercent ?? 0)%</strong> (@(topAgent?.AuditCount ?? 0) audit(s)). Lowest performer: <strong>@(_bottomAgent?.AgentName ?? "—")</strong> at <strong>@(_bottomAgent?.AvgScorePercent ?? 0)%</strong> (@(_bottomAgent?.AuditCount ?? 0) audit(s)). Distribution: <strong class="text-success">@agentHigh High</strong> / <strong class="text-warning">@agentMed Medium</strong> / <strong class="text-danger">@agentLow Low</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>Individual agent scores combine to form the overall quality average. Agents below <strong>60%</strong> disproportionately drag down the portfolio score and represent the highest ROI for coaching — each percentage point gained by a low scorer improves the overall average by more than an equivalent gain for a high scorer.</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : $"{agentHigh} agent(s) High (≥80%), {agentMed} Medium, {agentLow} Low (<60%). {(topAgent != null ? $"Top: {topAgent.AgentName} at {topAgent.AvgScorePercent}% ({topAgent.AuditCount} audit(s)). " : "")}{(_bottomAgent != null && _bottomAgent.AvgScorePercent < 60 ? $"Lowest: {_bottomAgent.AgentName} at {_bottomAgent.AvgScorePercent}% — prioritise coaching." : "")}")</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : $"{agentHigh} High (≥80%), {agentMed} Medium, {agentLow} Low (<60%). {(_bottomAgent != null && _bottomAgent.AvgScorePercent < 60 ? $"Schedule immediate coaching for {_bottomAgent.AgentName} ({_bottomAgent.AvgScorePercent}%) — the lowest-scoring agent." : topAgent != null ? $"Recognise {topAgent.AgentName} ({topAgent.AvgScorePercent}%) and use their calls as coaching examples." : "Review individual agent scorecards for targeted improvement opportunities.")}")</p>
                     </div>
                 </div>
             </div>
@@ -384,19 +411,15 @@ else
         <!-- TAB 3: PARAMETER ANALYSIS -->
         <div class="tab-pane fade" id="pane-param" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Parameter &amp; Section Performance</div>
+                <div class="ai-label"><i class="bi bi-sliders me-1"></i>Parameter Performance Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>Each parameter's <strong>average score %</strong> = numeric value ÷ max rating × 100, averaged across all audits in the date range. Parameters are grouped by their parent section. Parameters with consistently low scores indicate criteria that agents most frequently fail to satisfy.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@_totalParams parameter(s)</strong> evaluated across <strong>@(Model.SectionScores.Count) section(s)</strong>. <strong class="text-danger">@_lowParamCount parameter(s)</strong> score below 60%.@(weakestParam != null ? $" Weakest: <strong>{weakestParam.ParameterLabel}</strong> ({weakestParam.SectionTitle}) at <strong>{weakestParam.AvgScorePercent}%</strong>." : "")@(_bottom3Params.Count > 1 ? $" Next lowest: {string.Join(", ", _bottom3Params.Skip(1).Select(p => $"{p.ParameterLabel} ({p.AvgScorePercent}%)"))}" : "")</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>The <strong>weakest parameter defines the ceiling</strong> for audit scores. Systemic parameter failures reduce scores across all agents and forms simultaneously — improving a single low-scoring parameter lifts the entire quality average more than improving an already high-performing one.</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : $"{_lowParamCount} parameter(s) score below 60%. {(_bottom3Params.Count > 0 ? $"Lowest: {string.Join(", ", _bottom3Params.Select(p => $"{p.ParameterLabel} ({p.AvgScorePercent}%)"))}" + (weakestParam != null ? $" — {weakestParam.ParameterLabel} is the weakest parameter and should be addressed first." : ".") : "All parameters are at or above 60%.")}")</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : (_top3Params.Count > 0 ? $"Address '{_top3Params[0].ParameterLabel}' ({_top3Params[0].AvgScorePercent}%) first — it is the most frequently failed criterion across all agents. {(_top3Params.Count > 1 ? $"Then target '{_top3Params[1].ParameterLabel}' ({_top3Params[1].AvgScorePercent}%)." : "")}" : "All parameters are at or above 60%."))</p>
                     </div>
                 </div>
             </div>
@@ -449,19 +472,15 @@ else
         <!-- TAB 4: CALL TYPE / FORM -->
         <div class="tab-pane fade" id="pane-calltype" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Call Type / Form Performance</div>
+                <div class="ai-label"><i class="bi bi-telephone me-1"></i>Call Type / Form Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>Average score % is calculated per evaluation form using each form's own parameter weights and max ratings — forms with different parameter sets are independent scoring contexts. The doughnut shows the proportional score distribution across all forms; the detail table ranks each form by average score with audit volume.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@_totalForms evaluation form(s)</strong> covering @Model.TotalAudits audit(s). Best-scoring: <strong>@(bestForm?.FormName ?? "—")</strong> at <strong>@(bestForm?.AvgScorePercent ?? 0)%</strong> (@(bestForm?.AuditCount ?? 0) audits). Lowest-scoring: <strong>@(_worstForm?.FormName ?? "—")</strong> at <strong>@(_worstForm?.AvgScorePercent ?? 0)%</strong>. <strong class="text-danger">@_lowFormCount form(s)</strong> average below 70%.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>High-volume forms with below-average scores have an <strong>outsized effect</strong> on the overall QA score. Form-specific scoring patterns reveal whether quality issues are policy-related (all agents on that form underperform) or agent-related (specific agents underperform on a given form).</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : $"{(bestForm != null ? $"{bestForm.FormName} leads at {bestForm.AvgScorePercent}% ({bestForm.AuditCount} audit(s)). " : "")}{(_lowFormCount > 0 ? $"{_lowFormCount} form(s) average below 70%: {(_worstForm != null ? $"{_worstForm.FormName} at {_worstForm.AvgScorePercent}% is the lowest-scoring form." : "review the call-type table.")}" : "All call types are at or above 70%.")}")</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : $"{(bestForm != null ? $"{bestForm.FormName} leads at {bestForm.AvgScorePercent}% ({bestForm.AuditCount} audit(s)). " : "")}{(_lowFormCount > 0 ? $"Review {_worstForm?.FormName} ({_worstForm?.AvgScorePercent}%) — it is the lowest-scoring form and may require policy clarification or targeted coaching." : "All call types are at or above 70%.")}")</p>
                     </div>
                 </div>
             </div>
@@ -519,19 +538,15 @@ else
         <!-- TAB 5: TRENDS -->
         <div class="tab-pane fade" id="pane-trends" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Performance Trends</div>
+                <div class="ai-label"><i class="bi bi-graph-up-arrow me-1"></i>Performance Trends Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>Each data point is the <strong>daily average score %</strong> per agent and per evaluation section, calculated as sum of numeric scores ÷ sum of max ratings × 100 for all audits on that date. Multi-series lines allow direct visual comparison of trajectories across agents and sections over time.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@_trackedAgents agent(s)</strong> tracked over <strong>@_totalDays day(s)</strong> (@_dateFrom → @_dateTo). Portfolio trend: <strong>@_dailyTrendLabel</strong> (@_dailyFirst% → @_dailyLast%).@(_mostImproved != null && _mostImproved.Change > 0 ? $" Most improved: <strong>{_mostImproved.AgentName}</strong> (+{_mostImproved.Change}pp)." : "")@(_mostDeclining != null && _mostDeclining.Change < 0 ? $" Most declining: <strong>{_mostDeclining.AgentName}</strong> ({_mostDeclining.Change}pp)." : "")</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>Diverging agent or section trends indicate <strong>performance drift</strong> — an agent or section moving consistently downward will eventually pull the overall average below acceptable thresholds. Trend analysis identifies deterioration early, before it appears in aggregate KPIs.</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Flag any agent or section showing a downward trend for <strong>3 or more consecutive days</strong> for investigation. Use trend data to assess whether coaching interventions are taking effect — expect a visible upward shift within 5–7 audit days of a targeted session.</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(_mostDeclining != null && _mostDeclining.Change < -2 ? $"Schedule an immediate coaching session for {_mostDeclining.AgentName} — scores have dropped {_mostDeclining.Change}pp over this period. " : "")@(_mostImproved != null && _mostImproved.Change > 2 ? $"Recognise {_mostImproved.AgentName}'s improvement (+{_mostImproved.Change}pp) and share their approach as a coaching example for the team." : _dailyTrendLabel == "declining" ? "Investigate what changed during the declining period — review call recordings or feedback from that date range." : "Performance is stable. Continue current coaching approach and monitor weekly.")</p>
                     </div>
                 </div>
             </div>
@@ -592,19 +607,15 @@ else
         <!-- TAB 6: SECTION ANALYSIS -->
         <div class="tab-pane fade" id="pane-sections" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis &mdash; Section Score Comparison</div>
+                <div class="ai-label"><i class="bi bi-layers me-1"></i>Section Score Snapshot — based on live audit data</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
-                        <p>Section average score % = mean of all parameter scores within that section across all audits, weighted by each parameter's configured max rating. Sections with more parameters or higher max ratings contribute proportionally more to the overall audit score.</p>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <p><strong>@(Model.SectionScores.Count) section(s)</strong> evaluated. Weakest: <strong>@(_worstSection?.SectionTitle ?? "—")</strong> at <strong>@(_worstSection?.AvgScorePercent ?? 0)%</strong> (@(_worstSection?.ParameterCount ?? 0) parameter(s), @(_worstSection?.AuditCount ?? 0) audit(s)). Strongest: <strong>@(_bestSection?.SectionTitle ?? "—")</strong> at <strong>@(_bestSection?.AvgScorePercent ?? 0)%</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
-                        <p>Sections with consistently low scores <strong>drag down the overall audit average</strong> in proportion to their weight in the evaluation form. A high-weight section scoring below 60% can prevent an overall pass even when all other sections perform well, making section-level analysis essential for targeted improvement.</p>
-                    </div>
-                    <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
-                        <p>Address the lowest-scoring section first for maximum overall score impact. Verify that parameters in that section are correctly weighted in the evaluation form. Run targeted training on the specific compliance or quality topics covered by that section before re-auditing.</p>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <p>@(_worstSection != null ? $"Focus coaching on '{_worstSection.SectionTitle}' (currently {_worstSection.AvgScorePercent}%) — the highest-impact area for score improvement. {(_worstSection.AvgScorePercent < 60 ? "Urgently review the parameters in this section and run targeted training before the next audit cycle." : "Run a calibration session to raise awareness of evaluation expectations in this section.")}" : "All sections are performing well. Continue monitoring to detect early drift.")</p>
                     </div>
                 </div>
             </div>
@@ -842,6 +853,244 @@ else
                     </div>
                 </div>
             }
+        </div>
+
+        <!-- TAB 8: LEADERSHIP SUMMARY -->
+        <div class="tab-pane fade" id="pane-leadership" role="tabpanel">
+            @{
+                var _leadInferences = new System.Collections.Generic.List<(string Icon, string Color, string Text)>();
+
+                // 1. Overall QA health
+                if (overallAvg >= 80)
+                    _leadInferences.Add(("bi-check-circle-fill", "success", $"QA portfolio is performing at a <strong>high level</strong> — overall average of <strong>{overallAvg}%</strong> across {Model.TotalAudits} audit(s) over {_totalDays} day(s)."));
+                else if (overallAvg >= 60)
+                    _leadInferences.Add(("bi-exclamation-circle-fill", "warning", $"QA portfolio average is <strong>{overallAvg}%</strong> — in the <strong>medium band</strong> (60–79%). Targeted interventions are needed to push the portfolio into the high-performance zone."));
+                else
+                    _leadInferences.Add(("bi-x-circle-fill", "danger", $"QA portfolio average is <strong>{overallAvg}%</strong> — <strong>critically low</strong> (below 60%). Immediate management escalation and coaching plan are recommended."));
+
+                // 2. Trend
+                _leadInferences.Add(("bi-arrow-" + (_dailyTrendLabel == "improving" ? "up" : _dailyTrendLabel == "declining" ? "down" : "right") + "-circle-fill",
+                    _dailyTrendLabel == "improving" ? "success" : _dailyTrendLabel == "declining" ? "danger" : "secondary",
+                    $"Score trend is <strong>{_dailyTrendLabel}</strong> over the period: {_dailyFirst}% → {_dailyLast}% across {_totalDays} audited day(s)."));
+
+                // 3. Agent distribution
+                if (agentLow > 0)
+                    _leadInferences.Add(("bi-person-x-fill", "danger", $"<strong>{agentLow}</strong> of {_totalAgents} agent(s) are in the <strong>Low band (&lt;60%)</strong> and require immediate coaching. They are dragging the portfolio average below target."));
+                else if (agentHigh == _totalAgents && _totalAgents > 0)
+                    _leadInferences.Add(("bi-people-fill", "success", $"All <strong>{_totalAgents}</strong> agent(s) are in the <strong>High band (≥80%)</strong> — the team is consistently meeting quality targets."));
+                else
+                    _leadInferences.Add(("bi-people-fill", "primary", $"<strong>{agentHigh}</strong> agent(s) High, <strong>{agentMed}</strong> Medium, <strong>{agentLow}</strong> Low. Focus coaching on the {agentMed} medium-band agents to lift the overall average."));
+
+                // 4. Top / Bottom agent
+                if (topAgent != null)
+                    _leadInferences.Add(("bi-trophy-fill", "success", $"Top performer: <strong>{topAgent.AgentName}</strong> at <strong>{topAgent.AvgScorePercent}%</strong> ({topAgent.AuditCount} audit(s)). Use their calls as coaching reference material."));
+                if (_bottomAgent != null && _bottomAgent != topAgent)
+                    _leadInferences.Add(("bi-person-exclamation-fill", "danger", $"Lowest performer: <strong>{_bottomAgent.AgentName}</strong> at <strong>{_bottomAgent.AvgScorePercent}%</strong> ({_bottomAgent.AuditCount} audit(s)). {(_bottomAgent.AvgScorePercent < 60 ? "Immediate coaching plan required." : "Targeted support recommended.")}"));
+
+                // 5. Weakest parameter
+                if (weakestParam != null)
+                    _leadInferences.Add(("bi-sliders", "warning", $"Most commonly failed criterion: <strong>{weakestParam.ParameterLabel}</strong> (in section '{weakestParam.SectionTitle}') at <strong>{weakestParam.AvgScorePercent}%</strong>. This single parameter is the highest-ROI coaching target across all agents."));
+
+                // 6. Weakest section
+                if (_worstSection != null && _worstSection.AvgScorePercent < 80)
+                    _leadInferences.Add(("bi-layers-fill", _worstSection.AvgScorePercent < 60 ? "danger" : "warning", $"Weakest evaluation section: <strong>{_worstSection.SectionTitle}</strong> at <strong>{_worstSection.AvgScorePercent}%</strong> ({_worstSection.ParameterCount} parameter(s)). {(_worstSection.AvgScorePercent < 60 ? "Urgent review required — this section is failing systemic quality checks." : "Run a calibration session to align team expectations for this section.")}"));
+
+                // 7. Best form
+                if (bestForm != null)
+                    _leadInferences.Add(("bi-telephone-fill", "info", $"Best-performing evaluation form: <strong>{bestForm.FormName}</strong> at <strong>{bestForm.AvgScorePercent}%</strong> ({bestForm.AuditCount} audit(s)). {(_lowFormCount > 0 && _worstForm != null ? $"Lowest-scoring form: {_worstForm.FormName} at {_worstForm.AvgScorePercent}% — review form-specific training." : "All forms are above 70%.")}"));
+
+                // 8. Trends
+                if (_mostDeclining != null && _mostDeclining.Change < -2)
+                    _leadInferences.Add(("bi-arrow-down-circle-fill", "danger", $"Agent <strong>{_mostDeclining.AgentName}</strong> has declined <strong>{_mostDeclining.Change}pp</strong> during this period — immediate intervention recommended."));
+                if (_mostImproved != null && _mostImproved.Change > 2)
+                    _leadInferences.Add(("bi-arrow-up-circle-fill", "success", $"Agent <strong>{_mostImproved.AgentName}</strong> has improved <strong>+{_mostImproved.Change}pp</strong> — acknowledge and share their approach with the wider team."));
+
+                // 9. TNI
+                if (tni.TotalPlans > 0)
+                    _leadInferences.Add(("bi-mortarboard-fill", tni.OverduePlans > 0 ? "danger" : "primary", $"Training plans: <strong>{tni.TotalPlans} total</strong>, <strong>{tni.OpenPlans} open</strong>, <strong>{tni.CompletedPlans} completed</strong>. {(tni.OverduePlans > 0 ? $"<strong class='text-danger'>{tni.OverduePlans} plan(s) are overdue</strong> — escalate to team leads immediately." : "No overdue training plans.")}"));
+            }
+
+            <!-- QA Health Banner -->
+            <div class="card border-0 shadow-sm mb-4 border-start border-5 border-@_healthColor">
+                <div class="card-body d-flex align-items-center gap-4 py-3">
+                    <div>
+                        <div class="text-muted small fw-semibold mb-1">QA Portfolio Health</div>
+                        <span class="health-badge badge bg-@_healthColor fs-6">
+                            <i class="bi bi-@(_healthColor == "success" ? "check-circle" : _healthColor == "warning" ? "exclamation-circle" : "x-circle") me-1"></i>@_healthLabel
+                        </span>
+                    </div>
+                    <div class="vr mx-2"></div>
+                    <div><div class="fs-2 fw-bold text-@_healthColor">@overallAvg<small class="fs-6">%</small></div><div class="text-muted small">Overall Average</div></div>
+                    <div class="vr mx-2"></div>
+                    <div><div class="fs-4 fw-bold">@Model.TotalAudits</div><div class="text-muted small">Total Audits</div></div>
+                    <div class="vr mx-2"></div>
+                    <div><div class="fs-6 fw-semibold text-truncate" style="max-width:140px">@_dateFrom → @_dateTo</div><div class="text-muted small">Date Range (@_totalDays days)</div></div>
+                    <div class="vr mx-2"></div>
+                    <div><div class="fs-4 fw-bold">@_totalAgents</div><div class="text-muted small">Agents Audited</div></div>
+                </div>
+            </div>
+
+            <!-- Key inferences -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-2">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-lightbulb-fill me-2 text-warning"></i>Leadership Inferences — derived from @Model.TotalAudits audit(s)</h6>
+                    <small class="text-muted">All statements are computed directly from your QA data — no generic text</small>
+                </div>
+                <div class="card-body pt-2">
+                    <ol class="inference-list ps-3 mb-0">
+                        @foreach (var inf in _leadInferences)
+                        {
+                            <li class="d-flex align-items-start gap-2 py-2">
+                                <i class="bi @inf.Icon text-@inf.Color mt-1 flex-shrink-0"></i>
+                                <span>@Html.Raw(inf.Text)</span>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Top 5 and Bottom 5 agents side-by-side -->
+            @if (_top5Agents.Count > 0)
+            {
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-2">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-trophy-fill me-2 text-success"></i>Top @(_top5Agents.Count) Performers</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light"><tr><th>Rank</th><th>Agent</th><th class="text-center">Audits</th><th>Score</th></tr></thead>
+                                    <tbody>
+                                        @for (int ri = 0; ri < _top5Agents.Count; ri++)
+                                        {
+                                            var ag = _top5Agents[ri];
+                                            var ac = ag.AvgScorePercent >= 80 ? "success" : ag.AvgScorePercent >= 60 ? "warning" : "danger";
+                                            <tr>
+                                                <td class="fw-bold text-muted">#@(ri + 1)</td>
+                                                <td class="fw-semibold">@ag.AgentName</td>
+                                                <td class="text-center">@ag.AuditCount</td>
+                                                <td><span class="badge bg-@ac">@ag.AvgScorePercent%</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-2">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-person-exclamation-fill me-2 text-danger"></i>Bottom @(_bottom5Agents.Count) — Coaching Priority</h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light"><tr><th>Rank</th><th>Agent</th><th class="text-center">Audits</th><th>Score</th></tr></thead>
+                                    <tbody>
+                                        @for (int ri = 0; ri < _bottom5Agents.Count; ri++)
+                                        {
+                                            var ag = _bottom5Agents[ri];
+                                            var ac = ag.AvgScorePercent >= 80 ? "success" : ag.AvgScorePercent >= 60 ? "warning" : "danger";
+                                            <tr>
+                                                <td class="fw-bold text-muted">#@(ri + 1)</td>
+                                                <td class="fw-semibold">@ag.AgentName</td>
+                                                <td class="text-center">@ag.AuditCount</td>
+                                                <td><span class="badge bg-@ac">@ag.AvgScorePercent%</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Weakest parameters and TNI quick stats -->
+            <div class="row g-4">
+                @if (_top3Params.Count > 0)
+                {
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-2">
+                                <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>Weakest Parameters — Priority Fix List</h6>
+                                <small class="text-muted">Parameters with the lowest average score across all audits</small>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light"><tr><th>Section</th><th>Parameter</th><th class="text-center">Scored</th><th>Avg Score</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var p in _top3Params)
+                                        {
+                                            var pc = p.AvgScorePercent >= 80 ? "success" : p.AvgScorePercent >= 60 ? "warning" : "danger";
+                                            <tr>
+                                                <td class="text-muted small">@p.SectionTitle</td>
+                                                <td class="fw-semibold">@p.ParameterLabel</td>
+                                                <td class="text-center">@p.ScoredCount</td>
+                                                <td><span class="badge bg-@pc">@p.AvgScorePercent%</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <div class="col-lg-@(_top3Params.Count > 0 ? "5" : "12")">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-2">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill me-2 text-primary"></i>Training Plans (TNI) Status</h6>
+                        </div>
+                        <div class="card-body">
+                            @if (tni.TotalPlans == 0)
+                            {
+                                <div class="text-muted small">No training plans exist yet. They are auto-created when an audit scores below 100%.</div>
+                            }
+                            else
+                            {
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <div class="fs-2 fw-bold text-primary">@tni.TotalPlans</div>
+                                            <div class="text-muted small">Total Plans</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <div class="fs-2 fw-bold text-warning">@tni.OpenPlans</div>
+                                            <div class="text-muted small">Open Plans</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <div class="fs-2 fw-bold text-success">@tni.CompletedPlans</div>
+                                            <div class="text-muted small">Completed</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <div class="fs-2 fw-bold @(tni.OverduePlans > 0 ? "text-danger" : "text-muted")">@tni.OverduePlans</div>
+                                            <div class="text-muted small">Overdue</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (tni.OverduePlans > 0)
+                                {
+                                    <div class="alert alert-danger mt-3 mb-0 py-2 px-3 small">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        <strong>@tni.OverduePlans plan(s) overdue</strong> — action required from team leads.
+                                    </div>
+                                }
+                                <div class="mt-3 text-end">
+                                    <a href="@Url.Action("Index", "Training")" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-arrow-right me-1"></i>View All Plans
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>
