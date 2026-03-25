@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using QAAutomation.API.DTOs;
 using Xunit;
 
@@ -12,9 +13,11 @@ namespace QAAutomation.Tests;
 public class TrainingPlanTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly TestWebApplicationFactory _factory;
 
     public TrainingPlanTests(TestWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -293,5 +296,48 @@ public class TrainingPlanTests : IClassFixture<TestWebApplicationFactory>
         var dto = new { title = "Attempt Update", agentName = "X", trainerName = "Y", description = "" };
         var r = await _client.PutAsJsonAsync($"/api/trainingplans/{plan.Id}", dto);
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+    }
+
+    // ── LLM content fields exposed via API ────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that the TrainingPlanDto now exposes LlmTrainingContent, AssessmentJson,
+    /// AssessmentPassMark, and ContentGeneratedAt when the plan has generated content.
+    /// </summary>
+    [Fact]
+    public async Task GetPlan_WhenLlmContentSeeded_ExposesTrainingMaterialAndAssessmentFields()
+    {
+        var plan = await CreatePlanAsync("LLM Fields Exposure Test");
+
+        // Seed content directly in the DB (bypasses real LLM call)
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<QAAutomation.API.Data.AppDbContext>();
+        var entity = await db.TrainingPlans.FindAsync(plan.Id);
+        entity!.LlmTrainingContent = "Detailed training content covering compliance and communication.";
+        entity.AssessmentJson = "[{\"question\":\"Q1\",\"options\":[\"A\",\"B\"],\"correctIndex\":0,\"explanation\":\"A is correct\"}]";
+        entity.AssessmentPassMark = 80;
+        entity.ContentGeneratedAt = new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+        await db.SaveChangesAsync();
+
+        var fetched = await _client.GetFromJsonAsync<TrainingPlanDto>($"/api/trainingplans/{plan.Id}");
+        Assert.NotNull(fetched);
+        Assert.Equal("Detailed training content covering compliance and communication.", fetched!.LlmTrainingContent);
+        Assert.NotNull(fetched.AssessmentJson);
+        Assert.Contains("Q1", fetched.AssessmentJson!);
+        Assert.Equal(80, fetched.AssessmentPassMark);
+        Assert.NotNull(fetched.ContentGeneratedAt);
+        Assert.Equal(new DateTime(2026, 1, 15, 10, 0, 0, DateTimeKind.Utc), fetched.ContentGeneratedAt!.Value);
+    }
+
+    [Fact]
+    public async Task GetPlan_WhenNoLlmContent_LlmFieldsAreNull()
+    {
+        var plan = await CreatePlanAsync("No LLM Content Test");
+        var fetched = await _client.GetFromJsonAsync<TrainingPlanDto>($"/api/trainingplans/{plan.Id}");
+        Assert.NotNull(fetched);
+        Assert.Null(fetched!.LlmTrainingContent);
+        Assert.Null(fetched.AssessmentJson);
+        Assert.Null(fetched.ContentGeneratedAt);
+        Assert.Equal(70, fetched.AssessmentPassMark); // default pass mark
     }
 }

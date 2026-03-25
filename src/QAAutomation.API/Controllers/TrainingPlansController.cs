@@ -308,7 +308,11 @@ public class TrainingPlansController : ControllerBase
         ClosingNotes = p.ClosingNotes,
         Items = p.Items.OrderBy(i => i.Order).Select(ItemToDto).ToList(),
         TotalItems = p.Items.Count,
-        CompletedItems = p.Items.Count(i => i.Status == "Done")
+        CompletedItems = p.Items.Count(i => i.Status == "Done"),
+        LlmTrainingContent = p.LlmTrainingContent,
+        AssessmentJson = p.AssessmentJson,
+        AssessmentPassMark = p.AssessmentPassMark,
+        ContentGeneratedAt = p.ContentGeneratedAt
     };
 
     private static TrainingPlanItemDto ItemToDto(TrainingPlanItem i) => new()
