@@ -349,17 +349,17 @@ public class SentimentViewModel
 
 public class AiSettingsViewModel
 {
-    public string LlmProvider { get; set; } = "AzureOpenAI";
+    public string LlmProvider { get; set; } = "Google";
     public string LlmEndpoint { get; set; } = string.Empty;
     public string LlmApiKey { get; set; } = string.Empty;
     public string LlmDeployment { get; set; } = "gpt-4o";
     public float LlmTemperature { get; set; } = 0.1f;
-    public string SentimentProvider { get; set; } = "AzureOpenAI";
+    public string SentimentProvider { get; set; } = "Google";
     public string LanguageEndpoint { get; set; } = string.Empty;
     public string LanguageApiKey { get; set; } = string.Empty;
     public int RagTopK { get; set; } = 3;
     // Speech-to-Text
-    public string SpeechProvider { get; set; } = "Azure";
+    public string SpeechProvider { get; set; } = "Google";
     public string SpeechEndpoint { get; set; } = string.Empty;
     public string SpeechApiKey { get; set; } = string.Empty;
     // Google (Gemini LLM + Cloud Speech-to-Text)

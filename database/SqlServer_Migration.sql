@@ -347,12 +347,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Ai
 BEGIN
     CREATE TABLE [dbo].[AiConfigs] (
         [Id]               INT            NOT NULL DEFAULT 1,   -- always 1 (singleton)
-        [LlmProvider]      NVARCHAR(50)   NOT NULL DEFAULT N'AzureOpenAI',
+        [LlmProvider]      NVARCHAR(50)   NOT NULL DEFAULT N'Google',
         [LlmEndpoint]      NVARCHAR(MAX)  NOT NULL DEFAULT N'',
         [LlmApiKey]        NVARCHAR(MAX)  NOT NULL DEFAULT N'',
-        [LlmDeployment]    NVARCHAR(200)  NOT NULL DEFAULT N'gpt-4o',
+        [LlmDeployment]    NVARCHAR(200)  NOT NULL DEFAULT N'gemini-1.5-pro',
         [LlmTemperature]   FLOAT          NOT NULL DEFAULT 0.1,
-        [SentimentProvider] NVARCHAR(50)  NOT NULL DEFAULT N'AzureOpenAI',
+        [SentimentProvider] NVARCHAR(50)  NOT NULL DEFAULT N'Google',
         [LanguageEndpoint] NVARCHAR(MAX)  NOT NULL DEFAULT N'',
         [LanguageApiKey]   NVARCHAR(MAX)  NOT NULL DEFAULT N'',
         [RagTopK]          INT            NOT NULL DEFAULT 3,
@@ -361,7 +361,7 @@ BEGIN
         -- Google Gemini / Google Cloud Speech-to-Text
         [GoogleApiKey]     NVARCHAR(MAX)  NOT NULL DEFAULT N'',
         [GoogleGeminiModel] NVARCHAR(100) NOT NULL DEFAULT N'gemini-1.5-pro',
-        [SpeechProvider]   NVARCHAR(20)   NOT NULL DEFAULT N'Azure',
+        [SpeechProvider]   NVARCHAR(20)   NOT NULL DEFAULT N'Google',
         [UpdatedAt]        DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
         CONSTRAINT [PK_AiConfigs] PRIMARY KEY ([Id])
     );
@@ -633,9 +633,9 @@ BEGIN
         [SentimentProvider],[LanguageEndpoint],[LanguageApiKey],[RagTopK],
         [SpeechEndpoint],[SpeechApiKey],[GoogleApiKey],[GoogleGeminiModel],[SpeechProvider],[UpdatedAt])
     VALUES (
-        1, N'AzureOpenAI', N'', N'', N'gpt-4o', 0.1,
-        N'AzureOpenAI', N'', N'', 3,
-        N'', N'', N'', N'gemini-1.5-pro', N'Azure', SYSUTCDATETIME());
+        1, N'Google', N'', N'', N'gemini-1.5-pro', 0.1,
+        N'Google', N'', N'', 3,
+        N'', N'', N'', N'gemini-1.5-pro', N'Google', SYSUTCDATETIME());
 END
 GO
 
