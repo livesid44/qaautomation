@@ -344,7 +344,7 @@
             const planId = btn.getAttribute('data-planid');
             const itemId = btn.getAttribute('data-itemid');
             const form = document.getElementById('completeForm');
-            form.action = '/Training/CompleteItem/' + planId + '/' + itemId;
+            form.action = '@Url.Content("~/Training/CompleteItem/")' + planId + '/' + itemId;
         });
     })();
 </script>
