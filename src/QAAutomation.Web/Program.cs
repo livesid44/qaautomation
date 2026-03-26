@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using QAAutomation.Web.Filters;
 using QAAutomation.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,6 +27,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
+
+builder.Services.AddMemoryCache();
 
 builder.Services.AddSession(options =>
 {
@@ -60,6 +63,9 @@ builder.Services.AddControllersWithViews(options =>
     // submitted empty means "keep the existing key"). Suppress the ASP.NET Core 6+ implicit
     // [Required] behavior that would otherwise reject empty-string form fields.
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+    // Inject the current LLM provider into ViewData on every authenticated page so the
+    // layout can display the appropriate provider badge without per-controller wiring.
+    options.Filters.Add<LlmProviderFilter>();
 })
 // Store TempData in the server-side session instead of a cookie.
 // The AI analysis result (AutoAuditReview) can be several kilobytes; keeping it

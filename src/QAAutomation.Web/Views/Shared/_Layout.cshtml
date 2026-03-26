@@ -62,6 +62,19 @@
         }
         .sidebar-brand:hover { opacity: .85; }
 
+        /* LLM provider badge shown in the sidebar header */
+        .llm-provider-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: .65rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 10px;
+            white-space: nowrap;
+            letter-spacing: .02em;
+        }
+
         /* Nav links */
         .sidebar .nav-link {
             color: var(--brand-text);
@@ -186,11 +199,27 @@
 @if (User.Identity?.IsAuthenticated == true)
 {
     <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
-        <div class="offcanvas-header">
-            <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")" id="sidebarMenuLabel">
-                <img src="~/asset1.png" alt="AuraAI" />
-            </a>
-            <button type="button" class="btn-close me-1" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <div class="offcanvas-header" style="flex-direction:column;align-items:stretch;padding-bottom:8px">
+            <div class="d-flex align-items-center">
+                <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")" id="sidebarMenuLabel">
+                    <img src="~/asset1.png" alt="AuraAI" />
+                </a>
+                <button type="button" class="btn-close me-1 ms-auto" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            @{
+                var _llmProvider    = ViewData["LlmProvider"]    as string ?? "";
+                var _llmDisplayName = ViewData["LlmDisplayName"] as string ?? "Simulated";
+                var _llmIconClass   = ViewData["LlmIconClass"]   as string ?? "bi-gear";
+                var _llmBadgeCss    = ViewData["LlmBadgeCss"]    as string ?? "background:#6c757d;color:#fff";
+            }
+            <div class="px-3 pb-1">
+                <a href="@Url.Action("Index", "AiSettings")"
+                   class="llm-provider-badge text-decoration-none"
+                   style="@_llmBadgeCss"
+                   title="LLM Provider: @_llmDisplayName — click to manage AI Settings">
+                    <i class="bi @_llmIconClass"></i> @_llmDisplayName
+                </a>
+            </div>
         </div>
         <div class="offcanvas-body">
         <nav class="flex-column mt-1">
@@ -371,6 +400,13 @@
                         <i class="bi bi-building me-1"></i>@projectName
                     </span>
                 }
+                <a href="@Url.Action("Index", "AiSettings")"
+                   class="llm-provider-badge text-decoration-none d-none d-md-inline-flex"
+                   style="@(ViewData["LlmBadgeCss"] as string ?? "background:#6c757d;color:#fff")"
+                   title="LLM Provider: @(ViewData["LlmDisplayName"] as string ?? "Simulated") — click to manage AI Settings">
+                    <i class="bi @(ViewData["LlmIconClass"] as string ?? "bi-gear")"></i>
+                    @(ViewData["LlmDisplayName"] as string ?? "Simulated")
+                </a>
                 @if (projectCount > 1 || User.IsInRole("Admin"))
                 {
                     var projectsJson = User.FindFirst("projects_list")?.Value ?? "[]";
