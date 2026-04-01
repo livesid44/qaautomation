@@ -981,4 +981,78 @@ public class AnalyticsController : ControllerBase
             CalibrationHeatmap   = heatmap
         });
     }
+
+    // ── GET /api/analytics/hitl-comparison ───────────────────────────────────
+
+    /// <summary>
+    /// Returns per-section and per-parameter AI vs Human score comparisons based on submitted
+    /// HumanFieldScores.  Pass ?projectId=N to restrict to a single project.
+    /// </summary>
+    [HttpGet("hitl-comparison")]
+    [ProducesResponseType(typeof(HitlComparisonDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<HitlComparisonDto>> GetHitlComparison([FromQuery] int? projectId = null)
+    {
+        var query = _db.HumanFieldScores
+            .Include(fs => fs.HumanReviewItem)
+                .ThenInclude(r => r!.EvaluationResult)
+                    .ThenInclude(e => e!.Form)
+                        .ThenInclude(f => f.Lob)
+            .Include(fs => fs.Field)
+                .ThenInclude(f => f!.Section)
+            .Where(fs => fs.Field != null && fs.Field.MaxRating > 0)
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (projectId.HasValue)
+            query = query.Where(fs =>
+                fs.HumanReviewItem != null &&
+                fs.HumanReviewItem.EvaluationResult != null &&
+                fs.HumanReviewItem.EvaluationResult.Form.Lob != null &&
+                fs.HumanReviewItem.EvaluationResult.Form.Lob.ProjectId == projectId.Value);
+
+        var scores = await query.ToListAsync();
+
+        if (scores.Count == 0)
+            return Ok(new HitlComparisonDto());
+
+        var reviewedWithScores = scores.Select(fs => fs.HumanReviewItemId).Distinct().Count();
+
+        // Per-section comparison
+        var sectionComparison = scores
+            .Where(fs => fs.Field?.Section != null)
+            .GroupBy(fs => fs.Field!.Section!.Title)
+            .Select(g => new HitlSectionComparisonDto
+            {
+                SectionTitle          = g.Key,
+                AvgAiScorePercent     = Math.Round(g.Average(fs => fs.AiScore    / fs.Field!.MaxRating * 100), 1),
+                AvgHumanScorePercent  = Math.Round(g.Average(fs => fs.HumanScore / fs.Field!.MaxRating * 100), 1),
+                SampleCount           = g.Count()
+            })
+            .OrderBy(s => s.SectionTitle)
+            .ToList();
+
+        // Per-parameter comparison
+        var paramComparison = scores
+            .GroupBy(fs => new { fs.FieldId, Label = fs.Field?.Label ?? "", Section = fs.Field?.Section?.Title ?? "", Max = fs.Field?.MaxRating ?? 1 })
+            .Select(g => new HitlParameterComparisonDto
+            {
+                ParameterLabel       = g.Key.Label,
+                SectionTitle         = g.Key.Section,
+                MaxRating            = g.Key.Max,
+                AvgAiScore           = Math.Round(g.Average(fs => fs.AiScore), 2),
+                AvgHumanScore        = Math.Round(g.Average(fs => fs.HumanScore), 2),
+                AvgAiScorePercent    = Math.Round(g.Average(fs => fs.AiScore    / g.Key.Max * 100), 1),
+                AvgHumanScorePercent = Math.Round(g.Average(fs => fs.HumanScore / g.Key.Max * 100), 1),
+                SampleCount          = g.Count()
+            })
+            .OrderBy(p => p.SectionTitle).ThenBy(p => p.ParameterLabel)
+            .ToList();
+
+        return Ok(new HitlComparisonDto
+        {
+            ReviewedWithScores = reviewedWithScores,
+            SectionComparison  = sectionComparison,
+            ParameterComparison = paramComparison
+        });
+    }
 }

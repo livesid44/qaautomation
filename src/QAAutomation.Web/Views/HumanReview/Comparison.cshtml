@@ -1,0 +1,240 @@
+@model HitlComparisonViewModel
+@{
+    ViewData["Title"] = "AI vs Human Comparison";
+    bool hasData = Model.SectionComparison.Any() || Model.ParameterComparison.Any();
+}
+
+@section Styles {
+<style>
+    .diff-badge-pos  { background:#d1f5d3; color:#155724; border:1px solid #b2dfdb; }
+    .diff-badge-neg  { background:#fde8e8; color:#721c24; border:1px solid #f5c2c7; }
+    .diff-badge-zero { background:#e8e8e8; color:#555;    border:1px solid #ccc; }
+    .chart-container { position:relative; height:320px; }
+    .table-comparison th { font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+    .section-header  { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6c757d; }
+    .stat-card { border-left:4px solid #0d6efd; }
+</style>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-steps me-2 text-primary"></i>AI vs Human Score Comparison</h4>
+        <p class="text-muted mb-0">Section-wise and parameter-wise comparison between AI-generated scores and human reviewer scores.</p>
+    </div>
+    <a href="@Url.Action("Index", "HumanReview")" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Back to Queue
+    </a>
+</div>
+
+@if (!hasData)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-bar-chart-line text-muted" style="font-size:3rem"></i>
+            <h5 class="mt-3 text-muted">No comparison data yet</h5>
+            <p class="text-muted small">Submit human reviews with per-parameter scores to populate this dashboard.</p>
+            <a href="@Url.Action("Index", "HumanReview")" class="btn btn-primary btn-sm">
+                <i class="bi bi-person-check me-1"></i>Go to Review Queue
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Summary row -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Reviews with Scores</div>
+                    <div class="fs-3 fw-bold text-primary">@Model.ReviewedWithScores</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card border-0 shadow-sm" style="border-left:4px solid #198754">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Sections Compared</div>
+                    <div class="fs-3 fw-bold text-success">@Model.SectionComparison.Count</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card border-0 shadow-sm" style="border-left:4px solid #fd7e14">
+                <div class="card-body py-3">
+                    <div class="text-muted small">Parameters Compared</div>
+                    <div class="fs-3 fw-bold text-warning">@Model.ParameterComparison.Count</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section comparison chart -->
+    @if (Model.SectionComparison.Any())
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-primary"></i>Section-Wise Comparison</h6>
+                <p class="text-muted small mb-3">Average score (%) per section — AI vs Human.</p>
+            </div>
+            <div class="card-body">
+                <div class="chart-container mb-4">
+                    <canvas id="sectionChart"></canvas>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-comparison">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Section</th>
+                                <th class="text-center">AI Score %</th>
+                                <th class="text-center">Human Score %</th>
+                                <th class="text-center">Difference</th>
+                                <th class="text-center">Samples</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.SectionComparison.OrderBy(x => x.SectionTitle))
+                            {
+                                var diffCss = s.Difference > 0 ? "diff-badge-pos" : s.Difference < 0 ? "diff-badge-neg" : "diff-badge-zero";
+                                var diffTxt = s.Difference > 0 ? "+" + s.Difference.ToString("F1") + "%" : s.Difference.ToString("F1") + "%";
+                                <tr>
+                                    <td class="fw-semibold">@s.SectionTitle</td>
+                                    <td class="text-center">
+                                        <div class="progress mb-1" style="height:6px"><div class="progress-bar bg-primary" style="width:@s.AvgAiScorePercent%"></div></div>
+                                        @s.AvgAiScorePercent.ToString("F1")%
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="progress mb-1" style="height:6px"><div class="progress-bar bg-success" style="width:@s.AvgHumanScorePercent%"></div></div>
+                                        @s.AvgHumanScorePercent.ToString("F1")%
+                                    </td>
+                                    <td class="text-center"><span class="badge @diffCss">@diffTxt</span></td>
+                                    <td class="text-center text-muted">@s.SampleCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Parameter comparison table -->
+    @if (Model.ParameterComparison.Any())
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-warning"></i>Parameter-Wise Comparison</h6>
+                <p class="text-muted small mb-3">Average score (%) per QA parameter — AI vs Human. Sorted by section.</p>
+            </div>
+            <div class="card-body">
+                <div class="chart-container mb-4">
+                    <canvas id="paramChart"></canvas>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-comparison">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Section</th>
+                                <th class="text-center">Max</th>
+                                <th class="text-center">Avg AI</th>
+                                <th class="text-center">Avg Human</th>
+                                <th class="text-center">AI %</th>
+                                <th class="text-center">Human %</th>
+                                <th class="text-center">Δ</th>
+                                <th class="text-center">n</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                string? lastSection = null;
+                            }
+                            @foreach (var p in Model.ParameterComparison)
+                            {
+                                if (p.SectionTitle != lastSection)
+                                {
+                                    lastSection = p.SectionTitle;
+                                    <tr class="table-secondary">
+                                        <td colspan="9" class="section-header py-2 ps-3">@p.SectionTitle</td>
+                                    </tr>
+                                }
+                                var diffCss = p.Difference > 0 ? "diff-badge-pos" : p.Difference < 0 ? "diff-badge-neg" : "diff-badge-zero";
+                                var diffTxt = p.Difference > 0 ? "+" + p.Difference.ToString("F1") + "%" : p.Difference.ToString("F1") + "%";
+                                <tr>
+                                    <td class="fw-semibold small">@p.ParameterLabel</td>
+                                    <td class="text-muted small">@p.SectionTitle</td>
+                                    <td class="text-center small">@p.MaxRating</td>
+                                    <td class="text-center small">@p.AvgAiScore.ToString("F1")</td>
+                                    <td class="text-center small">@p.AvgHumanScore.ToString("F1")</td>
+                                    <td class="text-center">
+                                        <div class="progress mb-1" style="height:5px"><div class="progress-bar bg-primary" style="width:@p.AvgAiScorePercent%"></div></div>
+                                        <span class="small">@p.AvgAiScorePercent.ToString("F1")%</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="progress mb-1" style="height:5px"><div class="progress-bar bg-success" style="width:@p.AvgHumanScorePercent%"></div></div>
+                                        <span class="small">@p.AvgHumanScorePercent.ToString("F1")%</span>
+                                    </td>
+                                    <td class="text-center"><span class="badge @diffCss small">@diffTxt</span></td>
+                                    <td class="text-center text-muted small">@p.SampleCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@section Scripts {
+<script src="~/js/chart.umd.min.js"></script>
+<script>
+(function () {
+    var sectionLabels  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SectionComparison.OrderBy(s => s.SectionTitle).Select(s => s.SectionTitle).ToList()));
+    var sectionAi      = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SectionComparison.OrderBy(s => s.SectionTitle).Select(s => s.AvgAiScorePercent).ToList()));
+    var sectionHuman   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SectionComparison.OrderBy(s => s.SectionTitle).Select(s => s.AvgHumanScorePercent).ToList()));
+
+    var paramLabels  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ParameterComparison.Select(p => p.ParameterLabel).ToList()));
+    var paramAi      = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ParameterComparison.Select(p => p.AvgAiScorePercent).ToList()));
+    var paramHuman   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ParameterComparison.Select(p => p.AvgHumanScorePercent).ToList()));
+
+    function makeGroupedBar(canvasId, labels, aiData, humanData) {
+        var ctx = document.getElementById(canvasId);
+        if (!ctx || !labels.length) return;
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'AI Score %',
+                        data: aiData,
+                        backgroundColor: 'rgba(13,110,253,0.7)',
+                        borderColor: 'rgba(13,110,253,1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Human Score %',
+                        data: humanData,
+                        backgroundColor: 'rgba(25,135,84,0.7)',
+                        borderColor: 'rgba(25,135,84,1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: function(v) { return v + '%'; } } }
+                }
+            }
+        });
+    }
+
+    makeGroupedBar('sectionChart', sectionLabels, sectionAi, sectionHuman);
+    makeGroupedBar('paramChart',   paramLabels,   paramAi,   paramHuman);
+})();
+</script>
+}

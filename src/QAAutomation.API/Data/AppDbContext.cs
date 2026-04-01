@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<CallPipelineItem> CallPipelineItems => Set<CallPipelineItem>();
     public DbSet<SamplingPolicy> SamplingPolicies => Set<SamplingPolicy>();
     public DbSet<HumanReviewItem> HumanReviewItems => Set<HumanReviewItem>();
+    public DbSet<HumanFieldScore> HumanFieldScores => Set<HumanFieldScore>();
     public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
     public DbSet<TrainingPlanItem> TrainingPlanItems => Set<TrainingPlanItem>();
     public DbSet<TniAssessmentAttempt> TniAssessmentAttempts => Set<TniAssessmentAttempt>();
@@ -254,6 +255,20 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.SamplingPolicyId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<HumanFieldScore>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.HumanReviewItem)
+                  .WithMany(r => r.FieldScores)
+                  .HasForeignKey(e => e.HumanReviewItemId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Field)
+                  .WithMany()
+                  .HasForeignKey(e => e.FieldId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.Property(e => e.Comment).HasMaxLength(1000);
         });
 
         modelBuilder.Entity<TrainingPlan>(entity =>

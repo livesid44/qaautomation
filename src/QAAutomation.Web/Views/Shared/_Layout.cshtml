@@ -316,10 +316,14 @@
                         <i class="bi bi-diagram-3"></i> Call Pipeline
                         <span class="badge ms-auto bg-success" style="font-size:.6rem">Auto</span>
                     </a>
-                    <a class="nav-link @(_ctrl == "HumanReview" ? "active" : "")"
+                    <a class="nav-link @(_ctrl == "HumanReview" && _action == "Index" ? "active" : "")"
                        href="@Url.Action("Index", "HumanReview")">
                         <i class="bi bi-person-check"></i> Human Review
                         <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "HumanReview" && _action == "Comparison" ? "active" : "")"
+                       href="@Url.Action("Comparison", "HumanReview")">
+                        <i class="bi bi-bar-chart-steps"></i> AI vs Human
                     </a>
                     <a class="nav-link @(_ctrl == "Training" ? "active" : "")"
                        href="@Url.Action("Index", "Training")">

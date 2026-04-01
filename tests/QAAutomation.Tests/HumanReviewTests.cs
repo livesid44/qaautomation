@@ -412,4 +412,145 @@ public class HumanReviewTests : IClassFixture<TestWebApplicationFactory>
         });
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, r.StatusCode);
     }
+
+    // ── Per-parameter human score tests ──────────────────────────────────────
+
+    [Fact]
+    public async Task SubmitReview_WithFieldScores_StoresPerParameterHumanScores()
+    {
+        // Use a seeded evaluation result (guaranteed to have valid field IDs)
+        var allResults = await _client.GetFromJsonAsync<List<EvaluationResultDto>>("/api/evaluationresults");
+        Assert.NotNull(allResults);
+        Assert.NotEmpty(allResults!);
+
+        var evalResult = allResults.First(r => r.Sections.Any(s => s.Fields.Any()));
+        var firstField = evalResult.Sections.First().Fields.First();
+
+        // Create a manual review item pointing to this evaluation result
+        var manualR = await _client.PostAsJsonAsync("/api/humanreview/manual",
+            new { evaluationResultId = evalResult.Id, addedBy = "admin" });
+        // May already be queued — accept 201 Created or 409 Conflict
+        Assert.True(manualR.StatusCode is System.Net.HttpStatusCode.Created or System.Net.HttpStatusCode.Conflict,
+            $"Unexpected status: {manualR.StatusCode}");
+
+        // If conflict (already queued), get the existing item; otherwise use the one just created
+        int reviewItemId;
+        if (manualR.IsSuccessStatusCode)
+        {
+            var created = await manualR.Content.ReadFromJsonAsync<HumanReviewItemDto>();
+            reviewItemId = created!.Id;
+        }
+        else
+        {
+            var queue = await _client.GetFromJsonAsync<List<HumanReviewItemDto>>("/api/humanreview");
+            var existing = queue!.First(q => q.EvaluationResultId == evalResult.Id);
+            reviewItemId = existing.Id;
+        }
+
+        // Submit verdict with per-field human scores
+        var reviewR = await _client.PutAsJsonAsync($"/api/humanreview/{reviewItemId}/review", new
+        {
+            reviewerComment = "AI was slightly generous.",
+            reviewVerdict   = "Partial",
+            reviewedBy      = "qa_analyst",
+            fieldScores     = new[]
+            {
+                new { fieldId = firstField.FieldId, aiScore = firstField.NumericValue ?? 3.0, humanScore = 2.0, comment = "Score adjusted" }
+            }
+        });
+
+        Assert.True(reviewR.IsSuccessStatusCode, $"Expected success, got {reviewR.StatusCode}");
+
+        var result = await reviewR.Content.ReadFromJsonAsync<HumanReviewItemDto>();
+        Assert.NotNull(result);
+        Assert.Equal("Reviewed", result!.Status);
+        Assert.Equal("Partial", result.ReviewVerdict);
+        Assert.NotEmpty(result.FieldScores);
+        var fs = result.FieldScores.First(s => s.FieldId == firstField.FieldId);
+        Assert.Equal(2.0, fs.HumanScore);
+        Assert.Equal("Score adjusted", fs.Comment);
+    }
+
+    [Fact]
+    public async Task SubmitReview_WithFieldScores_GetById_ReturnsScores()
+    {
+        // Use a seeded evaluation result
+        var allResults = await _client.GetFromJsonAsync<List<EvaluationResultDto>>("/api/evaluationresults");
+        Assert.NotNull(allResults);
+        var evalResult = allResults!.First(r => r.Sections.Any(s => s.Fields.Any()));
+        var firstField = evalResult.Sections.First().Fields.First();
+
+        // Enqueue or retrieve existing review item
+        var manualR = await _client.PostAsJsonAsync("/api/humanreview/manual",
+            new { evaluationResultId = evalResult.Id, addedBy = "admin" });
+        int reviewItemId;
+        if (manualR.IsSuccessStatusCode)
+        {
+            var created = await manualR.Content.ReadFromJsonAsync<HumanReviewItemDto>();
+            reviewItemId = created!.Id;
+        }
+        else
+        {
+            var queue = await _client.GetFromJsonAsync<List<HumanReviewItemDto>>("/api/humanreview");
+            reviewItemId = queue!.First(q => q.EvaluationResultId == evalResult.Id).Id;
+        }
+
+        // Submit with field scores
+        await _client.PutAsJsonAsync($"/api/humanreview/{reviewItemId}/review", new
+        {
+            reviewVerdict = "Disagree",
+            reviewedBy    = "qa_tester",
+            fieldScores   = new[] { new { fieldId = firstField.FieldId, aiScore = 5.0, humanScore = 1.0, comment = "Wrong" } }
+        });
+
+        // GET by ID should return the field scores
+        var item = await _client.GetFromJsonAsync<HumanReviewItemDto>($"/api/humanreview/{reviewItemId}");
+        Assert.NotNull(item);
+        Assert.NotEmpty(item!.FieldScores);
+        var fs = item.FieldScores.FirstOrDefault(s => s.FieldId == firstField.FieldId);
+        Assert.NotNull(fs);
+        Assert.Equal(1.0, fs!.HumanScore);
+    }
+
+    [Fact]
+    public async Task HitlComparison_WithReviewedScores_ReturnsComparison()
+    {
+        // Use a seeded evaluation result
+        var allResults = await _client.GetFromJsonAsync<List<EvaluationResultDto>>("/api/evaluationresults");
+        Assert.NotNull(allResults);
+        var evalResult = allResults!.First(r => r.Sections.Any(s => s.Fields.Any()));
+        var firstField = evalResult.Sections.First().Fields.First();
+
+        // Enqueue or retrieve
+        var manualR = await _client.PostAsJsonAsync("/api/humanreview/manual",
+            new { evaluationResultId = evalResult.Id, addedBy = "admin" });
+        int reviewItemId;
+        if (manualR.IsSuccessStatusCode)
+        {
+            var created = await manualR.Content.ReadFromJsonAsync<HumanReviewItemDto>();
+            reviewItemId = created!.Id;
+        }
+        else
+        {
+            var queue = await _client.GetFromJsonAsync<List<HumanReviewItemDto>>("/api/humanreview");
+            reviewItemId = queue!.First(q => q.EvaluationResultId == evalResult.Id).Id;
+        }
+
+        // Submit review with field scores
+        await _client.PutAsJsonAsync($"/api/humanreview/{reviewItemId}/review", new
+        {
+            reviewVerdict = "Disagree",
+            reviewedBy    = "qa_tester",
+            fieldScores   = new[] { new { fieldId = firstField.FieldId, aiScore = 4.0, humanScore = 2.0, comment = (string?)null } }
+        });
+
+        // Act: get comparison
+        var comparison = await _client.GetFromJsonAsync<HitlComparisonDto>("/api/analytics/hitl-comparison");
+
+        // Assert
+        Assert.NotNull(comparison);
+        Assert.True(comparison!.ReviewedWithScores >= 1);
+        Assert.NotEmpty(comparison.ParameterComparison);
+        Assert.NotEmpty(comparison.SectionComparison);
+    }
 }

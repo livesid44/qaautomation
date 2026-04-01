@@ -850,6 +850,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "AddManualReview failed"); return false; }
     }
 
+    public async Task<HitlComparisonViewModel?> GetHitlComparison(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/hitl-comparison?projectId={projectId}" : "api/analytics/hitl-comparison";
+        try { return await _http.GetFromJsonAsync<HitlComparisonViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetHitlComparison failed"); return null; }
+    }
+
     // ── Training Plans ────────────────────────────────────────────────────────
 
     public async Task<List<TrainingPlanViewModel>> GetTrainingPlans(

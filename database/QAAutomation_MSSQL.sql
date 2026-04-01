@@ -36,6 +36,7 @@ GO
 IF OBJECT_ID('dbo.AuditLogs',           'U') IS NOT NULL DROP TABLE dbo.AuditLogs;
 IF OBJECT_ID('dbo.TrainingPlanItems',    'U') IS NOT NULL DROP TABLE dbo.TrainingPlanItems;
 IF OBJECT_ID('dbo.TrainingPlans',        'U') IS NOT NULL DROP TABLE dbo.TrainingPlans;
+IF OBJECT_ID('dbo.HumanFieldScores',     'U') IS NOT NULL DROP TABLE dbo.HumanFieldScores;
 IF OBJECT_ID('dbo.HumanReviewItems',     'U') IS NOT NULL DROP TABLE dbo.HumanReviewItems;
 IF OBJECT_ID('dbo.SamplingPolicies',     'U') IS NOT NULL DROP TABLE dbo.SamplingPolicies;
 IF OBJECT_ID('dbo.CallPipelineItems',    'U') IS NOT NULL DROP TABLE dbo.CallPipelineItems;
@@ -460,6 +461,24 @@ CREATE TABLE dbo.HumanReviewItems
     CONSTRAINT FK_HRI_EvalResult     FOREIGN KEY (EvaluationResultId) REFERENCES dbo.EvaluationResults (Id) ON DELETE CASCADE,
     CONSTRAINT FK_HRI_SamplingPolicy FOREIGN KEY (SamplingPolicyId)   REFERENCES dbo.SamplingPolicies (Id) ON DELETE SET NULL
 );
+GO
+
+-- ── HumanFieldScores ─────────────────────────────────────────────────────────
+CREATE TABLE dbo.HumanFieldScores
+(
+    Id                  INT           IDENTITY(1,1) NOT NULL,
+    HumanReviewItemId   INT           NOT NULL,
+    FieldId             INT           NOT NULL,
+    AiScore             FLOAT         NOT NULL DEFAULT 0,
+    HumanScore          FLOAT         NOT NULL DEFAULT 0,
+    Comment             NVARCHAR(1000) NULL,
+    CONSTRAINT PK_HumanFieldScores    PRIMARY KEY (Id),
+    CONSTRAINT FK_HFS_HumanReviewItem FOREIGN KEY (HumanReviewItemId) REFERENCES dbo.HumanReviewItems (Id) ON DELETE CASCADE,
+    CONSTRAINT FK_HFS_FormField       FOREIGN KEY (FieldId)           REFERENCES dbo.FormFields (Id) ON DELETE CASCADE
+);
+GO
+CREATE INDEX IX_HFS_HumanReviewItemId ON dbo.HumanFieldScores (HumanReviewItemId);
+CREATE INDEX IX_HFS_FieldId           ON dbo.HumanFieldScores (FieldId);
 GO
 
 -- ── TrainingPlans ─────────────────────────────────────────────────────────────

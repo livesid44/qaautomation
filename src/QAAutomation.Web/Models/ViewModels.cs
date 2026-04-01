@@ -876,6 +876,21 @@ public class HumanReviewItemViewModel
     public double? AiScorePercent { get; set; }
     public string? AiReasoning { get; set; }
     public int? ProjectId { get; set; }
+    /// <summary>Per-parameter human scores captured during review.</summary>
+    public List<HumanFieldScoreViewModel> FieldScores { get; set; } = new();
+}
+
+/// <summary>Persisted per-parameter human score (returned after a review is submitted).</summary>
+public class HumanFieldScoreViewModel
+{
+    public int Id { get; set; }
+    public int FieldId { get; set; }
+    public string FieldLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public double AiScore { get; set; }
+    public double HumanScore { get; set; }
+    public string? Comment { get; set; }
 }
 
 public class SubmitReviewViewModel
@@ -885,6 +900,40 @@ public class SubmitReviewViewModel
 
     [System.ComponentModel.DataAnnotations.Required]
     public string ReviewVerdict { get; set; } = "Agree";
+
+    /// <summary>JSON-encoded array of per-parameter human score inputs submitted from the form.</summary>
+    public string FieldScoresJson { get; set; } = "[]";
+}
+
+// ── HITL Comparison Dashboard ViewModels ────────────────────────────────────
+
+public class HitlComparisonViewModel
+{
+    public int ReviewedWithScores { get; set; }
+    public List<HitlSectionComparisonViewModel> SectionComparison { get; set; } = new();
+    public List<HitlParameterComparisonViewModel> ParameterComparison { get; set; } = new();
+}
+
+public class HitlSectionComparisonViewModel
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgAiScorePercent { get; set; }
+    public double AvgHumanScorePercent { get; set; }
+    public double Difference => Math.Round(AvgHumanScorePercent - AvgAiScorePercent, 1);
+    public int SampleCount { get; set; }
+}
+
+public class HitlParameterComparisonViewModel
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public double AvgAiScore { get; set; }
+    public double AvgHumanScore { get; set; }
+    public double AvgAiScorePercent { get; set; }
+    public double AvgHumanScorePercent { get; set; }
+    public double Difference => Math.Round(AvgHumanScorePercent - AvgAiScorePercent, 1);
+    public int SampleCount { get; set; }
 }
 
 // ── Training Need Identification (TNI) ViewModels ───────────────────────────

@@ -55,4 +55,7 @@ public class HumanReviewItem
     public string? ReviewedBy { get; set; }
 
     public DateTime? ReviewedAt { get; set; }
+
+    /// <summary>Per-parameter human scores submitted during the review. Empty until the review is submitted.</summary>
+    public ICollection<HumanFieldScore> FieldScores { get; set; } = new List<HumanFieldScore>();
 }

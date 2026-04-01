@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
 
@@ -14,8 +15,13 @@ namespace QAAutomation.Web.Controllers;
 public class HumanReviewController : ProjectAwareController
 {
     private readonly ApiClient _api;
+    private readonly ILogger<HumanReviewController> _logger;
 
-    public HumanReviewController(ApiClient api) => _api = api;
+    public HumanReviewController(ApiClient api, ILogger<HumanReviewController> logger)
+    {
+        _api = api;
+        _logger = logger;
+    }
 
     // ── Index — review queue ──────────────────────────────────────────────────
 
@@ -34,7 +40,7 @@ public class HumanReviewController : ProjectAwareController
         return View(items);
     }
 
-    // ── Review — view AI audit and submit verdict ─────────────────────────────
+    // ── Review — view AI audit and submit per-parameter verdict ──────────────
 
     [HttpGet]
     public async Task<IActionResult> Review(int id)
@@ -74,11 +80,36 @@ public class HumanReviewController : ProjectAwareController
             return View(model);
         }
 
+        // Deserialise per-parameter field scores from JSON submitted by the form
+        var fieldScores = new List<object>();
+        if (!string.IsNullOrWhiteSpace(model.FieldScoresJson) && model.FieldScoresJson != "[]")
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(model.FieldScoresJson);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                {
+                    int fieldId       = el.TryGetProperty("fieldId",    out var fi) ? fi.GetInt32()  : 0;
+                    double aiScore    = el.TryGetProperty("aiScore",    out var ai) ? ai.GetDouble() : 0;
+                    double humanScore = el.TryGetProperty("humanScore", out var hs) ? hs.GetDouble() : 0;
+                    string? cmt       = el.TryGetProperty("comment",    out var cm) ? cm.GetString() : null;
+                    if (fieldId > 0)
+                        fieldScores.Add(new { fieldId, aiScore, humanScore, comment = cmt });
+                }
+            }
+            catch (JsonException ex)
+            {
+                // Log and continue without field scores — the overall verdict is still submitted
+                _logger.LogWarning(ex, "Failed to parse FieldScoresJson for review item {ReviewItemId}; submitting without parameter scores.", model.ReviewItemId);
+            }
+        }
+
         var dto = new
         {
             reviewerComment = model.ReviewerComment,
-            reviewVerdict = model.ReviewVerdict,
-            reviewedBy = User.Identity?.Name ?? "qa"
+            reviewVerdict   = model.ReviewVerdict,
+            reviewedBy      = User.Identity?.Name ?? "qa",
+            fieldScores
         };
 
         var ok = await _api.SubmitReview(model.ReviewItemId, dto);
@@ -94,5 +125,15 @@ public class HumanReviewController : ProjectAwareController
 
         TempData["Success"] = "Review submitted successfully.";
         return RedirectToAction(nameof(Index));
+    }
+
+    // ── Comparison — AI vs Human dashboard ───────────────────────────────────
+
+    [HttpGet]
+    public async Task<IActionResult> Comparison()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var data = await _api.GetHitlComparison(pid);
+        return View(data ?? new HitlComparisonViewModel());
     }
 }
