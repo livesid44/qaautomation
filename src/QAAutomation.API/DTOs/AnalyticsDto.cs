@@ -21,6 +21,9 @@ public class AnalyticsDto
     /// <summary>Per-section daily score trend — one row per section per date.</summary>
     public List<SectionDailyTrendDto> SectionDailyTrends { get; set; } = new();
 
+    /// <summary>Overall average score % per form section (aggregated across all audits).</summary>
+    public List<SectionScoreDto> SectionScores { get; set; } = new();
+
     /// <summary>Total number of audit records included in this analysis.</summary>
     public int TotalAudits { get; set; }
 }
@@ -186,4 +189,199 @@ public class ExplainabilityInsightsDto
 
     /// <summary>2-3 sentence insight for the Failure Reason Analysis table.</summary>
     public string? FailureReasonsInsight { get; set; }
+}
+
+// ── Decision Assurance Analytics DTOs ────────────────────────────────────────
+
+/// <summary>Full payload for the Decision Assurance (advanced analytics) page.</summary>
+public class DecisionAssuranceDto
+{
+    public int TotalAudits { get; set; }
+
+    /// <summary>Decision Confidence Score per evaluation parameter — consistency × quality.</summary>
+    public List<DecisionConfidenceDto> DecisionConfidences { get; set; } = new();
+
+    /// <summary>Risk profile per agent: trend direction, momentum, risk level.</summary>
+    public List<AgentRiskProfileDto> AgentRiskProfiles { get; set; } = new();
+
+    /// <summary>Section-level calibration: recent vs prior avg, confusion score.</summary>
+    public List<SectionCalibrationDto> SectionCalibration { get; set; } = new();
+
+    /// <summary>Risk Radar items: parameters flagged for escalation / policy confusion / bias.</summary>
+    public List<RiskRadarItemDto> RiskRadar { get; set; } = new();
+
+    /// <summary>Calibration heatmap rows: per-parameter score variability across agents.</summary>
+    public List<CalibrationHeatmapRowDto> CalibrationHeatmap { get; set; } = new();
+}
+
+/// <summary>Decision Confidence Score for a single evaluation parameter.</summary>
+public class DecisionConfidenceDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    /// <summary>Mean score % across all audits.</summary>
+    public double AvgScorePercent { get; set; }
+    /// <summary>Score standard deviation (higher = less consistent decisions).</summary>
+    public double ScoreStdDev { get; set; }
+    /// <summary>1 – (StdDev / MaxPossible): 1 = perfectly consistent, 0 = chaotic.</summary>
+    public double ConsistencyScore { get; set; }
+    /// <summary>Composite score: AvgScorePercent × ConsistencyScore / 100.</summary>
+    public double ConfidenceScore { get; set; }
+    /// <summary>High / Medium / Low based on ConfidenceScore thresholds.</summary>
+    public string RiskLevel { get; set; } = "Low";
+    public int AuditCount { get; set; }
+}
+
+/// <summary>Risk profile for a single agent based on score trend and momentum.</summary>
+public class AgentRiskProfileDto
+{
+    public string AgentName { get; set; } = string.Empty;
+    public int AuditCount { get; set; }
+    public double AvgScorePercent { get; set; }
+    /// <summary>Average score % over the most recent 30 days.</summary>
+    public double RecentAvgPercent { get; set; }
+    /// <summary>Average score % in the 30-day window before the recent period.</summary>
+    public double PriorAvgPercent { get; set; }
+    /// <summary>RecentAvg – PriorAvg. Positive = improving, negative = declining.</summary>
+    public double Momentum { get; set; }
+    /// <summary>Improving / Stable / Declining.</summary>
+    public string Trend { get; set; } = "Stable";
+    /// <summary>High / Medium / Low based on score and trend.</summary>
+    public string RiskLevel { get; set; } = "Low";
+}
+
+/// <summary>Section-level calibration: recent vs prior performance and confusion indicator.</summary>
+public class SectionCalibrationDto
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public double OverallAvgPercent { get; set; }
+    /// <summary>Average score % for this section in the last 30 days.</summary>
+    public double RecentAvgPercent { get; set; }
+    /// <summary>Average score % in the 30-day window before the recent period.</summary>
+    public double PriorAvgPercent { get; set; }
+    /// <summary>Score standard deviation: higher values indicate policy interpretation inconsistency.</summary>
+    public double ScoreStdDev { get; set; }
+    /// <summary>Confusion score (0–100): derived from stddev relative to mean; higher = more confusion.</summary>
+    public double ConfusionScore { get; set; }
+    /// <summary>Drift direction: Improving / Stable / Declining / Volatile.</summary>
+    public string DriftDirection { get; set; } = "Stable";
+    public int AuditCount { get; set; }
+}
+
+/// <summary>A single Risk Radar item highlighting a specific risk signal.</summary>
+public class RiskRadarItemDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    /// <summary>Category: PolicyConfusion | EscalationRisk | BiasIndicator | DecisionReversal.</summary>
+    public string RiskCategory { get; set; } = string.Empty;
+    /// <summary>0–100 risk intensity.</summary>
+    public double RiskScore { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>One row in the calibration heatmap — parameter score variability per agent.</summary>
+public class CalibrationHeatmapRowDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    /// <summary>Per-agent avg scores: Dictionary&lt;agentName, avgScore%&gt;.</summary>
+    public Dictionary<string, double> AgentAvgScores { get; set; } = new();
+    /// <summary>Max – Min across agents: high spread = calibration gap.</summary>
+    public double AgentSpread { get; set; }
+}
+
+// ── Section Score ─────────────────────────────────────────────────────────────
+
+/// <summary>Aggregated average QA score % for a single form section across all audits.</summary>
+public class SectionScoreDto
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgScorePercent { get; set; }
+    public int AuditCount { get; set; }
+    public int ParameterCount { get; set; }
+}
+
+// ── TNI Summary ───────────────────────────────────────────────────────────────
+
+/// <summary>High-level TNI (Training Needs Identification) dashboard data.</summary>
+public class TniSummaryDto
+{
+    public int TotalPlans { get; set; }
+    public int OpenPlans { get; set; }       // Draft + Active + InProgress
+    public int CompletedPlans { get; set; }  // Completed + Closed
+    public int OverduePlans { get; set; }    // DueDate < today and not closed/completed
+    public List<TniStatusCountDto> ByStatus { get; set; } = new();
+    public List<TniAgentSummaryDto> ByAgent { get; set; } = new();
+    public List<TniRecentPlanDto> RecentPlans { get; set; } = new();
+}
+
+public class TniStatusCountDto
+{
+    public string Status { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public class TniAgentSummaryDto
+{
+    public string AgentName { get; set; } = string.Empty;
+    public int TotalPlans { get; set; }
+    public int OpenPlans { get; set; }
+    public int CompletedPlans { get; set; }
+    public double CompletionRate { get; set; }
+}
+
+public class TniRecentPlanDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string AgentName { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DueDate { get; set; }
+    public int TotalItems { get; set; }
+    public int CompletedItems { get; set; }
+    public bool IsAutoGenerated { get; set; }
+}
+
+// ── HITL Comparison Analytics DTOs ───────────────────────────────────────────
+
+/// <summary>Full AI vs Human comparison payload returned by GET /api/analytics/hitl-comparison.</summary>
+public class HitlComparisonDto
+{
+    /// <summary>Number of review items that have per-parameter human scores.</summary>
+    public int ReviewedWithScores { get; set; }
+
+    /// <summary>Per-section comparison (average AI score % vs average human score %).</summary>
+    public List<HitlSectionComparisonDto> SectionComparison { get; set; } = new();
+
+    /// <summary>Per-parameter comparison (average AI score % vs average human score %).</summary>
+    public List<HitlParameterComparisonDto> ParameterComparison { get; set; } = new();
+}
+
+/// <summary>AI vs Human score comparison for one form section.</summary>
+public class HitlSectionComparisonDto
+{
+    public string SectionTitle { get; set; } = string.Empty;
+    public double AvgAiScorePercent { get; set; }
+    public double AvgHumanScorePercent { get; set; }
+    /// <summary>Positive = human scored higher than AI; negative = human scored lower.</summary>
+    public double Difference => Math.Round(AvgHumanScorePercent - AvgAiScorePercent, 1);
+    public int SampleCount { get; set; }
+}
+
+/// <summary>AI vs Human score comparison for a single evaluation parameter.</summary>
+public class HitlParameterComparisonDto
+{
+    public string ParameterLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public double AvgAiScore { get; set; }
+    public double AvgHumanScore { get; set; }
+    public double AvgAiScorePercent { get; set; }
+    public double AvgHumanScorePercent { get; set; }
+    /// <summary>Positive = human scored higher than AI; negative = human scored lower.</summary>
+    public double Difference => Math.Round(AvgHumanScorePercent - AvgAiScorePercent, 1);
+    /// <summary>Number of reviewed items that include a human score for this parameter.</summary>
+    public int SampleCount { get; set; }
 }

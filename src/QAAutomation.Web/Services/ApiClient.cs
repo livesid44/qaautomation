@@ -242,6 +242,12 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "SaveEvaluationForm failed"); return false; }
     }
 
+    public async Task<bool> UpdateEvaluationForm(int id, object dto)
+    {
+        try { var r = await _http.PutAsJsonAsync($"api/evaluationforms/{id}", dto); return r.IsSuccessStatusCode; }
+        catch (Exception ex) { _logger.LogError(ex, "UpdateEvaluationForm failed"); return false; }
+    }
+
     public async Task<bool> DeleteEvaluationForm(int id)
     {
         try { var r = await _http.DeleteAsync($"api/evaluationforms/{id}"); return r.IsSuccessStatusCode; }
@@ -273,10 +279,16 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAuditsByForm failed"); return new(); }
     }
 
-    public async Task<bool> CreateAudit(object dto)
+    public async Task<int?> CreateAudit(object dto)
     {
-        try { var r = await _http.PostAsJsonAsync("api/evaluationresults", dto); return r.IsSuccessStatusCode; }
-        catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return false; }
+        try
+        {
+            var r = await _http.PostAsJsonAsync("api/evaluationresults", dto);
+            if (!r.IsSuccessStatusCode) return null;
+            var result = await r.Content.ReadFromJsonAsync<AuditViewModel>(_jsonOptions);
+            return result?.Id;
+        }
+        catch (Exception ex) { _logger.LogError(ex, "CreateAudit failed"); return null; }
     }
 
     /// <summary>Deserializes the JSON AI-data blobs stored on an AuditViewModel into their typed properties.</summary>
@@ -336,12 +348,33 @@ public class ApiClient
             var resp = await _http.PostAsJsonAsync("api/autoaudit/analyze", request);
             if (!resp.IsSuccessStatusCode)
             {
-                _logger.LogError("AutoAnalyze failed: {Status}", resp.StatusCode);
-                return null;
+                var body = await resp.Content.ReadAsStringAsync();
+                _logger.LogError("AutoAnalyze failed: {Status} — {Body}", resp.StatusCode, body);
+                // Propagate a structured error in the view model so the controller
+                // can surface a meaningful message rather than a generic one.
+                return new AutoAuditReviewViewModel
+                {
+                    AnalysisError = $"API returned {(int)resp.StatusCode}: {body}"
+                };
             }
             return await resp.Content.ReadFromJsonAsync<AutoAuditReviewViewModel>(_jsonOptions);
         }
-        catch (Exception ex) { _logger.LogError(ex, "AutoAnalyze failed"); return null; }
+        catch (TaskCanceledException)
+        {
+            _logger.LogError("AutoAnalyze timed out — consider increasing the HttpClient timeout");
+            return new AutoAuditReviewViewModel
+            {
+                AnalysisError = "timeout"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AutoAnalyze failed");
+            return new AutoAuditReviewViewModel
+            {
+                AnalysisError = ex.Message
+            };
+        }
     }
 
     // Sentiment & Emotion analysis
@@ -590,6 +623,20 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
     }
 
+    public async Task<TniSummaryViewModel?> GetTniSummary(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/tni?projectId={projectId.Value}" : "api/analytics/tni";
+        try { return await _http.GetFromJsonAsync<TniSummaryViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetTniSummary failed"); return null; }
+    }
+
+    public async Task<DecisionAssuranceViewModel?> GetDecisionAssurance(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/decision-assurance?projectId={projectId.Value}" : "api/analytics/decision-assurance";
+        try { return await _http.GetFromJsonAsync<DecisionAssuranceViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetDecisionAssurance failed"); return null; }
+    }
+
     // ── Audit Log ─────────────────────────────────────────────────────────────
 
     public async Task<AuditLogPageViewModel?> GetAuditLogs(
@@ -701,6 +748,17 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "TriggerPipelineProcess failed"); return null; }
     }
 
+    public async Task<CallPipelineJobViewModel?> ResumePipelineJob(int jobId)
+    {
+        try
+        {
+            var r = await _http.PostAsync($"api/callpipeline/{jobId}/resume", null);
+            if (!r.IsSuccessStatusCode) return null;
+            return await r.Content.ReadFromJsonAsync<CallPipelineJobViewModel>(_jsonOptions);
+        }
+        catch (Exception ex) { _logger.LogError(ex, "ResumePipelineJob failed"); return null; }
+    }
+
     // ── Sampling Policies ─────────────────────────────────────────────────────
 
     public async Task<List<SamplingPolicyViewModel>> GetSamplingPolicies(int? projectId = null)
@@ -792,6 +850,13 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "AddManualReview failed"); return false; }
     }
 
+    public async Task<HitlComparisonViewModel?> GetHitlComparison(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/analytics/hitl-comparison?projectId={projectId}" : "api/analytics/hitl-comparison";
+        try { return await _http.GetFromJsonAsync<HitlComparisonViewModel>(url, _jsonOptions); }
+        catch (Exception ex) { _logger.LogError(ex, "GetHitlComparison failed"); return null; }
+    }
+
     // ── Training Plans ────────────────────────────────────────────────────────
 
     public async Task<List<TrainingPlanViewModel>> GetTrainingPlans(
@@ -871,10 +936,36 @@ public class ApiClient
         {
             var payload = new { question, projectId };
             var r = await _http.PostAsJsonAsync("api/insightschat", payload);
-            if (!r.IsSuccessStatusCode) return null;
+            if (!r.IsSuccessStatusCode)
+            {
+                // Attempt to surface the real error from the response body so the user
+                // sees a meaningful message rather than the generic "Failed to reach the API."
+                var body = await r.Content.ReadAsStringAsync();
+                _logger.LogError("InsightsChat API returned {Status}. Body: {Body}", (int)r.StatusCode, body);
+
+                // Try to parse a structured { error: "..." } body first, then fall back to raw text.
+                string? errorMessage = null;
+                try
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(body);
+                    if (doc.RootElement.TryGetProperty("error", out var prop))
+                        errorMessage = prop.GetString();
+                }
+                catch { /* not JSON — use raw body */ }
+
+                return new InsightsChatResultViewModel
+                {
+                    Question = question,
+                    Error = errorMessage ?? (!string.IsNullOrWhiteSpace(body) ? body : $"API returned {(int)r.StatusCode}.")
+                };
+            }
             return await r.Content.ReadFromJsonAsync<InsightsChatResultViewModel>(_jsonOptions);
         }
-        catch (Exception ex) { _logger.LogError(ex, "InsightsChat failed"); return null; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "InsightsChat failed");
+            return new InsightsChatResultViewModel { Question = question, Error = $"Failed to reach the API: {ex.Message}" };
+        }
     }
 }
 

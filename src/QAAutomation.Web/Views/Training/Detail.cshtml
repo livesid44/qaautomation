@@ -1,4 +1,5 @@
 @model TrainingPlanViewModel
+@inject QAAutomation.Web.Services.ApiClient ApiClient
 @{
     ViewData["Title"] = "Training Plan Detail";
     bool isAdmin = User.IsInRole("Admin");
@@ -199,6 +200,49 @@
                 }
             </div>
         </div>
+
+        @* ── LLM Training Material ──────────────────────────────────────── *@
+        @if (!string.IsNullOrWhiteSpace(Model.LlmTrainingContent))
+        {
+            <div class="card border-0 shadow-sm mb-4" id="trainingMaterialCard">
+                <div class="card-header bg-transparent fw-semibold border-0 pt-3 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-journal-text me-1 text-primary"></i>Training Material</span>
+                    @if (Model.ContentGeneratedAt.HasValue)
+                    {
+                        <small class="text-muted">Generated @Model.ContentGeneratedAt.Value.ToLocalTime().ToString("MMM d, yyyy HH:mm")</small>
+                    }
+                </div>
+                <div class="card-body">
+                    @foreach (var para in (Model.LlmTrainingContent ?? "").Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <p>@para</p>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ── MCQ Assessment ────────────────────────────────────────────────── *@
+        @if (!string.IsNullOrWhiteSpace(Model.AssessmentJson) && Model.Status is "Completed" or "Closed")
+        {
+            <div class="card border-0 shadow-sm mb-4" id="assessmentCard">
+                <div class="card-header bg-transparent fw-semibold border-0 pt-3">
+                    <i class="bi bi-patch-question me-1 text-warning"></i>Knowledge Assessment
+                    <span class="badge bg-light text-dark border ms-2 small">Pass mark: @Model.AssessmentPassMark%</span>
+                </div>
+                <div class="card-body">
+                    <div id="assessmentForm">
+                        <p class="text-muted small">Please read the training material above, then answer the questions below.</p>
+                        <div id="questionList"></div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-warning" id="submitAssessmentBtn" onclick="submitAssessment()">
+                                <i class="bi bi-send me-1"></i>Submit Answers
+                            </button>
+                        </div>
+                    </div>
+                    <div id="assessmentResult" class="d-none"></div>
+                </div>
+            </div>
+        }
     </div>
 
     <!-- Side panel -->
@@ -300,7 +344,100 @@
             const planId = btn.getAttribute('data-planid');
             const itemId = btn.getAttribute('data-itemid');
             const form = document.getElementById('completeForm');
-            form.action = '/Training/CompleteItem/' + planId + '/' + itemId;
+            form.action = '@Url.Content("~/Training/CompleteItem/")' + planId + '/' + itemId;
         });
     })();
 </script>
+
+@if (!string.IsNullOrWhiteSpace(Model.AssessmentJson) && Model.Status is "Completed" or "Closed")
+{
+    <script>
+        (function () {
+            const planId = @Model.Id;
+            const passMark = @Model.AssessmentPassMark;
+            const apiBase = '@Html.Raw(ApiClient.BaseUrl)';
+            let questions = [];
+            try { questions = JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AssessmentJson))); }
+            catch (e) { console.error('Assessment JSON parse error', e); }
+
+            const questionList = document.getElementById('questionList');
+            if (questionList && questions.length > 0) {
+                questions.forEach(function (q, qi) {
+                    const div = document.createElement('div');
+                    div.className = 'mb-4';
+                    let html = `<p class="fw-semibold mb-2">${qi + 1}. ${q.question}</p>`;
+                    (q.options || []).forEach(function (opt, oi) {
+                        const id = `q${qi}_o${oi}`;
+                        html += `<div class="form-check">
+                            <input class="form-check-input" type="radio" name="q${qi}" id="${id}" value="${oi}">
+                            <label class="form-check-label" for="${id}">${opt}</label>
+                        </div>`;
+                    });
+                    div.innerHTML = html;
+                    questionList.appendChild(div);
+                });
+            } else if (questionList) {
+                questionList.innerHTML = '<p class="text-muted">No questions available.</p>';
+            }
+
+            window.submitAssessment = async function () {
+                const answers = [];
+                let allAnswered = true;
+                for (let i = 0; i < questions.length; i++) {
+                    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+                    if (!sel) { allAnswered = false; break; }
+                    answers.push(parseInt(sel.value));
+                }
+                if (!allAnswered) {
+                    alert('Please answer all questions before submitting.');
+                    return;
+                }
+
+                const btn = document.getElementById('submitAssessmentBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting…';
+
+                try {
+                    const resp = await fetch(`${apiBase}/api/tni/${planId}/attempt`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ agentUsername: '@(Model.AgentUsername ?? "")', answers })
+                    });
+                    const text = await resp.text();
+                    let data;
+                    try { data = JSON.parse(text); } catch (_) { data = null; }
+                    if (!resp.ok) { alert('Submission failed: ' + (data?.message ?? resp.statusText)); btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-1"></i>Submit Answers'; return; }
+                    if (!data) { alert('Submission failed: server returned an unexpected response.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-send me-1"></i>Submit Answers'; return; }
+
+                    // Render result
+                    const passed = data.result === 'Pass';
+                    let resultHtml = `
+                        <div class="alert alert-${passed ? 'success' : 'warning'} mb-3">
+                            <h5>${passed ? '🎉 Passed!' : '⚠️ Not Passed'}</h5>
+                            <p class="mb-0">Score: <strong>${data.scorePercent}%</strong> (${data.correctAnswers} / ${data.totalQuestions} correct) — Pass mark: ${passMark}%</p>
+                        </div>
+                        <h6 class="fw-semibold mt-3 mb-2">Question Feedback</h6>`;
+                    (data.feedback || []).forEach(function (fb, i) {
+                        const q = questions[i] || {};
+                        const opts = q.options || [];
+                        resultHtml += `<div class="mb-3 p-3 rounded ${fb.isCorrect ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10'}">
+                            <p class="fw-semibold mb-1">${i + 1}. ${fb.question}</p>
+                            <p class="small mb-1">Your answer: <span class="${fb.isCorrect ? 'text-success' : 'text-danger'} fw-semibold">${opts[fb.agentAnswer] ?? fb.agentAnswer}</span>
+                            ${!fb.isCorrect ? `— Correct: <span class="text-success fw-semibold">${opts[fb.correctAnswer] ?? fb.correctAnswer}</span>` : ''}</p>
+                            <p class="small text-muted mb-0"><em>${fb.explanation}</em></p>
+                        </div>`;
+                    });
+
+                    document.getElementById('assessmentForm').classList.add('d-none');
+                    const resultDiv = document.getElementById('assessmentResult');
+                    resultDiv.innerHTML = resultHtml;
+                    resultDiv.classList.remove('d-none');
+                } catch (ex) {
+                    alert('Network error submitting assessment: ' + ex.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-send me-1"></i>Submit Answers';
+                }
+            };
+        })();
+    </script>
+}

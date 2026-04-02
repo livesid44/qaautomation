@@ -44,6 +44,16 @@
                 </button>
             </form>
         }
+        @if (Model.Status == "Running" && Model.Items.Any(i => i.Status is "Pending" or "Processing"))
+        {
+            <form method="post" action="@Url.Action("Resume", "CallPipeline")">
+                <input type="hidden" name="id" value="@Model.Id" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-warning btn-sm">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Resume (Stuck?)
+                </button>
+            </form>
+        }
     </div>
 </div>
 

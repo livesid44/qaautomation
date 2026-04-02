@@ -185,6 +185,21 @@ public class CallPipelineController : ProjectAwareController
         return RedirectToAction(nameof(Detail), new { id });
     }
 
+    // ── Resume a stalled Running job ──────────────────────────────────────────
+
+    /// <summary>
+    /// Resets a pipeline job that is stuck in "Running" state (e.g. interrupted by an
+    /// application restart) and re-triggers processing of the remaining pending items.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Resume(int id)
+    {
+        await _api.ResumePipelineJob(id);
+        TempData["Success"] = "Job resumed. Processing will continue from where it left off. Refresh the page to see progress.";
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
     // ── File upload ───────────────────────────────────────────────────────────
 
     [HttpGet]

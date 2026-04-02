@@ -14,8 +14,10 @@ public class AnalyticsController : ProjectAwareController
         var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
         var dataTask     = _api.GetAnalytics(pid);
         var insightsTask = _api.GetAnalyticsInsights(pid);
-        await Task.WhenAll(dataTask, insightsTask);
-        ViewBag.Insights = await insightsTask ?? new Models.AnalyticsInsightsViewModel();
+        var tniTask      = _api.GetTniSummary(pid);
+        await Task.WhenAll(dataTask, insightsTask, tniTask);
+        ViewBag.Insights  = await insightsTask ?? new Models.AnalyticsInsightsViewModel();
+        ViewBag.TniSummary = await tniTask ?? new Models.TniSummaryViewModel();
         return View(await dataTask ?? new Models.AnalyticsViewModel());
     }
 
@@ -27,5 +29,12 @@ public class AnalyticsController : ProjectAwareController
         await Task.WhenAll(dataTask, insightsTask);
         ViewBag.Insights = await insightsTask ?? new Models.ExplainabilityInsightsViewModel();
         return View(await dataTask ?? new Models.ExplainabilityViewModel());
+    }
+
+    public async Task<IActionResult> DecisionAssurance()
+    {
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var model = await _api.GetDecisionAssurance(pid) ?? new Models.DecisionAssuranceViewModel();
+        return View(model);
     }
 }

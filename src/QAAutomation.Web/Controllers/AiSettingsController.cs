@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using QAAutomation.Web.Filters;
 using QAAutomation.Web.Models;
 using QAAutomation.Web.Services;
 
@@ -11,11 +13,13 @@ public class AiSettingsController : Controller
 {
     private readonly ApiClient _api;
     private readonly ILogger<AiSettingsController> _logger;
+    private readonly IMemoryCache _cache;
 
-    public AiSettingsController(ApiClient api, ILogger<AiSettingsController> logger)
+    public AiSettingsController(ApiClient api, ILogger<AiSettingsController> logger, IMemoryCache cache)
     {
-        _api = api;
+        _api    = api;
         _logger = logger;
+        _cache  = cache;
     }
 
     [HttpGet]
@@ -56,6 +60,8 @@ public class AiSettingsController : Controller
         var ok = await _api.SaveAiSettings(model);
         if (ok)
         {
+            // Invalidate the cached LLM provider so the sidebar badge updates immediately.
+            _cache.Remove(LlmProviderFilter.CacheKey);
             TempData["Success"] = "AI settings saved successfully.";
         }
         else

@@ -259,6 +259,12 @@
                 card.querySelectorAll('.view-pane').forEach(p => {
                     p.classList.toggle('d-none', p.dataset.pane !== pane);
                 });
+                // Auto-render chart on first switch to chart tab if columns are pre-selected
+                if (pane === 'chart' && !chartInstances.has(card.querySelector('.chart-canvas'))) {
+                    const labelIdx = parseInt(card.querySelector('.chart-label-sel').value);
+                    const valueIdx = parseInt(card.querySelector('.chart-value-sel').value);
+                    if (!isNaN(labelIdx) && !isNaN(valueIdx)) renderChart(card, cols, rows);
+                }
             });
         });
 
@@ -284,7 +290,7 @@
             const labelSel = card.querySelector('.chart-label-sel');
             const valueSel = card.querySelector('.chart-value-sel');
             if (labelSel.options.length > 1) labelSel.selectedIndex = 1;
-            if (valueSel.options.length > 1) valueSel.selectedIndex = 1;
+            if (valueSel.options.length > 2) valueSel.selectedIndex = 2;
             // Auto-detect time series
             if (rows.length > 0 && isDateLike(rows[0][0])) {
                 card.querySelector('.chart-type-sel').value = 'line';

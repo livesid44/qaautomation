@@ -29,6 +29,7 @@
                             <th>Name</th>
                             <th>Description</th>
                             <th>Sections</th>
+                            <th>Scoring Type</th>
                             <th>Status</th>
                             <th>Updated</th>
                             <th class="text-end">Actions</th>
@@ -41,6 +42,16 @@
                                 <td class="fw-semibold">@f.Name</td>
                                 <td class="text-muted small">@(f.Description ?? "-")</td>
                                 <td><span class="badge bg-info text-dark rounded-pill">@f.Sections.Count</span></td>
+                                <td>
+                                    @if (f.ScoringMethod == 1)
+                                    {
+                                        <span class="badge bg-warning text-dark" title="Any 0 in a section zeroes the whole section">Section Auto-Fail</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary" title="Sum / Max × 100">Generic</span>
+                                    }
+                                </td>
                                 <td>
                                     <span class="badge @(f.IsActive ? "bg-success" : "bg-warning text-dark")">
                                         @(f.IsActive ? "Active" : "Inactive")

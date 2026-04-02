@@ -93,7 +93,12 @@ public class InsightsChatService
         List<List<object?>> rows;
         try
         {
-            (columns, rows) = ExecuteQuery(fullSql, _db.Database.GetDbConnection().ConnectionString, isSqlServer);
+            // Use the raw connection string from configuration rather than from the open
+            // DbConnection; SqlConnection strips the password from ConnectionString after
+            // the connection is opened, which would cause "Login failed" when opening a
+            // fresh SqlConnection for the query.
+            var connStr = _config.GetConnectionString("DefaultConnection");
+            (columns, rows) = ExecuteQuery(fullSql, connStr, isSqlServer);
         }
         catch (Exception ex)
         {
@@ -152,7 +157,7 @@ public class InsightsChatService
         4. Use clear readable column aliases (e.g. "Agent Name", "Avg Score %", "Audit Count").
         5. For percentage scores: ROUND(SUM(NumericValue) * 100.0 / SUM(MaxRating), 1) from TenantScores
            joined to FormFields on FieldId — MaxRating > 0 only.
-        6. Return ONLY raw SQL — no markdown fences, no explanation, no comments.
+        6. Return ONLY raw SQL — no markdown fences, no explanation, no comments.{(isSqlServer ? "\n        7. Do NOT include an ORDER BY clause — your SELECT is wrapped in a CTE and SQL Server does not allow ORDER BY inside CTEs without TOP." : "")}
         """;
 
     private static string ExtractSelectSql(string llmOutput, bool isSqlServer)
@@ -190,6 +195,10 @@ public class InsightsChatService
         // Outer row cap prevents runaway queries; LLM-generated LIMIT/TOP inside is still respected.
         if (isSqlServer)
         {
+            // SQL Server forbids ORDER BY inside a CTE unless TOP/OFFSET is also present.
+            // Strip any trailing ORDER BY from the LLM's SELECT and re-apply it on the outer query.
+            var (innerSql, orderBy) = StripTrailingOrderBy(selectSql);
+
             return $"""
                 WITH
                 TenantLobs AS (
@@ -214,9 +223,9 @@ public class InsightsChatService
                     SELECT * FROM CallPipelineJobs WHERE ProjectId = {projectId}
                 ),
                 UserQuery AS (
-                    {selectSql}
+                    {innerSql}
                 )
-                SELECT TOP 500 * FROM UserQuery
+                SELECT TOP 500 * FROM UserQuery{(orderBy is not null ? $"\r\n                {orderBy}" : "")}
                 """;
         }
         else
@@ -253,6 +262,74 @@ public class InsightsChatService
         }
     }
 
+    /// <summary>
+    /// Converts a value read from a <see cref="System.Data.IDataReader"/> into a type that
+    /// <see cref="System.Text.Json.JsonSerializer"/> can serialize without a custom converter.
+    /// <list type="bullet">
+    ///   <item>Primitive types already supported by STJ (bool, int, long, decimal, float, double, string) are returned as-is.</item>
+    ///   <item>Types that STJ cannot handle natively (TimeSpan, byte[], Guid, DateTime, DateTimeOffset, …) are converted to a string representation.</item>
+    /// </list>
+    /// </summary>
+    private static object? ToJsonSafeValue(object value)
+    {
+        return value switch
+        {
+            bool or int or long or short or byte or decimal or float or double => value,
+            string s => s,
+            DateTime dt => dt.ToString("o"),          // ISO-8601
+            DateTimeOffset dto => dto.ToString("o"),
+            TimeSpan ts => ts.ToString(),
+            Guid g => g.ToString(),
+            byte[] bytes => Convert.ToBase64String(bytes),
+            _ => value.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Finds and removes the last top-level ORDER BY clause from a SELECT statement,
+    /// returning the stripped SQL and the ORDER BY clause separately.
+    /// This is required for SQL Server, which rejects ORDER BY inside a CTE body
+    /// unless TOP or OFFSET is also present.
+    /// </summary>
+    private static (string sql, string? orderBy) StripTrailingOrderBy(string sql)
+    {
+        // Walk the string once, tracking parenthesis depth, and record the position
+        // of every top-level "ORDER" keyword.  We want the last one.
+        int lastTopLevelOrderBy = -1;
+        int depth = 0;
+
+        for (int i = 0; i < sql.Length; i++)
+        {
+            char c = sql[i];
+            if (c == '(') { depth++; continue; }
+            if (c == ')') { depth--; continue; }
+
+            if (depth == 0 && i + 8 <= sql.Length)
+            {
+                // Check for ORDER followed by whitespace then BY
+                var span = sql.AsSpan(i);
+                if (span.StartsWith("ORDER", StringComparison.OrdinalIgnoreCase) &&
+                    i + 5 < sql.Length && char.IsWhiteSpace(sql[i + 5]))
+                {
+                    // skip whitespace after ORDER
+                    int j = i + 5;
+                    while (j < sql.Length && char.IsWhiteSpace(sql[j])) j++;
+                    if (j + 2 <= sql.Length &&
+                        sql.AsSpan(j).StartsWith("BY", StringComparison.OrdinalIgnoreCase) &&
+                        (j + 2 >= sql.Length || !char.IsLetterOrDigit(sql[j + 2])))
+                    {
+                        lastTopLevelOrderBy = i;
+                    }
+                }
+            }
+        }
+
+        if (lastTopLevelOrderBy < 0)
+            return (sql, null);
+
+        return (sql[..lastTopLevelOrderBy].TrimEnd(), sql[lastTopLevelOrderBy..].Trim());
+    }
+
     private (List<string> columns, List<List<object?>> rows) ExecuteQuery(string sql, string? connStr, bool isSqlServer)
     {
         var columns = new List<string>();
@@ -270,7 +347,7 @@ public class InsightsChatService
             {
                 var row = new List<object?>();
                 for (var i = 0; i < reader.FieldCount; i++)
-                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                    row.Add(reader.IsDBNull(i) ? null : ToJsonSafeValue(reader.GetValue(i)));
                 rows.Add(row);
             }
         }
@@ -295,7 +372,7 @@ public class InsightsChatService
             {
                 var row = new List<object?>();
                 for (var i = 0; i < reader.FieldCount; i++)
-                    row.Add(reader.IsDBNull(i) ? null : reader.GetValue(i));
+                    row.Add(reader.IsDBNull(i) ? null : ToJsonSafeValue(reader.GetValue(i)));
                 rows.Add(row);
             }
         }

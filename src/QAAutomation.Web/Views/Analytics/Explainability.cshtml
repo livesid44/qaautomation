@@ -25,6 +25,14 @@
         .ToList();
     var hitlLabels = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Verdict));
     var hitlCounts = System.Text.Json.JsonSerializer.Serialize(hitlVerdicts.Select(h => h.Count));
+
+    // Data-linked fallback summaries (used when LLM insight is not available)
+    var _riskAreaCount  = Model.DecisionDrivers.Count(d => d.IsRiskArea);
+    var _topRiskParam   = Model.DecisionDrivers.OrderByDescending(d => d.LowScoreCount).FirstOrDefault();
+    var _highMissCount  = Model.SignalUsage.Count(s => s.MissRate > 20);
+    var _topMissParam   = Model.SignalUsage.OrderByDescending(s => s.MissRate).FirstOrDefault();
+    var _top3Failures   = Model.FailureReasons.Take(3).ToList();
+    var _hitlQuality    = Model.AiHitlAgreementRate >= 80 ? "strong" : Model.AiHitlAgreementRate >= 60 ? "moderate" : "low";
 }
 @section Styles {
 <style>
@@ -40,6 +48,16 @@
     .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
     .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
     .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
+    .ai-insight-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-top:.75rem; }
+    @@media(max-width:767px) { .ai-insight-grid { grid-template-columns:1fr; } }
+    .ai-insight-section { background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 14px; border-left:3px solid #b3d9f7; }
+    .ai-insight-section .section-tag { font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-section p { font-size:.84rem; }
+    .ai-decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-top:.75rem; }
+    @@media(max-width:991px) { .ai-decision-grid { grid-template-columns:repeat(2,1fr); } }
+    @@media(max-width:575px) { .ai-decision-grid { grid-template-columns:1fr; } }
+    .ai-pointer { background:rgba(255,255,255,0.65); border-radius:8px; padding:12px 14px; }
+    .ai-pointer-title { font-size:.78rem; font-weight:700; color:#0d6efd; margin-bottom:5px; }
 </style>
 }
 
@@ -128,14 +146,48 @@ else
         </div>
     </div>
 
-    <!-- ── Row 1: Decision Drivers chart + HITL doughnut ───────────────── -->
-    @if (!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight))
-    {
-        <div class="ai-insight-box mb-2">
-            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Decision Drivers</div>
-            <p>@insights.DecisionDriversInsight</p>
+    <!-- ── AI Decision Intelligence Insight ──────────────────────────────── -->
+    <div class="ai-insight-box mb-4">
+        <div class="ai-label mb-2"><i class="bi bi-stars me-1"></i>AI Decision Intelligence — Key Pointers</div>
+        <p class="mb-3" style="font-size:.85rem">Understanding how the AI system reaches, records, and defends its decisions across your QA data.</p>
+        <div class="ai-decision-grid">
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-diagram-3 me-1"></i>Signal-Weighted Scoring</div>
+                <p class="text-muted small mb-0">Each evaluation parameter is a distinct evidence signal. The AI aggregates normalised parameter scores — weighted by each parameter's configured max points — to produce a composite audit verdict. No single signal dominates unless explicitly weighted higher in the form configuration.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-person-check me-1"></i>Human-in-the-Loop Validation</div>
+                <p class="text-muted small mb-0">Every AI decision can be challenged by a human reviewer (HITL). Verdicts of <em>Agree</em>, <em>Disagree</em>, or <em>Uncertain</em> are recorded against the audit. A high disagreement rate signals that AI policy alignment or evaluator rubrics need recalibration — track this via the AI–Human Agreement Rate KPI above.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-exclamation-triangle me-1 text-danger"></i>Risk-Area Detection</div>
+                <p class="text-muted small mb-0">Parameters where the average score falls below <strong>60 %</strong> of maximum are automatically flagged as risk areas. These signals most frequently drove failing audit outcomes. The Decision Drivers chart below ranks all parameters so the highest-impact risks surface immediately — use this to prioritise coaching interventions.</p>
+            </div>
+            <div class="ai-pointer">
+                <div class="ai-pointer-title"><i class="bi bi-shield-lock me-1 text-warning"></i>Legal Defensibility Trail</div>
+                <p class="text-muted small mb-0">Every AI reasoning string, parameter score, sampling policy reference, and HITL verdict is persisted against each audit record. This combination of signal transparency, human oversight, and an immutable log satisfies most regulatory requirements for explainable and auditable AI decision systems.</p>
+            </div>
         </div>
-    }
+    </div>
+
+    <!-- ── Row 1: Decision Drivers chart + HITL doughnut ───────────────── -->
+    <div class="ai-insight-box mb-2">
+        <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Decision Drivers &amp; Parameter Impact</div>
+        <div class="ai-insight-grid">
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                <p>Each evaluation parameter's <strong>average score %</strong> is computed as numeric value ÷ max rating × 100, aggregated across all audits. The grouped bar chart overlays <strong>Low-score count</strong> (audits below 60%) and <strong>High-score count</strong> (audits at or above 80%) to distinguish parameters with moderate averages from those with a bimodal hit-or-miss pattern.</p>
+            </div>
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                <p>Parameters flagged as <strong>risk areas</strong> (avg &lt; 60%) contributed most to failing audit verdicts. The higher a parameter's miss count, the more it suppresses the overall quality score across the entire audit population — a single high-weight parameter failing consistently can prevent otherwise-acceptable audits from passing.</p>
+            </div>
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                <p>@(!string.IsNullOrWhiteSpace(insights.DecisionDriversInsight) ? insights.DecisionDriversInsight : $"{_riskAreaCount} risk-area parameter(s) (avg < 60%). {(_topRiskParam != null ? $"Most low-score incidents: {_topRiskParam.ParameterLabel} ({_topRiskParam.LowScoreCount} times, avg {_topRiskParam.AvgScorePercent}%)." : "")}")</p>
+            </div>
+        </div>
+    </div>
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm section-accent h-100">
@@ -172,13 +224,23 @@ else
     </div>
 
     <!-- ── Row 2: Signal Usage chart ────────────────────────────────────── -->
-    @if (!string.IsNullOrWhiteSpace(insights.SignalUsageInsight))
-    {
-        <div class="ai-insight-box mb-2">
-            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Signal Utilisation</div>
-            <p>@insights.SignalUsageInsight</p>
+    <div class="ai-insight-box mb-2">
+        <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Signal Utilisation</div>
+        <div class="ai-insight-grid">
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                <p>For each parameter: <strong>Full-Score Rate</strong> = audits where the parameter received maximum points ÷ total audits scored × 100. <strong>Miss Rate</strong> = audits where the parameter scored 0 ÷ total audits scored × 100. Displayed as stacked horizontal bars so both rates are directly comparable across all parameters.</p>
+            </div>
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                <p>Parameters with <strong>high miss rates are systematically unmet criteria</strong>, dragging down scores across the entire audit population. The full-score rate reflects how reliably agents satisfy each criterion when they encounter it — a low full-score rate indicates inconsistent application even when agents attempt the parameter.</p>
+            </div>
+            <div class="ai-insight-section">
+                <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                <p>@(!string.IsNullOrWhiteSpace(insights.SignalUsageInsight) ? insights.SignalUsageInsight : $"{_highMissCount} parameter(s) with miss rate >20%. {(_topMissParam != null ? $"Highest: {_topMissParam.ParameterLabel} missed {_topMissParam.MissRate}%, full-score {_topMissParam.FullScoreRate}%." : "")}")</p>
+            </div>
         </div>
-    }
+    </div>
     <div class="row g-4 mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm section-accent-warn">
@@ -285,13 +347,23 @@ else
     <!-- ── Failure Reasons detail table ─────────────────────────────────── -->
     @if (Model.FailureReasons.Any())
     {
-        @if (!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight))
-        {
-            <div class="ai-insight-box mb-2">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Failure Reasons</div>
-                <p>@insights.FailureReasonsInsight</p>
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — Failure Reasons</div>
+            <div class="ai-insight-grid">
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                    <p>Audits with an overall score &lt; 60% are classified as <strong>failures</strong>. For each parameter, <strong>Contribution %</strong> = failed audits where this parameter scored below threshold ÷ total failed audits × 100. Parameters are ranked from highest to lowest contribution to reveal the primary drivers of failing outcomes.</p>
+                </div>
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                    <p>Parameters with the <strong>highest contribution %</strong> are the primary drivers of audit failures. Addressing these has the greatest immediate effect — reducing the failure contribution of even the top one or two parameters can eliminate a significant proportion of all failing audits and materially raise the overall pass rate.</p>
+                </div>
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                    <p>@(!string.IsNullOrWhiteSpace(insights.FailureReasonsInsight) ? insights.FailureReasonsInsight : $"{(_top3Failures.Count > 0 ? $"Top failure driver(s): {string.Join("; ", _top3Failures.Select(f => $"{f.ParameterLabel} ({f.ContributionPercent}% of failures, avg {f.AvgScoreInFailedAudits}%)"))}." : "No failure data for this period.")}")</p>
+                </div>
             </div>
-        }
+        </div>
         <div class="card border-0 shadow-sm section-accent-danger mb-4">
             <div class="card-header bg-white border-0 pt-4 pb-0">
                 <h6 class="fw-bold mb-0">
@@ -349,13 +421,23 @@ else
     <!-- ── HITL Agreement detail table ──────────────────────────────────── -->
     @if (Model.HitlAgreement.Any())
     {
-        @if (!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight))
-        {
-            <div class="ai-insight-box mb-2">
-                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — AI vs Human Agreement</div>
-                <p>@insights.HitlAgreementInsight</p>
+        <div class="ai-insight-box mb-2">
+            <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Analysis — AI vs Human Agreement</div>
+            <div class="ai-insight-grid">
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                    <p>Every HITL review records a verdict (<strong>Agree / Disagree / Uncertain</strong>) against an audit. <strong>Agreement Rate</strong> = Agree count ÷ total HITL reviews × 100. The doughnut shows verdict distribution; the detail table breaks down verdicts by sampling policy so misalignment can be traced to specific review workflows.</p>
+                </div>
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                    <p>A high <strong>Disagree rate</strong> signals that human reviewers believe the AI's scoring decisions are incorrect, undermining trust in the QA process and potentially exposing decisions to regulatory challenge. A low agreement rate also indicates that evaluator training or rubric clarity needs urgent attention.</p>
+                </div>
+                <div class="ai-insight-section">
+                    <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                    <p>@(!string.IsNullOrWhiteSpace(insights.HitlAgreementInsight) ? insights.HitlAgreementInsight : $"AI–Human agreement: {Model.AiHitlAgreementRate}% across {Model.TotalReviewed} review(s) — {_hitlQuality}. {(Model.AiHitlAgreementRate < 80 && Model.TotalReviewed > 0 ? "Review Disagree verdicts to identify rubric gaps and run a calibration session." : "")}")</p>
+                </div>
             </div>
-        }
+        </div>
         <div class="card border-0 shadow-sm section-accent-success mb-4">
             <div class="card-header bg-white border-0 pt-4 pb-0">
                 <h6 class="fw-bold mb-0">

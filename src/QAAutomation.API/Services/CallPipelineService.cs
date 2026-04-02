@@ -26,6 +26,15 @@ public interface ICallPipelineService
     Task<CallPipelineJobDto> CreateFileUploadJobAsync(string name, int formId, int? projectId, string submittedBy,
         List<BatchUrlItemDto> items, CancellationToken ct = default);
     Task ProcessJobAsync(int jobId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resets a stale "Running" pipeline job (e.g. interrupted by an app restart)
+    /// back to "Pending" and resets any items that are stuck in "Processing" to "Pending"
+    /// so that a subsequent <see cref="ProcessJobAsync"/> call will re-process them.
+    /// Returns false if the job is not found or is not in a resumable state.
+    /// </summary>
+    Task<bool> ResetStalledJobAsync(int jobId, CancellationToken ct = default);
+
     Task<CallPipelineJobDto?> GetJobAsync(int id);
     Task<List<CallPipelineJobDto>> ListJobsAsync(int? projectId = null);
 }
@@ -39,6 +48,7 @@ public class CallPipelineService : ICallPipelineService
     private readonly IHttpClientFactory _httpFactory;
     private readonly IAuditLogService _auditLog;
     private readonly PipelineProgressHub _progressHub;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CallPipelineService> _logger;
 
     // Maximum transcript length fed to the LLM (same cap as the interactive UI)
@@ -51,6 +61,7 @@ public class CallPipelineService : ICallPipelineService
         IHttpClientFactory httpFactory,
         IAuditLogService auditLog,
         PipelineProgressHub progressHub,
+        IServiceScopeFactory scopeFactory,
         ILogger<CallPipelineService> logger)
     {
         _db = db;
@@ -59,6 +70,7 @@ public class CallPipelineService : ICallPipelineService
         _httpFactory = httpFactory;
         _auditLog = auditLog;
         _progressHub = progressHub;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -268,6 +280,40 @@ public class CallPipelineService : ICallPipelineService
 
     // ── Read ──────────────────────────────────────────────────────────────────
 
+    public async Task<bool> ResetStalledJobAsync(int jobId, CancellationToken ct = default)
+    {
+        var job = await _db.CallPipelineJobs
+            .Include(j => j.Items)
+            .FirstOrDefaultAsync(j => j.Id == jobId, ct);
+
+        if (job is null)
+        {
+            _logger.LogWarning("ResetStalledJobAsync: job {JobId} not found", jobId);
+            return false;
+        }
+
+        // Only reset jobs that are genuinely stalled — i.e. "Running" but
+        // not actively being processed (detected by having unfinished items).
+        // Completed/Failed jobs must not be reset.
+        if (job.Status != "Running")
+        {
+            _logger.LogWarning(
+                "ResetStalledJobAsync: job {JobId} has status '{Status}' — only Running jobs can be reset",
+                jobId, job.Status);
+            return false;
+        }
+
+        job.Status = "Pending";
+        // Items stuck mid-flight are re-queued; already completed/failed items are kept.
+        foreach (var item in job.Items.Where(i => i.Status == "Processing"))
+            item.Status = "Pending";
+
+        await _db.SaveChangesAsync(ct);
+        _logger.LogInformation(
+            "ResetStalledJobAsync: job {JobId} reset to Pending for re-processing", jobId);
+        return true;
+    }
+
     public async Task<CallPipelineJobDto?> GetJobAsync(int id)
     {
         var job = await _db.CallPipelineJobs
@@ -378,6 +424,96 @@ public class CallPipelineService : ICallPipelineService
             // Update AgentName from AI extraction if not provided up front
             if (string.IsNullOrEmpty(item.AgentName) && !string.IsNullOrEmpty(result.AgentName))
                 item.AgentName = result.AgentName;
+
+            // ── Auto-trigger TNI for below-threshold parameters (same logic as manual path) ──
+            // A field is "marked down" when its score is below maximum:
+            //   binary (MaxRating=1) → FinalScore == 0
+            //   rating (MaxRating>1) → FinalScore < MaxRating
+            var agentNameForTni = item.AgentName ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(agentNameForTni))
+            {
+                var failedFields = result.Fields
+                    .Where(f => f.MaxRating > 0 && f.FinalScore < f.MaxRating)
+                    .ToList();
+
+                if (failedFields.Count > 0)
+                {
+                    try
+                    {
+                        var targetAreas = failedFields
+                            .Select(f => f.FieldLabel)
+                            .Where(l => !string.IsNullOrWhiteSpace(l))
+                            .Distinct()
+                            .ToList();
+
+                        var plan = new TrainingPlan
+                        {
+                            Title = $"TNI – {agentNameForTni} ({DateTime.UtcNow:yyyy-MM-dd})",
+                            Description = $"Auto-generated training plan from pipeline job \"{job.Name}\" on {DateTime.UtcNow:yyyy-MM-dd}. " +
+                                          $"Areas requiring improvement: {string.Join(", ", targetAreas)}.",
+                            AgentName = agentNameForTni,
+                            TrainerName = $"pipeline:{job.Name}",
+                            Status = "Draft",
+                            ProjectId = job.Form?.Lob?.ProjectId,
+                            EvaluationResultId = evalResult.Id,
+                            CreatedBy = $"pipeline:{job.Name}",
+                            IsAutoGenerated = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            Items = failedFields.Select((f, i) => new TrainingPlanItem
+                            {
+                                TargetArea = f.FieldLabel,
+                                ItemType = "Observation",
+                                Content = $"Scored {f.FinalScore} / {f.MaxRating} on \"{f.FieldLabel}\". Improvement required.",
+                                Order = i,
+                                Status = "Pending"
+                            }).ToList()
+                        };
+
+                        _db.TrainingPlans.Add(plan);
+                        await _db.SaveChangesAsync(ct);
+
+                        // Fire-and-forget LLM content generation in its own DI scope,
+                        // so the HTTP-scoped DbContext is not used after this scope ends.
+                        var planId = plan.Id;
+                        var tniAgentName = agentNameForTni;
+                        var tniFormName = formName;
+                        _ = Task.Run(async () =>
+                        {
+                            using var scope = _scopeFactory.CreateScope();
+                            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            var generator = scope.ServiceProvider.GetRequiredService<TniGenerationService>();
+                            var bgLogger = scope.ServiceProvider.GetRequiredService<ILogger<CallPipelineService>>();
+                            try
+                            {
+                                var (content, json) = await generator.GenerateAsync(targetAreas, tniAgentName, tniFormName);
+                                var bgPlan = await db.TrainingPlans.FindAsync(planId);
+                                if (bgPlan != null)
+                                {
+                                    bgPlan.LlmTrainingContent = content;
+                                    bgPlan.AssessmentJson = json;
+                                    bgPlan.ContentGeneratedAt = DateTime.UtcNow;
+                                    bgPlan.UpdatedAt = DateTime.UtcNow;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                bgLogger.LogWarning(ex,
+                                    "Auto-TNI LLM generation failed for plan {PlanId} (pipeline item {ItemId})",
+                                    planId, item.Id);
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        // TNI creation must never fail pipeline item processing — log and continue.
+                        _logger.LogWarning(ex,
+                            "Auto-TNI plan creation failed for pipeline item {ItemId}; continuing without TNI.",
+                            item.Id);
+                    }
+                }
+            }
         }
         catch (OperationCanceledException)
         {

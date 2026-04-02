@@ -36,6 +36,9 @@
     .nav-tabs .nav-link { color:#6c757d; font-weight:500; }
     .nav-tabs .nav-link.active { color:#0d6efd; font-weight:600; }
     #sidePanel { position:sticky; top:80px; }
+    .human-score-input { width:70px; }
+    .score-diff-pos { color:#198754; font-weight:600; }
+    .score-diff-neg { color:#dc3545; font-weight:600; }
 </style>
 }
 
@@ -133,12 +136,24 @@
                                 </div>
                                 <div class="card-body p-0">
                                     <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3 small" style="width:30%">Parameter</th>
+                                                <th class="small" style="width:20%"><i class="bi bi-robot me-1 text-purple"></i>AI Score</th>
+                                                <th class="small" style="width:20%"><i class="bi bi-person-check me-1 text-success"></i>Human Score</th>
+                                                <th class="small">AI Reasoning</th>
+                                            </tr>
+                                        </thead>
                                         <tbody>
                                             @foreach (var field in sec.Fields)
                                             {
                                                 var hasReasoning = audit.FieldReasonings.TryGetValue(field.FieldId, out var reasoning) && !string.IsNullOrEmpty(reasoning);
-                                                <tr>
-                                                    <td class="ps-3" style="width:35%"><div class="fw-semibold small">@field.FieldLabel</div></td>
+                                                // Check if this field has an already-submitted human score
+                                                var existingHuman = item?.FieldScores.FirstOrDefault(fs => fs.FieldId == field.FieldId);
+                                                <tr data-field-id="@field.FieldId"
+                                                    data-ai-score="@field.NumericValue"
+                                                    data-max-rating="@field.MaxRating">
+                                                    <td class="ps-3"><div class="fw-semibold small">@field.FieldLabel</div></td>
                                                     <td class="py-3">
                                                         @if (field.MaxRating == 1)
                                                         {
@@ -151,6 +166,57 @@
                                                             var stars = (int)(field.NumericValue ?? 0);
                                                             <span>@string.Concat(Enumerable.Repeat("★", stars))@string.Concat(Enumerable.Repeat("☆", field.MaxRating - stars))</span>
                                                             <span class="badge bg-secondary ms-1">@field.NumericValue/@field.MaxRating</span>
+                                                        }
+                                                    </td>
+                                                    <td class="py-3">
+                                                        @if (isReviewed && existingHuman != null)
+                                                        {
+                                                            @if (field.MaxRating == 1)
+                                                            {
+                                                                var hpClass = existingHuman.HumanScore == 1 ? "bg-success" : "bg-danger";
+                                                                var hpText  = existingHuman.HumanScore == 1 ? "PASS" : "FAIL";
+                                                                <span class="badge @hpClass fs-6">@hpText</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-primary">@existingHuman.HumanScore/@field.MaxRating</span>
+                                                            }
+                                                            @if (existingHuman.HumanScore != field.NumericValue)
+                                                            {
+                                                                var diff = existingHuman.HumanScore - (field.NumericValue ?? 0);
+                                                                <span class="ms-1 small @(diff > 0 ? "score-diff-pos" : "score-diff-neg")">
+                                                                    @(diff > 0 ? "+" : "")@diff.ToString("F0")
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else if (!isReviewed)
+                                                        {
+                                                            @if (field.MaxRating == 1)
+                                                            {
+                                                                <select class="form-select form-select-sm human-score-select human-score-input"
+                                                                        data-field-id="@field.FieldId"
+                                                                        data-ai-score="@field.NumericValue"
+                                                                        data-max-rating="@field.MaxRating">
+                                                                    @{ var passSelected = field.NumericValue == 1; }
+                                                                    @{ var failSelected = field.NumericValue != 1; }
+                                                                    <option value="1" selected="@passSelected">PASS (1)</option>
+                                                                    <option value="0" selected="@failSelected">FAIL (0)</option>
+                                                                </select>
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="number"
+                                                                       class="form-control form-control-sm human-score-input human-score-num"
+                                                                       data-field-id="@field.FieldId"
+                                                                       data-ai-score="@field.NumericValue"
+                                                                       data-max-rating="@field.MaxRating"
+                                                                       min="0" max="@field.MaxRating" step="1"
+                                                                       value="@((int)(field.NumericValue ?? 0))" />
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted small">—</span>
                                                         }
                                                     </td>
                                                     @if (hasReasoning)
@@ -394,9 +460,10 @@
                                 <i class="bi bi-pencil-square me-2 text-warning"></i>Submit Your Review
                             </div>
                             <div class="card-body">
-                                <form method="post" action="@Url.Action("Review", "HumanReview")">
+                                <form method="post" action="@Url.Action("Review", "HumanReview")" id="reviewVerdictForm">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="ReviewItemId" value="@Model.ReviewItemId" />
+                                    <input type="hidden" name="FieldScoresJson" id="fieldScoresJsonInput" value="[]" />
 
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">Verdict <span class="text-danger">*</span></label>
@@ -536,4 +603,35 @@
             </div>
         </div>
     </div>
+}
+
+@section Scripts {
+<script>
+/* Collect per-parameter human scores from the Quality Scores tab inputs
+   and serialise them to JSON in the hidden field before form submission. */
+(function () {
+    var form = document.getElementById('reviewVerdictForm');
+    if (!form) return;
+
+    form.addEventListener('submit', function () {
+        var scores = [];
+        // numeric inputs (rating 2+)
+        document.querySelectorAll('.human-score-num').forEach(function (inp) {
+            var fieldId    = parseInt(inp.dataset.fieldId, 10);
+            var aiScore    = parseFloat(inp.dataset.aiScore) || 0;
+            var maxRating  = parseInt(inp.dataset.maxRating, 10) || 1;
+            var humanScore = Math.min(Math.max(parseFloat(inp.value) || 0, 0), maxRating);
+            scores.push({ fieldId: fieldId, aiScore: aiScore, humanScore: humanScore, comment: null });
+        });
+        // select inputs (pass/fail — rating 1)
+        document.querySelectorAll('.human-score-select').forEach(function (sel) {
+            var fieldId    = parseInt(sel.dataset.fieldId, 10);
+            var aiScore    = parseFloat(sel.dataset.aiScore) || 0;
+            var humanScore = parseFloat(sel.value) || 0;
+            scores.push({ fieldId: fieldId, aiScore: aiScore, humanScore: humanScore, comment: null });
+        });
+        document.getElementById('fieldScoresJsonInput').value = JSON.stringify(scores);
+    });
+})();
+</script>
 }

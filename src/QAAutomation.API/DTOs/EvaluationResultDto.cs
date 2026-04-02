@@ -46,6 +46,8 @@ public class CreateEvaluationResultDto
     public string EvaluatedBy { get; set; } = string.Empty;
     public string? Notes { get; set; }
     public string? AgentName { get; set; }
+    /// <summary>System username of the agent (used to link auto-generated TNI plans).</summary>
+    public string? AgentUsername { get; set; }
     public string? CallReference { get; set; }
     public DateTime? CallDate { get; set; }
     public string? OverallReasoning { get; set; }

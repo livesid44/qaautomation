@@ -1,0 +1,831 @@
+@model QAAutomation.Web.Models.DecisionAssuranceViewModel
+@{
+    ViewData["Title"] = "Decision Assurance";
+    bool hasData = Model.TotalAudits > 0;
+
+    // ── Serialise for Chart.js (camelCase keys for safe JS access) ────────────
+    var dcLabels   = System.Text.Json.JsonSerializer.Serialize(Model.DecisionConfidences.Select(d => d.ParameterLabel));
+    var dcConf     = System.Text.Json.JsonSerializer.Serialize(Model.DecisionConfidences.Select(d => d.ConfidenceScore));
+    var dcAvg      = System.Text.Json.JsonSerializer.Serialize(Model.DecisionConfidences.Select(d => d.AvgScorePercent));
+    var dcSections = System.Text.Json.JsonSerializer.Serialize(Model.DecisionConfidences.Select(d => d.SectionTitle));
+
+    var agentNames  = System.Text.Json.JsonSerializer.Serialize(Model.AgentRiskProfiles.Select(a => a.AgentName));
+    var agentMom    = System.Text.Json.JsonSerializer.Serialize(Model.AgentRiskProfiles.Select(a => a.Momentum));
+    var agentAvg    = System.Text.Json.JsonSerializer.Serialize(Model.AgentRiskProfiles.Select(a => a.AvgScorePercent));
+    var agentRecent = System.Text.Json.JsonSerializer.Serialize(Model.AgentRiskProfiles.Select(a => a.RecentAvgPercent));
+    var agentPrior  = System.Text.Json.JsonSerializer.Serialize(Model.AgentRiskProfiles.Select(a => a.PriorAvgPercent));
+
+    var sectionLabels    = System.Text.Json.JsonSerializer.Serialize(Model.SectionCalibration.Select(s => s.SectionTitle));
+    var sectionConf      = System.Text.Json.JsonSerializer.Serialize(Model.SectionCalibration.Select(s => s.ConfusionScore));
+    var sectionStdDev    = System.Text.Json.JsonSerializer.Serialize(Model.SectionCalibration.Select(s => s.ScoreStdDev));
+    var sectionRecent    = System.Text.Json.JsonSerializer.Serialize(Model.SectionCalibration.Select(s => s.RecentAvgPercent));
+    var sectionPrior     = System.Text.Json.JsonSerializer.Serialize(Model.SectionCalibration.Select(s => s.PriorAvgPercent));
+
+    var riskJson         = System.Text.Json.JsonSerializer.Serialize(Model.RiskRadar.Select(r =>
+        new { label = r.ParameterLabel, section = r.SectionTitle, category = r.RiskCategory, score = r.RiskScore, description = r.Description }));
+
+    var heatmapJson      = System.Text.Json.JsonSerializer.Serialize(Model.CalibrationHeatmap.Select(h =>
+        new { label = h.ParameterLabel, section = h.SectionTitle, spread = h.AgentSpread, scores = h.AgentAvgScores }));
+
+    // KPIs
+    var highRiskParams   = Model.DecisionConfidences.Count(d => d.RiskLevel == "High");
+    var highRiskAgents   = Model.AgentRiskProfiles.Count(a => a.RiskLevel == "High");
+    var decliningAgents  = Model.AgentRiskProfiles.Count(a => a.Trend == "Declining");
+    var volatileSections = Model.SectionCalibration.Count(s => s.DriftDirection == "Volatile");
+    var avgConfidence    = Model.DecisionConfidences.Count > 0
+        ? Math.Round(Model.DecisionConfidences.Average(d => d.ConfidenceScore), 1) : 0.0;
+
+    // Data-linked variables for "Recommendation to Improve" panels
+    var _lowestConfParam  = Model.DecisionConfidences.OrderBy(d => d.ConfidenceScore).FirstOrDefault();
+    var _topDeclining     = Model.AgentRiskProfiles.Where(a => a.Trend == "Declining").OrderBy(a => a.AvgScorePercent).FirstOrDefault();
+    var _mostConfused     = Model.SectionCalibration.OrderByDescending(s => s.ConfusionScore).FirstOrDefault();
+    var _urgentRiskCount  = Model.RiskRadar.Count(r => r.RiskScore >= 70);
+    var _topRiskSignal    = Model.RiskRadar.OrderByDescending(r => r.RiskScore).FirstOrDefault();
+}
+@section Styles {
+<style>
+    .risk-badge-High   { background:#dc3545; color:#fff; font-size:.65rem; padding:2px 7px; border-radius:4px; }
+    .risk-badge-Medium { background:#ffc107; color:#212529; font-size:.65rem; padding:2px 7px; border-radius:4px; }
+    .risk-badge-Low    { background:#198754; color:#fff; font-size:.65rem; padding:2px 7px; border-radius:4px; }
+    .trend-Improving  { color:#198754; font-weight:600; }
+    .trend-Declining  { color:#dc3545; font-weight:600; }
+    .trend-Stable     { color:#6c757d; }
+    .trend-Volatile   { color:#fd7e14; font-weight:600; }
+    .ai-insight-box { background:linear-gradient(135deg,#f0f7ff 0%,#e8f4fd 100%); border:1px solid #b3d9f7; border-radius:10px; padding:14px 18px; margin-bottom:1rem; font-size:.9rem; }
+    .ai-insight-box .ai-label { font-size:.7rem; font-weight:700; letter-spacing:.05em; color:#0d6efd; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-box p { margin:0; color:#2c3e50; line-height:1.55; }
+    .ai-insight-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.85rem; margin-top:.75rem; }
+    @@media(max-width:767px) { .ai-insight-grid { grid-template-columns:1fr; } }
+    .ai-insight-section { background:rgba(255,255,255,0.6); border-radius:8px; padding:10px 14px; border-left:3px solid #b3d9f7; }
+    .ai-insight-section .section-tag { font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:4px; }
+    .ai-insight-section p { font-size:.84rem; }
+    .nav-tabs .nav-link { font-size:.9rem; font-weight:500; color:#495057; }
+    .nav-tabs .nav-link.active { color:#0d6efd; font-weight:600; }
+    .tab-content { padding-top:1.5rem; }
+    .risk-cat-PolicyConfusion   { border-left:4px solid #0dcaf0; }
+    .risk-cat-EscalationRisk    { border-left:4px solid #dc3545; }
+    .risk-cat-DecisionReversal  { border-left:4px solid #fd7e14; }
+    .risk-cat-BiasIndicator     { border-left:4px solid #6f42c1; }
+    .heatmap-cell { width:70px; text-align:center; font-size:.8rem; border-radius:4px; padding:3px 0; }
+    .export-btn { font-size:.8rem; }
+    .confidence-bar { height:8px; border-radius:4px; }
+</style>
+}
+
+<!-- Page header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-shield-exclamation me-2 text-primary"></i>Decision Assurance
+            <span class="badge ms-2 py-1 px-2" style="font-size:.65rem;background:#5a2d82;color:#fff">ADVANCED</span>
+        </h4>
+        <p class="text-muted mb-0">Decision quality · consistency · creator impact · risk radar · calibration intelligence</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
+        <a href="@Url.Action("Index", "Analytics")" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-bar-chart-line me-1"></i>Dashboard
+        </a>
+        <a href="@Url.Action("Explainability", "Analytics")" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-shield-check me-1"></i>Explainability
+        </a>
+    </div>
+</div>
+
+@if (!hasData)
+{
+    <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No audit records found. Submit some audits to see Decision Assurance analytics.</div>
+}
+else
+{
+    <!-- ── KPI summary row ───────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                        <i class="bi bi-bullseye fs-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold">@avgConfidence<small class="fs-6 text-muted">%</small></div>
+                        <div class="text-muted small">Avg Decision Confidence</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3">
+                        <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold text-danger">@highRiskParams</div>
+                        <div class="text-muted small">High-Risk Parameters</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                        <i class="bi bi-graph-down-arrow fs-4 text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold text-warning">@decliningAgents</div>
+                        <div class="text-muted small">Declining Agents</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-info bg-opacity-10 p-3">
+                        <i class="bi bi-lightning fs-4 text-info"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-bold text-info">@(Model.RiskRadar.Count)</div>
+                        <div class="text-muted small">Active Risk Signals</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tabs ─────────────────────────────────────────────────────────────── -->
+    <ul class="nav nav-tabs border-bottom" id="daTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-dq" data-bs-toggle="tab" data-bs-target="#pane-dq" type="button" role="tab">
+                <i class="bi bi-bullseye me-1"></i>Decision Quality
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-ci" data-bs-toggle="tab" data-bs-target="#pane-ci" type="button" role="tab">
+                <i class="bi bi-person-badge me-1"></i>Creator Impact
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-cal" data-bs-toggle="tab" data-bs-target="#pane-cal" type="button" role="tab">
+                <i class="bi bi-sliders2-vertical me-1"></i>Calibration
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-rr" data-bs-toggle="tab" data-bs-target="#pane-rr" type="button" role="tab">
+                <i class="bi bi-radar me-1"></i>Risk Radar
+                @if (Model.RiskRadar.Count > 0)
+                {
+                    <span class="badge bg-danger rounded-pill ms-1">@Model.RiskRadar.Count</span>
+                }
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="daTabContent">
+
+        <!-- ═══ TAB 1: DECISION QUALITY ═══════════════════════════════════════ -->
+        <div class="tab-pane fade show active" id="pane-dq" role="tabpanel">
+
+            <div class="ai-insight-box mb-4">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Decision Quality</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>The <strong>Decision Confidence Score</strong> is a 50/50 blend of average score quality and evaluator consistency: <em>Confidence = (AvgScore% × 0.5) + (ConsistencyScore × 50)</em>, where Consistency = 1 − normalised standard deviation. A parameter that scores well <em>and</em> consistently across all evaluators earns maximum confidence; one that scores well on average but varies wildly across reviewers is penalised accordingly.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>This chart ranks all evaluation parameters from lowest to highest confidence so the most unreliable AI decision signals are immediately visible. The dual bars distinguish two failure modes: <em>consistently bad</em> (low avg, high confidence) and <em>unpredictably scored</em> (higher avg, low confidence — often a rubric clarity issue). Parameters below a confidence of <strong>50</strong> are classified <strong>High Risk</strong> and appear highlighted in the detail table.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@highRiskParams High Risk parameter(s) (confidence &lt; 50); overall avg confidence @avgConfidence. @(_lowestConfParam != null ? $"Lowest: {_lowestConfParam.ParameterLabel} at {_lowestConfParam.ConfidenceScore} — {(_lowestConfParam.ScoreStdDev > 25 ? "high variability suggests rubric ambiguity." : "low average score indicates a performance gap.")}" : "")</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confidence chart -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-bullseye me-2 text-primary"></i>Decision Confidence per Parameter</h6>
+                    <small class="text-muted">Composite of avg score × consistency — higher is better (target: &ge;75)</small>
+                </div>
+                <div class="card-body" style="overflow-x:auto"><canvas id="confChart"></canvas></div>
+            </div>
+
+            <!-- Decision confidence table -->
+            @if (Model.DecisionConfidences.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Decision Confidence Details</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('dcTable','decision-confidence')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="dcTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Section</th>
+                                        <th>Parameter</th>
+                                        <th class="text-center">Audits</th>
+                                        <th>Avg Score</th>
+                                        <th>StdDev</th>
+                                        <th>Consistency</th>
+                                        <th>Confidence</th>
+                                        <th>Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var d in Model.DecisionConfidences.OrderBy(x => x.ConfidenceScore))
+                                    {
+                                        var cColor = d.ConfidenceScore >= 75 ? "success" : d.ConfidenceScore >= 50 ? "warning" : "danger";
+                                        <tr>
+                                            <td class="text-muted small">@d.SectionTitle</td>
+                                            <td class="fw-semibold">@d.ParameterLabel</td>
+                                            <td class="text-center">@d.AuditCount</td>
+                                            <td>@d.AvgScorePercent%</td>
+                                            <td>±@d.ScoreStdDev%</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="progress flex-grow-1" style="height:6px">
+                                                        <div class="progress-bar bg-@cColor confidence-bar" style="width:@(d.ConsistencyScore * 100)%"></div>
+                                                    </div>
+                                                    <small>@(Math.Round(d.ConsistencyScore * 100, 0))%</small>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge bg-@cColor">@d.ConfidenceScore</span></td>
+                                            <td><span class="risk-badge-@d.RiskLevel">@d.RiskLevel</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- ═══ TAB 2: CREATOR IMPACT ══════════════════════════════════════════ -->
+        <div class="tab-pane fade" id="pane-ci" role="tabpanel">
+
+            <div class="ai-insight-box mb-4">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Creator Impact</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p><strong>Momentum</strong> = Recent 30-day avg − Prior 30-day avg. Risk level is derived from a combination of overall average score and trend direction: a declining agent already below 70 % is classified <strong>High Risk</strong>; an improving agent above 80 % is <strong>Low Risk</strong>. Agents are only assigned a momentum score when they have at least one audit recorded in each 30-day window, ensuring the signal is statistically meaningful.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>Each agent cluster shows overall average, recent 30-day average, and the momentum delta side-by-side. Agents are ordered by lowest overall average so the highest-risk creators surface at the top. The momentum axis (right-hand scale) supports positive and negative values — a negative bar means quality has fallen compared with the prior period, even if absolute scores still appear acceptable.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@highRiskAgents High Risk agent(s), @decliningAgents declining. @(_topDeclining != null ? $"Priority: {_topDeclining.AgentName} at {_topDeclining.AvgScorePercent}% overall with momentum {(_topDeclining.Momentum >= 0 ? "+" : "")}{_topDeclining.Momentum}% — schedule coaching immediately." : "No agents show a declining trend at this time.")</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent momentum chart -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-speedometer me-2 text-success"></i>Agent Score Momentum (Recent vs Prior 30 days)</h6>
+                    <small class="text-muted">Positive = improving · Negative = declining · Bars show avg score</small>
+                </div>
+                <div class="card-body"><canvas id="momentumChart" height="80"></canvas></div>
+            </div>
+
+            <!-- Creator risk table -->
+            @if (Model.AgentRiskProfiles.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Creator Risk Profiles</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('agentRiskTable','creator-risk-profiles')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="agentRiskTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Agent / Creator</th>
+                                        <th class="text-center">Audits</th>
+                                        <th>Overall Avg</th>
+                                        <th>Recent (30d)</th>
+                                        <th>Prior (30d)</th>
+                                        <th>Momentum</th>
+                                        <th>Trend</th>
+                                        <th>Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in Model.AgentRiskProfiles.OrderBy(x => x.AvgScorePercent))
+                                    {
+                                        var momColor  = a.Momentum >= 3 ? "success" : a.Momentum <= -3 ? "danger" : "secondary";
+                                        var momPrefix = a.Momentum > 0 ? "+" : "";
+                                        <tr>
+                                            <td class="fw-semibold">@a.AgentName</td>
+                                            <td class="text-center">@a.AuditCount</td>
+                                            <td>@a.AvgScorePercent%</td>
+                                            <td>@a.RecentAvgPercent%</td>
+                                            <td>@a.PriorAvgPercent%</td>
+                                            <td><span class="badge bg-@momColor">@momPrefix@a.Momentum%</span></td>
+                                            <td><span class="trend-@a.Trend"><i class="bi bi-@(a.Trend == "Improving" ? "arrow-up" : a.Trend == "Declining" ? "arrow-down" : "dash") me-1"></i>@a.Trend</span></td>
+                                            <td><span class="risk-badge-@a.RiskLevel">@a.RiskLevel</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- ═══ TAB 3: CALIBRATION ═════════════════════════════════════════════ -->
+        <div class="tab-pane fade" id="pane-cal" role="tabpanel">
+
+            <div class="ai-insight-box mb-4">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Calibration Intelligence</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p><strong>Confusion Score</strong> = (ScoreStdDev / SectionMean) × 100 — the coefficient of variation expressed as a percentage. Zero means perfect evaluator agreement; 40+ signals significant policy ambiguity. <strong>Drift direction</strong> is assigned by comparing the two 30-day rolling averages (Improving / Stable / Declining / Volatile). The <strong>Calibration Heatmap</strong> computes each agent's average score per parameter to reveal individual-level misalignment across the team.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>The <strong>Policy Confusion</strong> chart identifies sections where evaluators interpret the rubric differently — high confusion means the AI cannot reliably predict which score a parameter will receive, undermining decision consistency. The <strong>Drift</strong> chart detects systematic shifts in grading standards that may indicate policy changes, evaluator turnover, or seasonal effects. The <strong>Calibration Heatmap</strong> is the most actionable view: each cell is a unique agent × parameter intersection coloured green–amber–red by score.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@volatileSections Volatile section(s) detected. @(_mostConfused != null ? $"Highest confusion: {_mostConfused.SectionTitle} (score {_mostConfused.ConfusionScore}, {_mostConfused.DriftDirection} drift, StdDev ±{_mostConfused.ScoreStdDev}%) — schedule a calibration session for this section." : "All sections are within acceptable calibration bounds.")</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <!-- Section calibration chart -->
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-fire me-2 text-warning"></i>Policy Confusion Heatmap by Section</h6>
+                            <small class="text-muted">Confusion score = StdDev / Mean × 100 — higher = more disagreement</small>
+                        </div>
+                        <div class="card-body" style="overflow-x:auto"><canvas id="confusionChart"></canvas></div>
+                    </div>
+                </div>
+                <!-- Section drift chart -->
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-4 pb-0">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-arrow-left-right me-2 text-info"></i>Section Score Drift (Recent vs Prior)</h6>
+                            <small class="text-muted">Compares last 30 days to the previous 30 days</small>
+                        </div>
+                        <div class="card-body" style="overflow-x:auto"><canvas id="driftChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calibration heatmap table -->
+            @if (Model.CalibrationHeatmap.Count > 0)
+            {
+                var allAgents = Model.CalibrationHeatmap.SelectMany(h => h.AgentAvgScores.Keys).Distinct().OrderBy(a => a).ToList();
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-grid me-2 text-secondary"></i>Calibration Heatmap — Agent × Parameter</h6>
+                            <small class="text-muted">Higher spread = evaluators disagree on this parameter — calibration required</small>
+                        </div>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('heatmapTable','calibration-heatmap')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0" id="heatmapTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Section</th>
+                                        <th>Parameter</th>
+                                        @foreach (var a in allAgents) { <th class="text-center">@a</th> }
+                                        <th class="text-center">Spread</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.CalibrationHeatmap)
+                                    {
+                                        var spreadColor = row.AgentSpread >= 30 ? "danger" : row.AgentSpread >= 15 ? "warning" : "success";
+                                        <tr>
+                                            <td class="text-muted small">@row.SectionTitle</td>
+                                            <td class="fw-semibold">@row.ParameterLabel</td>
+                                            @foreach (var a in allAgents)
+                                            {
+                                                if (row.AgentAvgScores.TryGetValue(a, out var score))
+                                                {
+                                                    var bg = score >= 80 ? "rgba(25,135,84,0.15)" : score >= 60 ? "rgba(255,193,7,0.15)" : "rgba(220,53,69,0.15)";
+                                                    var tc = score >= 80 ? "#198754" : score >= 60 ? "#856404" : "#842029";
+                                                    <td class="text-center">
+                                                        <span class="heatmap-cell d-inline-block" style="background:@bg;color:@tc;font-weight:600">@score%</span>
+                                                    </td>
+                                                }
+                                                else
+                                                {
+                                                    <td class="text-center text-muted">—</td>
+                                                }
+                                            }
+                                            <td class="text-center"><span class="badge bg-@spreadColor">@row.AgentSpread%</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Section calibration table -->
+            @if (Model.SectionCalibration.Count > 0)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>Section Calibration Details</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('sectionCalTable','section-calibration')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="sectionCalTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Section</th>
+                                        <th class="text-center">Scored</th>
+                                        <th>Overall Avg</th>
+                                        <th>Recent (30d)</th>
+                                        <th>Prior (30d)</th>
+                                        <th>StdDev</th>
+                                        <th>Confusion</th>
+                                        <th>Drift</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in Model.SectionCalibration)
+                                    {
+                                        var confColor = s.ConfusionScore >= 40 ? "danger" : s.ConfusionScore >= 20 ? "warning" : "success";
+                                        <tr>
+                                            <td class="fw-semibold">@s.SectionTitle</td>
+                                            <td class="text-center">@s.AuditCount</td>
+                                            <td>@s.OverallAvgPercent%</td>
+                                            <td>@s.RecentAvgPercent%</td>
+                                            <td>@s.PriorAvgPercent%</td>
+                                            <td>±@s.ScoreStdDev%</td>
+                                            <td><span class="badge bg-@confColor">@s.ConfusionScore</span></td>
+                                            <td><span class="trend-@s.DriftDirection">@s.DriftDirection</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- ═══ TAB 4: RISK RADAR ══════════════════════════════════════════════ -->
+        <div class="tab-pane fade" id="pane-rr" role="tabpanel">
+
+            <div class="ai-insight-box mb-4">
+                <div class="ai-label"><i class="bi bi-stars me-1"></i>AI Insight — Risk Radar</div>
+                <div class="ai-insight-grid">
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-diagram-3 me-1"></i>Logic to Generate</div>
+                        <p>Each risk signal is scored 0–100 using category-specific formulas: <strong>PolicyConfusion</strong> maps directly to the section's confusion score; <strong>EscalationRisk</strong> is the inverse of a parameter's low-score frequency (high miss rate = high risk); <strong>DecisionReversal</strong> uses the magnitude of an agent's negative momentum; <strong>BiasIndicator</strong> measures score distribution volatility over time. Signals above 70 are flagged urgent; 40–69 are moderate priority.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#6f42c1"><i class="bi bi-graph-up me-1"></i>Impact on Quality Score</div>
+                        <p>The Risk Radar aggregates the highest-priority risk signals across all QA dimensions — parameter quality, agent trends, calibration gaps, and evaluation consistency — and surfaces them in a single ranked view. This gives QA leadership a single pane of glass to identify where the AI decision system is most vulnerable to errors, reversals, or regulatory challenge, without needing to cross-reference multiple reports.</p>
+                    </div>
+                    <div class="ai-insight-section">
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommendation to Improve</div>
+                        <p>@_urgentRiskCount urgent signal(s) (score ≥70). @(_topRiskSignal != null ? $"Highest: {_topRiskSignal.ParameterLabel} — {_topRiskSignal.RiskCategory} at {_topRiskSignal.RiskScore}. {_topRiskSignal.Description}" : "No active risk signals detected.")</p>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.RiskRadar.Count == 0)
+            {
+                <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>No risk signals detected — your QA data looks healthy!</div>
+            }
+            else
+            {
+                <!-- Risk radar chart -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 pt-4 pb-0">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-radar me-2 text-danger"></i>Risk Signal Intensity</h6>
+                        <small class="text-muted">Score 0–100: higher = more urgent attention required</small>
+                    </div>
+                    <div class="card-body"><canvas id="riskChart" height="80"></canvas></div>
+                </div>
+
+                <!-- Risk cards -->
+                <div class="row g-3 mb-4">
+                    @foreach (var item in Model.RiskRadar)
+                    {
+                        var catColor = item.RiskCategory switch {
+                            "PolicyConfusion"  => "info",
+                            "EscalationRisk"   => "danger",
+                            "DecisionReversal" => "warning",
+                            "BiasIndicator"    => "purple",
+                            _ => "secondary"
+                        };
+                        var catIcon = item.RiskCategory switch {
+                            "PolicyConfusion"  => "bi-question-circle",
+                            "EscalationRisk"   => "bi-exclamation-triangle",
+                            "DecisionReversal" => "bi-arrow-down-circle",
+                            "BiasIndicator"    => "bi-eye",
+                            _ => "bi-flag"
+                        };
+                        var borderClass = $"risk-cat-{item.RiskCategory}";
+                        var intensity   = item.RiskScore >= 70 ? "danger" : item.RiskScore >= 40 ? "warning" : "secondary";
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100 @borderClass">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <span class="badge bg-@intensity me-1">@item.RiskScore risk</span>
+                                            <span class="badge bg-secondary" style="font-size:.65rem">@item.RiskCategory</span>
+                                        </div>
+                                        <i class="bi @catIcon fs-5 text-muted"></i>
+                                    </div>
+                                    <div class="fw-semibold">@item.ParameterLabel</div>
+                                    @if (!string.IsNullOrEmpty(item.SectionTitle) && item.SectionTitle != "Agent" && item.SectionTitle != "Section")
+                                    {
+                                        <div class="text-muted small mb-1">@item.SectionTitle</div>
+                                    }
+                                    <p class="text-muted small mb-2">@item.Description</p>
+                                    <div class="progress" style="height:5px">
+                                        <div class="progress-bar bg-@intensity" style="width:@item.RiskScore%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Risk table -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Risk Signal Register</h6>
+                        <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('riskTable','risk-radar')">
+                            <i class="bi bi-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="riskTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Signal</th>
+                                        <th>Category</th>
+                                        <th>Risk Score</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.RiskRadar)
+                                    {
+                                        var intensity = item.RiskScore >= 70 ? "danger" : item.RiskScore >= 40 ? "warning" : "secondary";
+                                        <tr>
+                                            <td class="fw-semibold">@item.ParameterLabel</td>
+                                            <td><span class="badge bg-secondary" style="font-size:.7rem">@item.RiskCategory</span></td>
+                                            <td><span class="badge bg-@intensity">@item.RiskScore</span></td>
+                                            <td class="small text-muted">@item.Description</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+    </div><!-- /tab-content -->
+}
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const gridColor = 'rgba(0,0,0,0.06)';
+
+    // Server-provided data
+    const dcLabels   = @Html.Raw(dcLabels);
+    const dcConf     = @Html.Raw(dcConf);
+    const dcAvg      = @Html.Raw(dcAvg);
+    const dcSections = @Html.Raw(dcSections);
+
+    const agentNames  = @Html.Raw(agentNames);
+    const agentMom    = @Html.Raw(agentMom);
+    const agentAvg    = @Html.Raw(agentAvg);
+    const agentRecent = @Html.Raw(agentRecent);
+    const agentPrior  = @Html.Raw(agentPrior);
+
+    const sectionLabels = @Html.Raw(sectionLabels);
+    const sectionConf   = @Html.Raw(sectionConf);
+    const sectionStdDev = @Html.Raw(sectionStdDev);
+    const sectionRecent = @Html.Raw(sectionRecent);
+    const sectionPrior  = @Html.Raw(sectionPrior);
+
+    const riskRaw    = @Html.Raw(riskJson);
+    const heatmapRaw = @Html.Raw(heatmapJson);
+
+    const charts = {};
+
+    function scoreColor(v)   { return v >= 75 ? '#198754' : v >= 50 ? '#ffc107' : '#dc3545'; }
+    function scoreColorBg(v) { return v >= 75 ? 'rgba(25,135,84,0.75)' : v >= 50 ? 'rgba(255,193,7,0.75)' : 'rgba(220,53,69,0.75)'; }
+    function momColor(v)     { return v >= 3 ? '#198754' : v <= -3 ? '#dc3545' : '#6c757d'; }
+    function riskCatColor(c) {
+        const m = { PolicyConfusion:'#0dcaf0', EscalationRisk:'#dc3545', DecisionReversal:'#fd7e14', BiasIndicator:'#6f42c1' };
+        return m[c] || '#6c757d';
+    }
+
+    // ── Decision Confidence horizontal bar ────────────────────────────────────
+    function buildConfChart() {
+        const el = document.getElementById('confChart');
+        if (!el || !dcLabels.length) return;
+        if (charts.conf) charts.conf.destroy();
+        const h = Math.max(300, dcLabels.length * 26);
+        el.style.height = h + 'px';
+        charts.conf = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: dcLabels,
+                datasets: [
+                    { label: 'Decision Confidence', data: dcConf, backgroundColor: dcConf.map(v => scoreColorBg(v)), borderRadius: 4 },
+                    { label: 'Avg Score %',          data: dcAvg,  backgroundColor: 'rgba(13,110,253,0.15)', borderRadius: 4, borderColor: '#0d6efd', borderWidth: 1 }
+                ]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { callbacks: { beforeTitle: (items) => dcSections[items[0].dataIndex] ? '[' + dcSections[items[0].dataIndex] + ']' : '' } }
+                },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Score' }, grid: { color: gridColor } },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ── Agent momentum bar chart ───────────────────────────────────────────────
+    function buildMomentumChart() {
+        const el = document.getElementById('momentumChart');
+        if (!el || !agentNames.length) return;
+        if (charts.momentum) charts.momentum.destroy();
+        charts.momentum = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: agentNames,
+                datasets: [
+                    { label: 'Avg Score %',    data: agentAvg,    backgroundColor: agentAvg.map(v => scoreColor(v) + '55'), borderColor: agentAvg.map(v => scoreColor(v)), borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+                    { label: 'Recent (30d) %', data: agentRecent, backgroundColor: 'rgba(13,110,253,0.25)', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+                    { label: 'Momentum',       data: agentMom,    backgroundColor: agentMom.map(v => momColor(v) + '99'), borderColor: agentMom.map(v => momColor(v)), borderWidth: 2, borderRadius: 4, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y:  { beginAtZero: true, max: 100, title: { display: true, text: 'Score %' }, grid: { color: gridColor } },
+                    y1: { position: 'right', title: { display: true, text: 'Momentum' }, grid: { drawOnChartArea: false } },
+                    x:  { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Policy confusion bar chart ─────────────────────────────────────────────
+    function buildConfusionChart() {
+        const el = document.getElementById('confusionChart');
+        if (!el || !sectionLabels.length) return;
+        if (charts.confusion) charts.confusion.destroy();
+        const h = Math.max(200, sectionLabels.length * 30);
+        el.style.height = h + 'px';
+        charts.confusion = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: sectionLabels,
+                datasets: [
+                    { label: 'Confusion Score', data: sectionConf,   backgroundColor: sectionConf.map(v => v >= 40 ? 'rgba(220,53,69,0.7)' : v >= 20 ? 'rgba(255,193,7,0.7)' : 'rgba(25,135,84,0.7)'), borderRadius: 4 },
+                    { label: 'StdDev %',         data: sectionStdDev, backgroundColor: 'rgba(108,117,125,0.2)', borderColor: '#6c757d', borderWidth: 1, borderRadius: 4 }
+                ]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { beginAtZero: true, title: { display: true, text: 'Score' }, grid: { color: gridColor } },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ── Section drift grouped bar chart ───────────────────────────────────────
+    function buildDriftChart() {
+        const el = document.getElementById('driftChart');
+        if (!el || !sectionLabels.length) return;
+        if (charts.drift) charts.drift.destroy();
+        const h = Math.max(200, sectionLabels.length * 30);
+        el.style.height = h + 'px';
+        charts.drift = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: sectionLabels,
+                datasets: [
+                    { label: 'Prior 30d avg %',  data: sectionPrior,  backgroundColor: 'rgba(108,117,125,0.5)', borderRadius: 4 },
+                    { label: 'Recent 30d avg %', data: sectionRecent, backgroundColor: 'rgba(13,110,253,0.6)', borderRadius: 4 }
+                ]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Risk radar horizontal bar chart ───────────────────────────────────────
+    function buildRiskChart() {
+        const el = document.getElementById('riskChart');
+        if (!el || !riskRaw.length) return;
+        if (charts.risk) charts.risk.destroy();
+        const labels = riskRaw.map(r => r.label);
+        const scores = riskRaw.map(r => r.score);
+        const colors = riskRaw.map(r => riskCatColor(r.category));
+        charts.risk = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'Risk Score', data: scores, backgroundColor: colors.map(c => c + 'bb'), borderColor: colors, borderWidth: 2, borderRadius: 4 }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { afterLabel: (ctx) => 'Category: ' + riskRaw[ctx.dataIndex].category } }
+                },
+                scales: {
+                    x: { beginAtZero: true, max: 100, title: { display: true, text: 'Risk Score' }, grid: { color: gridColor } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Initial build ─────────────────────────────────────────────────────────
+    buildConfChart();
+    buildMomentumChart();
+    buildConfusionChart();
+    buildDriftChart();
+    buildRiskChart();
+
+    // Rebuild charts when tabs become visible
+    document.getElementById('tab-ci')?.addEventListener('shown.bs.tab',  buildMomentumChart);
+    document.getElementById('tab-cal')?.addEventListener('shown.bs.tab', () => { buildConfusionChart(); buildDriftChart(); });
+    document.getElementById('tab-rr')?.addEventListener('shown.bs.tab',  buildRiskChart);
+
+    // ── CSV export (formula-injection safe) ────────────────────────────────────
+    const dangerousChars = ['=', '+', '-', '@@'];
+    function sanitizeCsv(v) {
+        const t = v.replace(/"/g, '""').trim();
+        return '"' + (dangerousChars.some(function(c) { return t.charAt(0) === c; }) ? '\t' + t : t) + '"';
+    }
+    window.exportTableCsv = function (tableId, filename) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const csv = Array.from(table.querySelectorAll('tr'))
+            .map(function(r) { return Array.from(r.querySelectorAll('th,td')).map(function(c) { return sanitizeCsv(c.innerText); }).join(','); })
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    };
+})();
+</script>
+}

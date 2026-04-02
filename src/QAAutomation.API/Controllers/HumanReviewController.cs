@@ -66,6 +66,9 @@ public class HumanReviewController : ControllerBase
                 .ThenInclude(e => e!.Form)
                     .ThenInclude(f => f.Lob)
             .Include(r => r.SamplingPolicy)
+            .Include(r => r.FieldScores)
+                .ThenInclude(fs => fs.Field)
+                    .ThenInclude(f => f!.Section)
             .FirstOrDefaultAsync(r => r.Id == id);
         return item is null ? NotFound() : Ok(ToDto(item));
     }
@@ -141,7 +144,9 @@ public class HumanReviewController : ControllerBase
         if (!IsValidVerdict(dto.ReviewVerdict))
             return BadRequest("ReviewVerdict must be 'Agree', 'Disagree', or 'Partial'.");
 
-        var item = await _db.HumanReviewItems.FindAsync(id);
+        var item = await _db.HumanReviewItems
+            .Include(r => r.FieldScores)
+            .FirstOrDefaultAsync(r => r.Id == id);
         if (item is null) return NotFound();
 
         item.Status = "Reviewed";
@@ -149,9 +154,36 @@ public class HumanReviewController : ControllerBase
         item.ReviewVerdict = dto.ReviewVerdict;
         item.ReviewedBy = dto.ReviewedBy;
         item.ReviewedAt = DateTime.UtcNow;
+
+        // Upsert per-parameter human scores
+        if (dto.FieldScores.Count > 0)
+        {
+            // Remove previously saved scores for this review (handles re-submission)
+            _db.HumanFieldScores.RemoveRange(item.FieldScores);
+
+            foreach (var fs in dto.FieldScores)
+            {
+                _db.HumanFieldScores.Add(new Models.HumanFieldScore
+                {
+                    HumanReviewItemId = id,
+                    FieldId           = fs.FieldId,
+                    AiScore           = fs.AiScore,
+                    HumanScore        = fs.HumanScore,
+                    Comment           = fs.Comment
+                });
+            }
+        }
+
         await _db.SaveChangesAsync();
 
         await LoadNavigations(item);
+        // Reload FieldScores with navigation properties so ToDto can populate them
+        await _db.Entry(item).Collection(i => i.FieldScores)
+            .Query()
+            .Include(fs => fs.Field)
+                .ThenInclude(f => f!.Section)
+            .LoadAsync();
+
         return Ok(ToDto(item));
     }
 
@@ -226,7 +258,22 @@ public class HumanReviewController : ControllerBase
             FormName = result?.Form?.Name,
             AiScorePercent = scorePercent,
             AiReasoning = result?.Notes,
-            ProjectId = result?.Form?.Lob?.ProjectId
+            ProjectId = result?.Form?.Lob?.ProjectId,
+            FieldScores = item.FieldScores
+                .OrderBy(fs => fs.Field?.Section?.Order ?? 0)
+                .ThenBy(fs => fs.Field?.Order ?? 0)
+                .Select(fs => new HumanFieldScoreDto
+                {
+                    Id           = fs.Id,
+                    FieldId      = fs.FieldId,
+                    FieldLabel   = fs.Field?.Label ?? "",
+                    SectionTitle = fs.Field?.Section?.Title ?? "",
+                    MaxRating    = fs.Field?.MaxRating ?? 0,
+                    AiScore      = fs.AiScore,
+                    HumanScore   = fs.HumanScore,
+                    Comment      = fs.Comment
+                })
+                .ToList()
         };
     }
 }

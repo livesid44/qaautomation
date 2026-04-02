@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using QAAutomation.Web.Filters;
 using QAAutomation.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(8);
@@ -37,7 +40,10 @@ builder.Services.AddSession(options =>
 builder.Services.AddHttpClient<ApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(30);
+    // LLM-backed endpoints (AutoAudit, Sentiment) can take 60–90 s for a full
+    // transcript analysis. 30 s is too short and causes TaskCanceledException
+    // which surfaces as "The analysis service returned an error". Use 3 minutes.
+    client.Timeout = TimeSpan.FromSeconds(180);
 }).ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();
@@ -57,6 +63,9 @@ builder.Services.AddControllersWithViews(options =>
     // submitted empty means "keep the existing key"). Suppress the ASP.NET Core 6+ implicit
     // [Required] behavior that would otherwise reject empty-string form fields.
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+    // Inject the current LLM provider into ViewData on every authenticated page so the
+    // layout can display the appropriate provider badge without per-controller wiring.
+    options.Filters.Add<LlmProviderFilter>();
 })
 // Store TempData in the server-side session instead of a cookie.
 // The AI analysis result (AutoAuditReview) can be several kilobytes; keeping it

@@ -23,6 +23,8 @@ public class CreateEvaluationFormDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int? LobId { get; set; }
+    /// <summary>0 = Generic (proportional), 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
     public List<CreateFormSectionDto> Sections { get; set; } = new();
 }
 
@@ -32,4 +34,6 @@ public class UpdateEvaluationFormDto
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
     public int? LobId { get; set; }
+    /// <summary>0 = Generic (proportional), 1 = SectionAutoFail.</summary>
+    public int ScoringMethod { get; set; } = 0;
 }

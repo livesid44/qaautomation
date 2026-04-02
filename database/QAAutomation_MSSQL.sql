@@ -36,6 +36,7 @@ GO
 IF OBJECT_ID('dbo.AuditLogs',           'U') IS NOT NULL DROP TABLE dbo.AuditLogs;
 IF OBJECT_ID('dbo.TrainingPlanItems',    'U') IS NOT NULL DROP TABLE dbo.TrainingPlanItems;
 IF OBJECT_ID('dbo.TrainingPlans',        'U') IS NOT NULL DROP TABLE dbo.TrainingPlans;
+IF OBJECT_ID('dbo.HumanFieldScores',     'U') IS NOT NULL DROP TABLE dbo.HumanFieldScores;
 IF OBJECT_ID('dbo.HumanReviewItems',     'U') IS NOT NULL DROP TABLE dbo.HumanReviewItems;
 IF OBJECT_ID('dbo.SamplingPolicies',     'U') IS NOT NULL DROP TABLE dbo.SamplingPolicies;
 IF OBJECT_ID('dbo.CallPipelineItems',    'U') IS NOT NULL DROP TABLE dbo.CallPipelineItems;
@@ -295,18 +296,18 @@ GO
 CREATE TABLE dbo.AiConfigs
 (
     Id                  INT           NOT NULL CONSTRAINT DF_AiConfigs_Id DEFAULT (1),
-    LlmProvider         NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_LlmProv DEFAULT ('AzureOpenAI'),
+    LlmProvider         NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_LlmProv DEFAULT ('Google'),
     LlmEndpoint         NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_LlmEP DEFAULT (''),
     LlmApiKey           NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_LlmKey DEFAULT (''),
-    LlmDeployment       NVARCHAR(200) NOT NULL CONSTRAINT DF_AI_LlmDep DEFAULT ('gpt-4o'),
+    LlmDeployment       NVARCHAR(200) NOT NULL CONSTRAINT DF_AI_LlmDep DEFAULT ('gemini-1.5-pro'),
     LlmTemperature      REAL          NOT NULL CONSTRAINT DF_AI_LlmTemp DEFAULT (0.1),
-    SentimentProvider   NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_SentProv DEFAULT ('AzureOpenAI'),
+    SentimentProvider   NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_SentProv DEFAULT ('Google'),
     LanguageEndpoint    NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_LangEP DEFAULT (''),
     LanguageApiKey      NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_LangKey DEFAULT (''),
     RagTopK             INT           NOT NULL CONSTRAINT DF_AI_RagTopK DEFAULT (3),
     GoogleApiKey        NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_GKey DEFAULT (''),
     GoogleGeminiModel   NVARCHAR(100) NOT NULL CONSTRAINT DF_AI_GModel DEFAULT ('gemini-1.5-pro'),
-    SpeechProvider      NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_SpeechProv DEFAULT ('Azure'),
+    SpeechProvider      NVARCHAR(50)  NOT NULL CONSTRAINT DF_AI_SpeechProv DEFAULT ('Google'),
     SpeechEndpoint      NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_SpeechEP DEFAULT (''),
     SpeechApiKey        NVARCHAR(MAX) NOT NULL CONSTRAINT DF_AI_SpeechKey DEFAULT (''),
     UpdatedAt           DATETIME2     NOT NULL CONSTRAINT DF_AI_UpdatedAt DEFAULT (SYSUTCDATETIME()),
@@ -401,7 +402,7 @@ CREATE TABLE dbo.CallPipelineItems
 (
     Id                 INT            IDENTITY(1,1) NOT NULL,
     JobId              INT            NOT NULL,
-    SourceReference    NVARCHAR(2000) NULL,
+    SourceReference    NVARCHAR(MAX)  NULL,
     AgentName          NVARCHAR(200)  NULL,
     CallReference      NVARCHAR(200)  NULL,
     CallDate           DATETIME2      NULL,
@@ -460,6 +461,24 @@ CREATE TABLE dbo.HumanReviewItems
     CONSTRAINT FK_HRI_EvalResult     FOREIGN KEY (EvaluationResultId) REFERENCES dbo.EvaluationResults (Id) ON DELETE CASCADE,
     CONSTRAINT FK_HRI_SamplingPolicy FOREIGN KEY (SamplingPolicyId)   REFERENCES dbo.SamplingPolicies (Id) ON DELETE SET NULL
 );
+GO
+
+-- ── HumanFieldScores ─────────────────────────────────────────────────────────
+CREATE TABLE dbo.HumanFieldScores
+(
+    Id                  INT           IDENTITY(1,1) NOT NULL,
+    HumanReviewItemId   INT           NOT NULL,
+    FieldId             INT           NOT NULL,
+    AiScore             FLOAT         NOT NULL DEFAULT 0,
+    HumanScore          FLOAT         NOT NULL DEFAULT 0,
+    Comment             NVARCHAR(1000) NULL,
+    CONSTRAINT PK_HumanFieldScores    PRIMARY KEY (Id),
+    CONSTRAINT FK_HFS_HumanReviewItem FOREIGN KEY (HumanReviewItemId) REFERENCES dbo.HumanReviewItems (Id) ON DELETE CASCADE,
+    CONSTRAINT FK_HFS_FormField       FOREIGN KEY (FieldId)           REFERENCES dbo.FormFields (Id) ON DELETE CASCADE
+);
+GO
+CREATE INDEX IX_HFS_HumanReviewItemId ON dbo.HumanFieldScores (HumanReviewItemId);
+CREATE INDEX IX_HFS_FieldId           ON dbo.HumanFieldScores (FieldId);
 GO
 
 -- ── TrainingPlans ─────────────────────────────────────────────────────────────
@@ -600,9 +619,9 @@ INSERT INTO dbo.AiConfigs
      SentimentProvider, LanguageEndpoint, LanguageApiKey, RagTopK,
      GoogleApiKey, GoogleGeminiModel, SpeechProvider, SpeechEndpoint, SpeechApiKey, UpdatedAt)
 VALUES
-    (1, 'AzureOpenAI', '', '', 'gpt-4o', 0.1,
-     'AzureOpenAI', '', '', 3,
-     '', 'gemini-1.5-pro', 'Azure', '', '', SYSUTCDATETIME());
+    (1, 'Google', '', '', 'gemini-1.5-pro', 0.1,
+     'Google', '', '', 3,
+     '', 'gemini-1.5-pro', 'Google', '', '', SYSUTCDATETIME());
 GO
 
 -- ── 5.2  AppUsers ────────────────────────────────────────────────────────────

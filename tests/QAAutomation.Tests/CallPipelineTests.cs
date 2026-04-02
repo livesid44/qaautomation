@@ -279,6 +279,97 @@ public class CallPipelineTests : IClassFixture<PipelineTestFactory>
         var resp = await _client.PostAsync($"/api/callpipeline/{job.Id}/process", null);
         Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
     }
+
+    // ── Resume endpoint resets stalled Running job ────────────────────────────
+
+    [Fact]
+    public async Task ResumeJob_StalledRunning_ResetsStatusToPending()
+    {
+        int projectId = await CreateProjectAsync("Pipeline-Resume-Project");
+        var form = await CreateFormWithLobAsync(projectId, "Resume-Form");
+
+        var createResp = await _client.PostAsJsonAsync("/api/callpipeline/batch-urls", new
+        {
+            name = "Stalled Resume Test Job",
+            formId = form.Id,
+            projectId,
+            submittedBy = "test",
+            items = new[] { new { url = "https://example.com/stalled.txt" } }
+        });
+        createResp.EnsureSuccessStatusCode();
+        var job = await createResp.Content.ReadFromJsonAsync<CallPipelineJobDto>();
+
+        // Simulate the job being stuck in Running state (e.g. app was restarted)
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var dbJob = await db.CallPipelineJobs
+                .Include(j => j.Items)
+                .FirstAsync(j => j.Id == job!.Id);
+            dbJob.Status = "Running";
+            // Simulate an item stuck in Processing state
+            foreach (var item in dbJob.Items)
+                item.Status = "Processing";
+            await db.SaveChangesAsync();
+        }
+
+        // The process endpoint should still return 409 (it only handles Pending/Failed)
+        var processResp = await _client.PostAsync($"/api/callpipeline/{job!.Id}/process", null);
+        Assert.Equal(HttpStatusCode.Conflict, processResp.StatusCode);
+
+        // The resume endpoint should succeed and reset the job
+        var resumeResp = await _client.PostAsync($"/api/callpipeline/{job.Id}/resume", null);
+        Assert.Equal(HttpStatusCode.OK, resumeResp.StatusCode);
+
+        // Brief wait to let the fire-and-forget processing attempt complete
+        // (the mock URL will fail quickly, moving the job to a terminal state)
+        await Task.Delay(500);
+
+        // Verify the job is no longer permanently stuck — it must have moved out of
+        // the deadlocked "Running + all items Processing" state
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var dbJob = await db.CallPipelineJobs
+                .Include(j => j.Items)
+                .FirstAsync(j => j.Id == job.Id);
+
+            // The job must NOT be stuck: it should be Completed, Failed, or at most Running
+            // with items that are NOT all still "Processing" (i.e. real progress happened)
+            var allStillProcessing = dbJob.Items.All(i => i.Status == "Processing");
+            Assert.False(
+                dbJob.Status == "Running" && allStillProcessing,
+                $"Job should not be permanently stuck in Running+Processing state. Status={dbJob.Status}");
+        }
+    }
+
+    [Fact]
+    public async Task ResumeJob_NotRunning_Returns409()
+    {
+        int projectId = await CreateProjectAsync("Pipeline-ResumeNotRunning-Project");
+        var form = await CreateFormWithLobAsync(projectId, "ResumeNotRunning-Form");
+
+        var createResp = await _client.PostAsJsonAsync("/api/callpipeline/batch-urls", new
+        {
+            name = "Pending Job — Resume Should Fail",
+            formId = form.Id,
+            projectId,
+            submittedBy = "test",
+            items = new[] { new { url = "https://example.com/pending.txt" } }
+        });
+        createResp.EnsureSuccessStatusCode();
+        var job = await createResp.Content.ReadFromJsonAsync<CallPipelineJobDto>();
+        // Job is Pending, not Running — resume should return 409
+        var resp = await _client.PostAsync($"/api/callpipeline/{job!.Id}/resume", null);
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResumeJob_NotFound_Returns404()
+    {
+        var resp = await _client.PostAsync("/api/callpipeline/999999/resume", null);
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
 }
 
 /// <summary>

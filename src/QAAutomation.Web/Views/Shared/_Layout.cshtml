@@ -20,45 +20,40 @@
 
         body { background: #f0f2f5; }
 
-        /* ── Sidebar ──────────────────────────────────────────────────────── */
+        /* ── Sidebar (offcanvas drawer) ───────────────────────────────────── */
         .sidebar {
-            height: 100vh;
             background: #ffffff;
             border-right: 1px solid #e5e7eb;
-            width: 250px;
-            position: fixed;
-            top: 0; left: 0;
-            z-index: 100;
-            padding-top: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            width: 250px !important;
         }
-        .sidebar nav {
-            flex: 1;
+        .sidebar .offcanvas-header {
+            background: #f8f9fa;
+            border-bottom: 2px solid var(--brand-red);
+            padding: 0;
+        }
+        .sidebar .offcanvas-body {
             overflow-y: auto;
             overflow-x: hidden;
             scrollbar-width: thin;
             scrollbar-color: rgba(0,0,0,.12) transparent;
+            padding: 0;
         }
-        /* Thin scrollbar styled to match the light sidebar */
-        .sidebar nav::-webkit-scrollbar { width: 4px; }
-        .sidebar nav::-webkit-scrollbar-track { background: transparent; }
-        .sidebar nav::-webkit-scrollbar-thumb {
+        .sidebar .offcanvas-body::-webkit-scrollbar { width: 4px; }
+        .sidebar .offcanvas-body::-webkit-scrollbar-track { background: transparent; }
+        .sidebar .offcanvas-body::-webkit-scrollbar-thumb {
             background: rgba(0,0,0,.12);
             border-radius: 2px;
         }
-        .sidebar nav::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+        .sidebar .offcanvas-body::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
 
         /* Brand / logo area */
         .sidebar-brand {
             padding: 14px 16px 12px;
-            background: #f8f9fa;
             display: flex;
             align-items: center;
             gap: 10px;
             text-decoration: none;
-            border-bottom: 2px solid var(--brand-red);
+            flex-grow: 1;
         }
         .sidebar-brand img {
             height: 42px;
@@ -67,16 +62,29 @@
         }
         .sidebar-brand:hover { opacity: .85; }
 
+        /* LLM provider badge shown in the sidebar header */
+        .llm-provider-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: .65rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 10px;
+            white-space: nowrap;
+            letter-spacing: .02em;
+        }
+
         /* Nav links */
         .sidebar .nav-link {
             color: var(--brand-text);
-            padding: 9px 20px;
+            padding: 7px 16px 7px 22px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             border-radius: 0;
             transition: all 0.18s;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             border-left: 3px solid transparent;
         }
         .sidebar .nav-link:hover {
@@ -90,21 +98,55 @@
             border-left-color: var(--brand-red);
             font-weight: 600;
         }
-        .sidebar .nav-link i { font-size: 1rem; }
+        .sidebar .nav-link i { font-size: .95rem; flex-shrink: 0; }
 
-        /* Section headers */
-        .sidebar .nav-section {
-            color: #9ca3af;
+        /* Collapsible group toggles */
+        .nav-group-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            border-left: 3px solid transparent;
+            color: #6b7280;
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            padding: 16px 20px 4px;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-align: left;
+            margin-top: 6px;
+        }
+        .nav-group-toggle:hover {
+            color: var(--brand-red);
+            background: rgba(204,18,18,.04);
+        }
+        .nav-group-toggle.group-active {
+            color: var(--brand-red);
+        }
+        .nav-group-toggle i.group-icon { font-size: .85rem; }
+        .nav-group-toggle .toggle-chevron {
+            margin-left: auto;
+            font-size: .75rem;
+            transition: transform 0.2s;
+        }
+        .nav-group-toggle[aria-expanded="false"] .toggle-chevron {
+            transform: rotate(-90deg);
+        }
+        /* Indent child links slightly more */
+        .nav-group-body .nav-link {
+            padding-left: 36px;
+        }
+        /* Dashboard top-level link (no indent) */
+        .nav-link-top {
+            padding-left: 22px !important;
         }
 
         /* ── Main content ─────────────────────────────────────────────────── */
         .main-content {
-            margin-left: 250px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -143,132 +185,212 @@
             position: fixed;
             bottom: 0;
             right: 0;
-            left: 250px;
+            left: 0;
             z-index: 98;
         }
         .app-footer span { color: var(--brand-red); font-weight: 600; }
 
         /* extra bottom padding so page content isn't hidden behind fixed footer */
         .page-content { padding-bottom: 50px; }
-
-        @@media (max-width: 768px) {
-            .sidebar { width: 100%; min-height: auto; position: static; }
-            .main-content { margin-left: 0; }
-            .app-footer { left: 0; }
-        }
     </style>
     @RenderSection("Styles", required: false)
 </head>
 <body>
 @if (User.Identity?.IsAuthenticated == true)
 {
-    <div class="sidebar">
-        <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")">
-            <img src="~/asset1.png" alt="AuraAI" />
-        </a>
-        <nav class="flex-column mt-2">
-            <div class="nav-section">Main</div>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" || ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")"
+    <div class="offcanvas offcanvas-start sidebar" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+        <div class="offcanvas-header" style="flex-direction:column;align-items:stretch;padding-bottom:8px">
+            <div class="d-flex align-items-center">
+                <a class="sidebar-brand" href="@Url.Action("Index", "Analytics")" id="sidebarMenuLabel">
+                    <img src="~/asset1.png" alt="AuraAI" />
+                </a>
+                <button type="button" class="btn-close me-1 ms-auto" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            @{
+                var _llmProvider    = ViewData["LlmProvider"]    as string ?? "";
+                var _llmDisplayName = ViewData["LlmDisplayName"] as string ?? "Simulated";
+                var _llmIconClass   = ViewData["LlmIconClass"]   as string ?? "bi-gear";
+                var _llmBadgeCss    = ViewData["LlmBadgeCss"]    as string ?? "background:#6c757d;color:#fff";
+            }
+            <div class="px-3 pb-1">
+                <a href="@Url.Action("Index", "AiSettings")"
+                   class="llm-provider-badge text-decoration-none"
+                   style="@_llmBadgeCss"
+                   title="LLM Provider: @_llmDisplayName — click to manage AI Settings">
+                    <i class="bi @_llmIconClass"></i> @_llmDisplayName
+                </a>
+            </div>
+        </div>
+        <div class="offcanvas-body">
+        <nav class="flex-column mt-1">
+            @{
+                var _ctrl   = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+                var _action = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+                bool _analyticsGroup = (_ctrl == "Analytics" && _action != "Index") || _ctrl == "InsightsChat";
+                bool _setupGroup     = _ctrl is "Parameters" or "ParameterClubs" or "RatingCriteria" or "FormDesigner";
+                bool _auditsGroup    = _ctrl is "Audit" or "AutoAudit" or "CallPipeline" or "HumanReview" or "Training";
+                bool _adminGroup     = _ctrl is "AiSettings" or "AuditLog" or "Sampling" or "KnowledgeBase" or "Projects" or "Lobs" or "Users";
+            }
+
+            <!-- ── Dashboard (always visible) ────────────────────────────────── -->
+            <a class="nav-link nav-link-top @(_ctrl is "Analytics" or "Dashboard" && _action == "Index" ? "active" : "")"
                href="@Url.Action("Index", "Analytics")">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
 
-            <div class="nav-section">Configuration</div>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Parameters" ? "active" : "")"
-               href="@Url.Action("Index", "Parameters")">
-                <i class="bi bi-sliders"></i> Parameters
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "ParameterClubs" ? "active" : "")"
-               href="@Url.Action("Index", "ParameterClubs")">
-                <i class="bi bi-collection"></i> Parameter Clubs
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "RatingCriteria" ? "active" : "")"
-               href="@Url.Action("Index", "RatingCriteria")">
-                <i class="bi bi-star-half"></i> Rating Criteria
-            </a>
+            <!-- ── Analytics group ───────────────────────────────────────────── -->
+            <button class="nav-group-toggle @(_analyticsGroup ? "group-active" : "")"
+                    data-bs-toggle="collapse" data-bs-target="#grp-analytics"
+                    aria-expanded="@(_analyticsGroup ? "true" : "false")" aria-controls="grp-analytics">
+                <i class="bi bi-bar-chart-line group-icon"></i> Analytics
+                <i class="bi bi-chevron-down toggle-chevron"></i>
+            </button>
+            <div class="collapse @(_analyticsGroup ? "show" : "")" id="grp-analytics">
+                <div class="nav-group-body">
+                    <a class="nav-link @(_ctrl == "Analytics" && _action == "Explainability" ? "active" : "")"
+                       href="@Url.Action("Explainability", "Analytics")">
+                        <i class="bi bi-shield-check"></i> Explainability
+                        <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-primary)">XAI</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "Analytics" && _action == "DecisionAssurance" ? "active" : "")"
+                       href="@Url.Action("DecisionAssurance", "Analytics")">
+                        <i class="bi bi-shield-exclamation"></i> Decision Assurance
+                        <span class="badge ms-auto" style="font-size:.6rem;background:#5a2d82;color:#fff">ADV</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "InsightsChat" ? "active" : "")"
+                       href="@Url.Action("Index", "InsightsChat")">
+                        <i class="bi bi-chat-dots"></i> Insights Chat
+                    </a>
+                </div>
+            </div>
 
-            <div class="nav-section">Forms</div>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "FormDesigner" ? "active" : "")"
-               href="@Url.Action("Index", "FormDesigner")">
-                <i class="bi bi-layout-text-window"></i> Form Designer
-            </a>
+            <!-- ── QA Setup group (Configuration + Forms) ────────────────────── -->
+            <button class="nav-group-toggle @(_setupGroup ? "group-active" : "")"
+                    data-bs-toggle="collapse" data-bs-target="#grp-setup"
+                    aria-expanded="@(_setupGroup ? "true" : "false")" aria-controls="grp-setup">
+                <i class="bi bi-gear group-icon"></i> QA Setup
+                <i class="bi bi-chevron-down toggle-chevron"></i>
+            </button>
+            <div class="collapse @(_setupGroup ? "show" : "")" id="grp-setup">
+                <div class="nav-group-body">
+                    <a class="nav-link @(_ctrl == "Parameters" ? "active" : "")"
+                       href="@Url.Action("Index", "Parameters")">
+                        <i class="bi bi-sliders"></i> Parameters
+                    </a>
+                    <a class="nav-link @(_ctrl == "ParameterClubs" ? "active" : "")"
+                       href="@Url.Action("Index", "ParameterClubs")">
+                        <i class="bi bi-collection"></i> Parameter Clubs
+                    </a>
+                    <a class="nav-link @(_ctrl == "RatingCriteria" ? "active" : "")"
+                       href="@Url.Action("Index", "RatingCriteria")">
+                        <i class="bi bi-star-half"></i> Rating Criteria
+                    </a>
+                    <a class="nav-link @(_ctrl == "FormDesigner" ? "active" : "")"
+                       href="@Url.Action("Index", "FormDesigner")">
+                        <i class="bi bi-layout-text-window"></i> Form Designer
+                    </a>
+                </div>
+            </div>
 
-            <div class="nav-section">Audits</div>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Audit" ? "active" : "")"
-               href="@Url.Action("Index", "Audit")">
-                <i class="bi bi-clipboard2-check"></i> Audit Records
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AutoAudit" ? "active" : "")"
-               href="@Url.Action("Upload", "AutoAudit")">
-                <i class="bi bi-robot"></i> Auto Audit <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">AI</span>
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" ? "active" : "")"
-               href="@Url.Action("Index", "CallPipeline")">
-                <i class="bi bi-diagram-3"></i> Call Pipeline <span class="badge bg-success ms-1" style="font-size:.6rem">Auto</span>
-            </a>
-            <a class="nav-link ps-4 @(ViewContext.RouteData.Values["controller"]?.ToString() == "CallPipeline" && ViewContext.RouteData.Values["action"]?.ToString() == "FileUpload" ? "active" : "")"
-               href="@Url.Action("FileUpload", "CallPipeline")" style="font-size:.88rem">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Upload CSV / Excel
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "HumanReview" ? "active" : "")"
-               href="@Url.Action("Index", "HumanReview")">
-                <i class="bi bi-person-check"></i> Human Review <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
-            </a>
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Training" ? "active" : "")"
-               href="@Url.Action("Index", "Training")">
-                <i class="bi bi-mortarboard"></i> Training Plans <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
-            </a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Analytics" && ViewContext.RouteData.Values["action"]?.ToString() == "Explainability" ? "active" : "")"
-               href="@Url.Action("Explainability", "Analytics")">
-                <i class="bi bi-shield-check"></i> Explainability <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-primary)">XAI</span>
-            </a>
-
-            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "InsightsChat" ? "active" : "")"
-               href="@Url.Action("Index", "InsightsChat")">
-                <i class="bi bi-chat-dots"></i> Insights Chat
-            </a>
+            <!-- ── Audits group ───────────────────────────────────────────────── -->
+            <button class="nav-group-toggle @(_auditsGroup ? "group-active" : "")"
+                    data-bs-toggle="collapse" data-bs-target="#grp-audits"
+                    aria-expanded="@(_auditsGroup ? "true" : "false")" aria-controls="grp-audits">
+                <i class="bi bi-clipboard2-check group-icon"></i> Audits
+                <i class="bi bi-chevron-down toggle-chevron"></i>
+            </button>
+            <div class="collapse @(_auditsGroup ? "show" : "")" id="grp-audits">
+                <div class="nav-group-body">
+                    <a class="nav-link @(_ctrl == "Audit" ? "active" : "")"
+                       href="@Url.Action("Index", "Audit")">
+                        <i class="bi bi-clipboard2-check"></i> Audit Records
+                    </a>
+                    <a class="nav-link @(_ctrl == "AutoAudit" ? "active" : "")"
+                       href="@Url.Action("Upload", "AutoAudit")">
+                        <i class="bi bi-robot"></i> Auto Audit
+                        <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-red)">AI</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "CallPipeline" ? "active" : "")"
+                       href="@Url.Action("Index", "CallPipeline")">
+                        <i class="bi bi-diagram-3"></i> Call Pipeline
+                        <span class="badge ms-auto bg-success" style="font-size:.6rem">Auto</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "HumanReview" && _action == "Index" ? "active" : "")"
+                       href="@Url.Action("Index", "HumanReview")">
+                        <i class="bi bi-person-check"></i> Human Review
+                        <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
+                    </a>
+                    <a class="nav-link @(_ctrl == "HumanReview" && _action == "Comparison" ? "active" : "")"
+                       href="@Url.Action("Comparison", "HumanReview")">
+                        <i class="bi bi-bar-chart-steps"></i> AI vs Human
+                    </a>
+                    <a class="nav-link @(_ctrl == "Training" ? "active" : "")"
+                       href="@Url.Action("Index", "Training")">
+                        <i class="bi bi-mortarboard"></i> Training Plans
+                        <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
+                    </a>
+                </div>
+            </div>
 
             @if (User.IsInRole("Admin"))
             {
-                <div class="nav-section">Admin</div>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AiSettings" ? "active" : "")"
-                   href="@Url.Action("Index", "AiSettings")">
-                    <i class="bi bi-gear-wide-connected"></i> AI Settings
-                    <span class="badge bg-secondary ms-1" style="font-size:.6rem">RAG</span>
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "AuditLog" ? "active" : "")"
-                   href="@Url.Action("Index", "AuditLog")">
-                    <i class="bi bi-journal-text"></i> Audit Logs <span class="badge ms-1" style="font-size:.6rem;background:var(--brand-red)">LOG</span>
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Sampling" ? "active" : "")"
-                   href="@Url.Action("Index", "Sampling")">
-                    <i class="bi bi-funnel"></i> Sampling Policies
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "KnowledgeBase" ? "active" : "")"
-                   href="@Url.Action("Index", "KnowledgeBase")">
-                    <i class="bi bi-database"></i> Knowledge Base
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Projects" ? "active" : "")"
-                   href="@Url.Action("Index", "Projects")">
-                    <i class="bi bi-building"></i> Projects
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lobs" ? "active" : "")"
-                   href="@Url.Action("Index", "Lobs")">
-                    <i class="bi bi-layers"></i> Lines of Business
-                </a>
-                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Users" ? "active" : "")"
-                   href="@Url.Action("Index", "Users")">
-                    <i class="bi bi-people"></i> Users
-                </a>
+                <!-- ── Admin group ────────────────────────────────────────────── -->
+                <button class="nav-group-toggle @(_adminGroup ? "group-active" : "")"
+                        data-bs-toggle="collapse" data-bs-target="#grp-admin"
+                        aria-expanded="@(_adminGroup ? "true" : "false")" aria-controls="grp-admin">
+                    <i class="bi bi-shield-lock group-icon"></i> Admin
+                    <i class="bi bi-chevron-down toggle-chevron"></i>
+                </button>
+                <div class="collapse @(_adminGroup ? "show" : "")" id="grp-admin">
+                    <div class="nav-group-body">
+                        <a class="nav-link @(_ctrl == "AiSettings" ? "active" : "")"
+                           href="@Url.Action("Index", "AiSettings")">
+                            <i class="bi bi-gear-wide-connected"></i> AI Settings
+                            <span class="badge ms-auto bg-secondary" style="font-size:.6rem">RAG</span>
+                        </a>
+                        <a class="nav-link @(_ctrl == "AuditLog" ? "active" : "")"
+                           href="@Url.Action("Index", "AuditLog")">
+                            <i class="bi bi-journal-text"></i> Audit Logs
+                        </a>
+                        <a class="nav-link @(_ctrl == "Sampling" ? "active" : "")"
+                           href="@Url.Action("Index", "Sampling")">
+                            <i class="bi bi-funnel"></i> Sampling Policies
+                        </a>
+                        <a class="nav-link @(_ctrl == "KnowledgeBase" ? "active" : "")"
+                           href="@Url.Action("Index", "KnowledgeBase")">
+                            <i class="bi bi-database"></i> Knowledge Base
+                        </a>
+                        <a class="nav-link @(_ctrl == "Projects" ? "active" : "")"
+                           href="@Url.Action("Index", "Projects")">
+                            <i class="bi bi-building"></i> Projects
+                        </a>
+                        <a class="nav-link @(_ctrl == "Lobs" ? "active" : "")"
+                           href="@Url.Action("Index", "Lobs")">
+                            <i class="bi bi-layers"></i> Lines of Business
+                        </a>
+                        <a class="nav-link @(_ctrl == "Users" ? "active" : "")"
+                           href="@Url.Action("Index", "Users")">
+                            <i class="bi bi-people"></i> Users
+                        </a>
+                    </div>
+                </div>
             }
         </nav>
+        </div>
     </div>
     <div class="main-content">
         <div class="topbar">
-            <span class="page-title">
-                @ViewData["Title"]
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu"
+                        aria-controls="sidebarMenu" title="Open menu">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <span class="page-title">
+                    @ViewData["Title"]
+                </span>
+            </div>
             <div class="d-flex align-items-center gap-3">
                 @{
                     var projectId = int.TryParse(User.FindFirst("project_id")?.Value, out var pid) ? pid : 0;
@@ -282,6 +404,13 @@
                         <i class="bi bi-building me-1"></i>@projectName
                     </span>
                 }
+                <a href="@Url.Action("Index", "AiSettings")"
+                   class="llm-provider-badge text-decoration-none d-none d-md-inline-flex"
+                   style="@(ViewData["LlmBadgeCss"] as string ?? "background:#6c757d;color:#fff")"
+                   title="LLM Provider: @(ViewData["LlmDisplayName"] as string ?? "Simulated") — click to manage AI Settings">
+                    <i class="bi @(ViewData["LlmIconClass"] as string ?? "bi-gear")"></i>
+                    @(ViewData["LlmDisplayName"] as string ?? "Simulated")
+                </a>
                 @if (projectCount > 1 || User.IsInRole("Admin"))
                 {
                     var projectsJson = User.FindFirst("projects_list")?.Value ?? "[]";

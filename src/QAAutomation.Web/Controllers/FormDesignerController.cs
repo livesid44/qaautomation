@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace QAAutomation.Web.Controllers;
 
 [Authorize]
-public class FormDesignerController : Controller
+public class FormDesignerController : ProjectAwareController
 {
     private readonly ApiClient _api;
 
@@ -15,16 +15,18 @@ public class FormDesignerController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var forms = await _api.GetEvaluationForms();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var forms = await _api.GetEvaluationForms(pid);
         return View(forms);
     }
 
     [HttpGet]
     public async Task<IActionResult> Designer(int? id)
     {
-        var clubs = await _api.GetParameterClubs();
-        var parameters = await _api.GetParameters();
-        var criteria = await _api.GetRatingCriteria();
+        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var clubs = await _api.GetParameterClubs(pid);
+        var parameters = await _api.GetParameters(pid);
+        var criteria = await _api.GetRatingCriteria(pid);
 
         EvaluationFormViewModel form;
         if (id.HasValue)
@@ -52,8 +54,10 @@ public class FormDesignerController : Controller
         try
         {
             var formData = JsonSerializer.Deserialize<JsonElement>(formJson);
+            var formId = formData.TryGetProperty("id", out var fi) ? fi.GetInt32() : 0;
             var name = formData.GetProperty("name").GetString() ?? "Unnamed Form";
             var description = formData.TryGetProperty("description", out var d) ? d.GetString() : null;
+            var scoringMethod = formData.TryGetProperty("scoringMethod", out var sm) ? sm.GetInt32() : 0;
             var sections = formData.TryGetProperty("sections", out var s) ? s : default;
 
             var sectionList = new List<object>();
@@ -78,8 +82,17 @@ public class FormDesignerController : Controller
                 }
             }
 
-            var dto = new { name, description, sections = sectionList };
-            await _api.SaveEvaluationForm(dto);
+            if (formId > 0)
+            {
+                // Update existing form (name, description, scoringMethod only — sections managed separately)
+                var updateDto = new { name, description, isActive = true, lobId = (int?)null, scoringMethod };
+                await _api.UpdateEvaluationForm(formId, updateDto);
+            }
+            else
+            {
+                var dto = new { name, description, scoringMethod, sections = sectionList };
+                await _api.SaveEvaluationForm(dto);
+            }
         }
         catch { }
 

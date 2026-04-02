@@ -98,6 +98,9 @@ public class HumanReviewItemDto
     public double? AiScorePercent { get; set; }
     public string? AiReasoning { get; set; }
     public int? ProjectId { get; set; }
+
+    /// <summary>Per-parameter human scores captured during review. Empty until the review is submitted.</summary>
+    public List<HumanFieldScoreDto> FieldScores { get; set; } = new();
 }
 
 /// <summary>Request body for submitting a human review verdict.</summary>
@@ -111,6 +114,31 @@ public class SubmitReviewDto
 
     [Required, MaxLength(200)]
     public string ReviewedBy { get; set; } = string.Empty;
+
+    /// <summary>Per-parameter human scores. When provided, each entry overrides the AI score for that field.</summary>
+    public List<SubmitFieldScoreDto> FieldScores { get; set; } = new();
+}
+
+/// <summary>Human score for a single form field, submitted as part of a review verdict.</summary>
+public class SubmitFieldScoreDto
+{
+    public int FieldId { get; set; }
+    public double AiScore { get; set; }
+    public double HumanScore { get; set; }
+    public string? Comment { get; set; }
+}
+
+/// <summary>Persisted per-parameter human score returned when reading a review item.</summary>
+public class HumanFieldScoreDto
+{
+    public int Id { get; set; }
+    public int FieldId { get; set; }
+    public string FieldLabel { get; set; } = string.Empty;
+    public string SectionTitle { get; set; } = string.Empty;
+    public int MaxRating { get; set; }
+    public double AiScore { get; set; }
+    public double HumanScore { get; set; }
+    public string? Comment { get; set; }
 }
 
 /// <summary>
