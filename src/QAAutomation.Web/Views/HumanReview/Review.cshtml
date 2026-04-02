@@ -197,8 +197,10 @@
                                                                         data-field-id="@field.FieldId"
                                                                         data-ai-score="@field.NumericValue"
                                                                         data-max-rating="@field.MaxRating">
-                                                                    <option value="1" @(field.NumericValue == 1 ? "selected" : "")>PASS (1)</option>
-                                                                    <option value="0" @(field.NumericValue == 0 ? "selected" : "")>FAIL (0)</option>
+                                                                    @{ var passSelected = field.NumericValue == 1; }
+                                                                    @{ var failSelected = field.NumericValue != 1; }
+                                                                    <option value="1" selected="@passSelected">PASS (1)</option>
+                                                                    <option value="0" selected="@failSelected">FAIL (0)</option>
                                                                 </select>
                                                             }
                                                             else
