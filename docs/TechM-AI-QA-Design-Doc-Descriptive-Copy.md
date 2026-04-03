@@ -81,6 +81,128 @@ Traditional call-centre QA is labour-intensive: a QA analyst must listen to each
 - HumanReview module captures both AI and human scores – diff computed automatically
 - GCP Cloud Monitoring dashboards for uptime, latency, error rate
 
+### Analytics & Explainability Platform
+
+The platform exposes four dedicated analytics surfaces accessible from the top navigation. All data is live — computed against the `Audits`, `EvaluationScores`, `HumanFieldScores`, and `CallRecords` tables on demand via the Analytics API.
+
+#### Analytics Dashboard (`/Analytics`)
+
+The main analytics page opens with a KPI strip showing total audits, overall average score %, top-performing agent, weakest parameter, and a health badge (Good / Needs Attention / Critical). It is organised into tabbed chart panels:
+
+| Chart | Type | What it shows |
+|---|---|---|
+| Daily QA Score Trend | Line | Average QA score % per calendar day; overlays audit count as a secondary axis |
+| Agent Performance | Horizontal bar | Average QA score % per agent, sorted descending; score distribution doughnut (High ≥80 / Medium 60–79 / Low <60) |
+| Parameter Trends | Horizontal bar | Average score % for the top 15 parameters by audit volume, grouped by form section |
+| Call Type Scores | Bar + doughnut | Average score % per evaluation form (e.g. Sales, Complaint, Technical Support) |
+| Agent Daily Trend | Multi-line | One line per agent over time; most-improved and most-declining agents are called out |
+| Section Overview | Radar | Average score % per form section across all audits (Opening, Compliance, Resolution, etc.) |
+
+Each chart panel also contains an **AI Insight box** powered by Gemini: a 2–3 sentence narrative (`DailyTrendInsight`, `AgentPerformanceInsight`, `ParameterInsight`, `CallTypeInsight`) generated from the live data and cached per request. A data-linked fallback summary is displayed if the LLM is not configured. A **Leadership Summary** tile aggregates all insights into a single management-ready paragraph.
+
+#### Explainability Analytics (`/Analytics/Explainability`)
+
+Sub-title on the page: *"Why decisions were made · which policies and signals drove outcomes · legal defensibility evidence"*
+
+The page opens with four KPI cards:
+
+| KPI | Source |
+|---|---|
+| Total Audits Analysed | Count of all audit records |
+| AI–Human Agreement Rate % | % of HITL reviews where analyst verdict = Agree |
+| Risk-Area Parameters | Count of parameters where avg score < 60% |
+| HITL Reviews Completed | Count of human-reviewed audits |
+
+Below the KPIs an **AI Decision Intelligence** panel explains four core concepts specific to this platform: Signal-Weighted Scoring, Human-in-the-Loop Validation, Risk-Area Detection (< 60% threshold), and Legal Defensibility Trail (immutable log + reasoning strings).
+
+The page then presents four analysis panels:
+
+**1. Decision Drivers (Parameter Impact)**  
+A grouped bar chart (top 12 parameters) overlaying three series: average score %, low-score count (audits scored < 60% of max), and high-score count (audits scored ≥ 80% of max). Parameters with `IsRiskArea = true` are highlighted in red. This immediately separates *consistently bad* parameters from *bimodal* ones (sometimes perfect, sometimes zero). AI insight: `DecisionDriversInsight`.
+
+**2. AI vs Human Agreement (HITL Doughnut)**  
+A doughnut chart aggregating reviewer verdicts (Agree / Disagree / Partial) across all sampling policies. Broken down by `PolicyName` in the supporting table so that high-disagreement sampling policies are visible independently. AI insight: `HitlAgreementInsight`.
+
+**3. Signal Utilisation (Stacked Bar)**  
+Per parameter: `FullScoreRate` (% of times maximum marks were awarded) vs `MissRate` (% of times the parameter scored zero). A parameter with a high `MissRate` is a confirmed training priority; a parameter with a low `MissRate` but also low `FullScoreRate` indicates partial credit patterns that may warrant rubric clarification. AI insight: `SignalUsageInsight`.
+
+**4. Failure Reason Analysis (Table)**  
+Lists every parameter ranked by `FailedAuditCount` — how many failed audits (overall score < 60%) this parameter contributed to. The `ContributionPercent` column shows each parameter's share of total failures, giving QA managers a prioritised coaching intervention list. AI insight: `FailureReasonsInsight`.
+
+#### Decision Assurance (`/Analytics/DecisionAssurance`) — ADVANCED
+
+Sub-title: *"Decision quality · consistency · creator impact · risk radar · calibration intelligence"*
+
+Four KPI cards surface: Avg Decision Confidence %, High-Risk Parameters, Declining Agents, and Active Risk Signals. The page is organised into four tabs:
+
+---
+
+**Tab 1 — Decision Quality**
+
+Shows the **Decision Confidence Score** per evaluation parameter.
+
+Formula (from the view):  
+`Confidence = (AvgScore% × 0.5) + (ConsistencyScore × 50)`  
+where `ConsistencyScore = 1 − (StdDev / MaxPossible)`.
+
+A parameter earns maximum confidence by scoring well *and* consistently across all evaluators. A high average with high variability (rubric confusion) is penalised. Parameters below confidence 50 are classified **High Risk** and highlighted in the detail table.
+
+---
+
+**Tab 2 — Creator Impact (Agent Risk Profiles)**
+
+Per agent:
+
+| Field | Meaning |
+|---|---|
+| `RecentAvgPercent` | Average QA score % in the last 30 days |
+| `PriorAvgPercent` | Average QA score % in the 30 days before that |
+| `Momentum` | `RecentAvg − PriorAvg` (positive = improving, negative = declining) |
+| `Trend` | Improving / Stable / Declining |
+| `RiskLevel` | High / Medium / Low (based on score level + trend direction) |
+
+Agents with a Declining trend and High risk level appear highlighted in red and are the primary candidates for proactive coaching intervention.
+
+---
+
+**Tab 3 — Calibration**
+
+Two sub-views:
+
+*Section Calibration* — per form section: `RecentAvgPercent` vs `PriorAvgPercent` side-by-side bars, plus:
+- `ConfusionScore` (0–100): derived from StdDev relative to mean. High confusion = inconsistent policy interpretation across evaluators/AI.
+- `DriftDirection`: Improving / Stable / Declining / Volatile.
+
+*Calibration Heatmap* — a grid of parameters (rows) × agents (columns). Each cell shows that agent's average score % for that parameter. The `AgentSpread` column (Max − Min across agents) surfaces parameters where different agents score identically observed behaviour very differently — the primary signal that a calibration session is needed.
+
+---
+
+**Tab 4 — Risk Radar**
+
+The Risk Radar is the platform's early-warning dashboard. It scans all evaluation parameters, agent profiles, and section calibration data, and flags items that exhibit one of four risk patterns — each scored 0–100:
+
+| Category | Icon | Scoring formula | What it means |
+|---|---|---|---|
+| **PolicyConfusion** | `bi-question-circle` (cyan) | Maps to section's `ConfusionScore` | High score variability on a parameter — the same behaviour is being scored differently across calls. Indicates unclear policy wording or insufficient knowledge-base content. |
+| **EscalationRisk** | `bi-exclamation-triangle` (red) | Inverse of a parameter's low-score frequency (high MissRate = high risk) | A parameter strongly associated with call escalations has a high miss or low-score rate — agents are not following the step that prevents escalations. |
+| **DecisionReversal** | `bi-arrow-down-circle` (amber) | Magnitude of an agent's negative `Momentum` | A high rate of human analyst overrides (Disagree/Partial verdicts) on a specific parameter — the AI's scoring is not aligned with how analysts interpret the policy in practice. |
+| **BiasIndicator** | `bi-eye` (purple) | Score distribution volatility over time | The AI score and human score diverge consistently in one direction for a specific parameter or agent — indicating systematic model bias or analyst personal bias. |
+
+Severity thresholds: **≥ 70 = Urgent** (red badge), **40–69 = Moderate** (amber badge), **< 40 = Low** (grey).
+
+Risk items are displayed as colour-coded cards (left-border colour per category) with a 0–100 progress bar, plus a full **Risk Signal Register** table exportable to CSV. The Risk Radar count appears as a live red badge on the tab header.
+
+---
+
+#### AI vs Human Score Comparison (`/HumanReview/Comparison`)
+
+A dedicated page linked from the Human Review queue. Shows `ReviewedWithScores` (number of reviews with per-parameter human scores), then two views:
+
+- **Section-Wise Comparison** — grouped bar chart (AI avg % in blue, Human avg % in orange) per form section, with a summary table showing `Difference` (Human% − AI%; positive = human rated higher, shown in green; negative = human rated lower, shown in red) and sample count.
+- **Parameter-Level Comparison** — sortable table of every evaluated parameter showing `MaxRating`, `AvgAiScore`, `AvgHumanScore`, `AvgAiScorePercent`, `AvgHumanScorePercent`, `Difference`, and `SampleCount`. Sorting by `Difference` instantly surfaces the parameters where AI and human diverge most — the primary input to the ≥ 0.85 correlation improvement cycle.
+
+---
+
 ### Qualitative Feedback
 - User satisfaction survey at 30 / 60 / 90-day pilot checkpoints
 - QA analyst interviews at end of each sprint
@@ -88,7 +210,7 @@ Traditional call-centre QA is labour-intensive: a QA analyst must listen to each
 - Weekly review meeting with TechM GVO team to surface blockers
 
 ### Alignment with Objectives
-All metrics map directly to the project objective of reducing manual QA effort by 60% while improving consistency. Throughput and time-saved metrics measure the "do more with less" goal; AI/human correlation measures quality; PII metrics address data-safety obligations.
+All metrics map directly to the project objective of reducing manual QA effort by 60% while improving consistency. Throughput and time-saved metrics measure the "do more with less" goal; AI/human correlation measures quality; PII metrics address data-safety obligations. The Explainability and Decision Assurance pages provide the evidence trail required to demonstrate that the AI is accountable, auditable, and regulatorily defensible.
 
 ---
 
