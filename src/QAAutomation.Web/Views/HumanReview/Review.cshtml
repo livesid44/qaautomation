@@ -111,6 +111,20 @@
 
                 <!-- TAB 1: QUALITY SCORES -->
                 <div class="tab-pane fade show active" id="quality">
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                            <div>
+                                <strong>Review submission failed.</strong>
+                                Your scores are still shown below — please correct any issues and resubmit.
+                                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrEmpty(m)))
+                                {
+                                    <span class="d-block small mt-1">@err</span>
+                                }
+                            </div>
+                        </div>
+                    }
                     @if (audit != null && !string.IsNullOrEmpty(audit.OverallReasoning))
                     {
                         <div class="card border-0 shadow-sm mb-4">
@@ -670,5 +684,21 @@
         });
     }
 })();
+
+// Pre-populate human score inputs with the previously submitted values when the form
+// re-renders after a failed save, so the reviewer does not lose their entered scores.
+(function () {
+    var rawJson = @Html.Raw(Json.Serialize(Model.FieldScoresJson));
+    if (!rawJson || rawJson === '[]') return;
+    try {
+        var saved = JSON.parse(rawJson);
+        saved.forEach(function (s) {
+            var num = document.querySelector('.human-score-num[data-field-id="' + s.fieldId + '"]');
+            if (num) num.value = s.humanScore;
+            var sel = document.querySelector('.human-score-select[data-field-id="' + s.fieldId + '"]');
+            if (sel) sel.value = String(s.humanScore);
+        });
+    } catch (e) { /* ignore parse errors */ }
+}());
 </script>
 }
