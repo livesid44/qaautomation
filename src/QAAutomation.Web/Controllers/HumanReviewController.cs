@@ -124,7 +124,7 @@ public class HumanReviewController : ProjectAwareController
         }
 
         TempData["Success"] = "Review submitted successfully.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Review), new { id = model.ReviewItemId });
     }
 
     // ── Comparison — AI vs Human dashboard ───────────────────────────────────
