@@ -25,7 +25,7 @@ BEGIN
         CONSTRAINT [FK_HumanFieldScores_FormFields]
             FOREIGN KEY ([FieldId])
             REFERENCES [dbo].[FormFields] ([Id])
-            ON DELETE CASCADE
+            ON DELETE NO ACTION
     );
 
     CREATE NONCLUSTERED INDEX [IX_HumanFieldScores_HumanReviewItemId]

@@ -837,10 +837,21 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "StartReview failed"); return false; }
     }
 
-    public async Task<bool> SubmitReview(int id, object dto)
+    public async Task<(bool Success, string? ErrorDetail)> SubmitReview(int id, object dto)
     {
-        try { var r = await _http.PutAsJsonAsync($"api/humanreview/{id}/review", dto); return r.IsSuccessStatusCode; }
-        catch (Exception ex) { _logger.LogError(ex, "SubmitReview failed"); return false; }
+        try
+        {
+            var r = await _http.PutAsJsonAsync($"api/humanreview/{id}/review", dto);
+            if (r.IsSuccessStatusCode) return (true, null);
+            var body = await r.Content.ReadAsStringAsync();
+            _logger.LogWarning("SubmitReview returned {Status}: {Body}", (int)r.StatusCode, body);
+            return (false, $"API returned {(int)r.StatusCode}: {body}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SubmitReview failed");
+            return (false, ex.Message);
+        }
     }
 
     public async Task<bool> AddManualReview(object dto)

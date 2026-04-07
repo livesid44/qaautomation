@@ -112,10 +112,14 @@ public class HumanReviewController : ProjectAwareController
             fieldScores
         };
 
-        var ok = await _api.SubmitReview(model.ReviewItemId, dto);
+        var (ok, errorDetail) = await _api.SubmitReview(model.ReviewItemId, dto);
         if (!ok)
         {
-            ModelState.AddModelError("", "Failed to submit review. Please try again.");
+            var msg = "Failed to submit review. Please try again.";
+            if (!string.IsNullOrWhiteSpace(errorDetail))
+                msg += $" ({errorDetail})";
+            ModelState.AddModelError("", msg);
+            _logger.LogWarning("Review submission failed for item {Id}: {Detail}", model.ReviewItemId, errorDetail);
             var item = await _api.GetReviewItem(model.ReviewItemId);
             var audit = item != null ? await _api.GetAudit(item.EvaluationResultId) : null;
             ViewBag.Item = item;

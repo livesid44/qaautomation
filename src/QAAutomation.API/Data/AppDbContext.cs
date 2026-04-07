@@ -264,10 +264,12 @@ public class AppDbContext : DbContext
                   .WithMany(r => r.FieldScores)
                   .HasForeignKey(e => e.HumanReviewItemId)
                   .OnDelete(DeleteBehavior.Cascade);
+            // Use Restrict (not Cascade) to avoid SQL Server "multiple cascade paths"
+            // error — mirrors the EvaluationScore → FormField configuration.
             entity.HasOne(e => e.Field)
                   .WithMany()
                   .HasForeignKey(e => e.FieldId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                  .OnDelete(DeleteBehavior.Restrict);
             entity.Property(e => e.Comment).HasMaxLength(1000);
         });
 
