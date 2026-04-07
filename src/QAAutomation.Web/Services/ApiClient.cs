@@ -28,8 +28,7 @@ public class ApiClient
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Head, "api/parameters");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            using var resp = await _http.GetAsync("api/ping");
             sw.Stop();
             return new ApiPingResult
             {
