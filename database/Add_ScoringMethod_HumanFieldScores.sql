@@ -86,7 +86,7 @@ BEGIN
         CONSTRAINT FK_HFS_HumanReviewItem FOREIGN KEY (HumanReviewItemId)
             REFERENCES dbo.HumanReviewItems (Id) ON DELETE CASCADE,
         CONSTRAINT FK_HFS_FormField       FOREIGN KEY (FieldId)
-            REFERENCES dbo.FormFields (Id) ON DELETE CASCADE
+            REFERENCES dbo.FormFields (Id) ON DELETE NO ACTION
     );
 
     CREATE NONCLUSTERED INDEX IX_HumanFieldScores_HumanReviewItemId
