@@ -1,6 +1,6 @@
 @model QAAutomation.Web.Models.AnalyticsViewModel
 @{
-    ViewData["Title"] = "Analytics Dashboard";
+    ViewData["Title"] = L["PageTitleAnalytics"].Value;
     var insights = ViewBag.Insights as QAAutomation.Web.Models.AnalyticsInsightsViewModel
                    ?? new QAAutomation.Web.Models.AnalyticsInsightsViewModel();
     var tni = ViewBag.TniSummary as QAAutomation.Web.Models.TniSummaryViewModel

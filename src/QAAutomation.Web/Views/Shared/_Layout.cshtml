@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -236,31 +236,31 @@
             <!-- ── Dashboard (always visible) ────────────────────────────────── -->
             <a class="nav-link nav-link-top @(_ctrl is "Analytics" or "Dashboard" && _action == "Index" ? "active" : "")"
                href="@Url.Action("Index", "Analytics")">
-                <i class="bi bi-speedometer2"></i> Dashboard
+                <i class="bi bi-speedometer2"></i> @L["NavDashboard"]
             </a>
 
             <!-- ── Analytics group ───────────────────────────────────────────── -->
             <button class="nav-group-toggle @(_analyticsGroup ? "group-active" : "")"
                     data-bs-toggle="collapse" data-bs-target="#grp-analytics"
                     aria-expanded="@(_analyticsGroup ? "true" : "false")" aria-controls="grp-analytics">
-                <i class="bi bi-bar-chart-line group-icon"></i> Analytics
+                <i class="bi bi-bar-chart-line group-icon"></i> @L["NavAnalytics"]
                 <i class="bi bi-chevron-down toggle-chevron"></i>
             </button>
             <div class="collapse @(_analyticsGroup ? "show" : "")" id="grp-analytics">
                 <div class="nav-group-body">
                     <a class="nav-link @(_ctrl == "Analytics" && _action == "Explainability" ? "active" : "")"
                        href="@Url.Action("Explainability", "Analytics")">
-                        <i class="bi bi-shield-check"></i> Explainability
+                        <i class="bi bi-shield-check"></i> @L["NavExplainability"]
                         <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-primary)">XAI</span>
                     </a>
                     <a class="nav-link @(_ctrl == "Analytics" && _action == "DecisionAssurance" ? "active" : "")"
                        href="@Url.Action("DecisionAssurance", "Analytics")">
-                        <i class="bi bi-shield-exclamation"></i> Decision Assurance
+                        <i class="bi bi-shield-exclamation"></i> @L["NavDecisionAssurance"]
                         <span class="badge ms-auto" style="font-size:.6rem;background:#5a2d82;color:#fff">ADV</span>
                     </a>
                     <a class="nav-link @(_ctrl == "InsightsChat" ? "active" : "")"
                        href="@Url.Action("Index", "InsightsChat")">
-                        <i class="bi bi-chat-dots"></i> Insights Chat
+                        <i class="bi bi-chat-dots"></i> @L["NavInsightsChat"]
                     </a>
                 </div>
             </div>
@@ -269,26 +269,26 @@
             <button class="nav-group-toggle @(_setupGroup ? "group-active" : "")"
                     data-bs-toggle="collapse" data-bs-target="#grp-setup"
                     aria-expanded="@(_setupGroup ? "true" : "false")" aria-controls="grp-setup">
-                <i class="bi bi-gear group-icon"></i> QA Setup
+                <i class="bi bi-gear group-icon"></i> @L["NavQASetup"]
                 <i class="bi bi-chevron-down toggle-chevron"></i>
             </button>
             <div class="collapse @(_setupGroup ? "show" : "")" id="grp-setup">
                 <div class="nav-group-body">
                     <a class="nav-link @(_ctrl == "Parameters" ? "active" : "")"
                        href="@Url.Action("Index", "Parameters")">
-                        <i class="bi bi-sliders"></i> Parameters
+                        <i class="bi bi-sliders"></i> @L["NavParameters"]
                     </a>
                     <a class="nav-link @(_ctrl == "ParameterClubs" ? "active" : "")"
                        href="@Url.Action("Index", "ParameterClubs")">
-                        <i class="bi bi-collection"></i> Parameter Clubs
+                        <i class="bi bi-collection"></i> @L["NavParameterClubs"]
                     </a>
                     <a class="nav-link @(_ctrl == "RatingCriteria" ? "active" : "")"
                        href="@Url.Action("Index", "RatingCriteria")">
-                        <i class="bi bi-star-half"></i> Rating Criteria
+                        <i class="bi bi-star-half"></i> @L["NavRatingCriteria"]
                     </a>
                     <a class="nav-link @(_ctrl == "FormDesigner" ? "active" : "")"
                        href="@Url.Action("Index", "FormDesigner")">
-                        <i class="bi bi-layout-text-window"></i> Form Designer
+                        <i class="bi bi-layout-text-window"></i> @L["NavFormDesigner"]
                     </a>
                 </div>
             </div>
@@ -297,37 +297,37 @@
             <button class="nav-group-toggle @(_auditsGroup ? "group-active" : "")"
                     data-bs-toggle="collapse" data-bs-target="#grp-audits"
                     aria-expanded="@(_auditsGroup ? "true" : "false")" aria-controls="grp-audits">
-                <i class="bi bi-clipboard2-check group-icon"></i> Audits
+                <i class="bi bi-clipboard2-check group-icon"></i> @L["NavAudits"]
                 <i class="bi bi-chevron-down toggle-chevron"></i>
             </button>
             <div class="collapse @(_auditsGroup ? "show" : "")" id="grp-audits">
                 <div class="nav-group-body">
                     <a class="nav-link @(_ctrl == "Audit" ? "active" : "")"
                        href="@Url.Action("Index", "Audit")">
-                        <i class="bi bi-clipboard2-check"></i> Audit Records
+                        <i class="bi bi-clipboard2-check"></i> @L["NavAuditRecords"]
                     </a>
                     <a class="nav-link @(_ctrl == "AutoAudit" ? "active" : "")"
                        href="@Url.Action("Upload", "AutoAudit")">
-                        <i class="bi bi-robot"></i> Auto Audit
+                        <i class="bi bi-robot"></i> @L["NavAutoAudit"]
                         <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-red)">AI</span>
                     </a>
                     <a class="nav-link @(_ctrl == "CallPipeline" ? "active" : "")"
                        href="@Url.Action("Index", "CallPipeline")">
-                        <i class="bi bi-diagram-3"></i> Call Pipeline
+                        <i class="bi bi-diagram-3"></i> @L["NavCallPipeline"]
                         <span class="badge ms-auto bg-success" style="font-size:.6rem">Auto</span>
                     </a>
                     <a class="nav-link @(_ctrl == "HumanReview" && _action == "Index" ? "active" : "")"
                        href="@Url.Action("Index", "HumanReview")">
-                        <i class="bi bi-person-check"></i> Human Review
+                        <i class="bi bi-person-check"></i> @L["NavHumanReview"]
                         <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-amber)">HITL</span>
                     </a>
                     <a class="nav-link @(_ctrl == "HumanReview" && _action == "Comparison" ? "active" : "")"
                        href="@Url.Action("Comparison", "HumanReview")">
-                        <i class="bi bi-bar-chart-steps"></i> AI vs Human
+                        <i class="bi bi-bar-chart-steps"></i> @L["NavAIvsHuman"]
                     </a>
                     <a class="nav-link @(_ctrl == "Training" ? "active" : "")"
                        href="@Url.Action("Index", "Training")">
-                        <i class="bi bi-mortarboard"></i> Training Plans
+                        <i class="bi bi-mortarboard"></i> @L["NavTrainingPlans"]
                         <span class="badge ms-auto" style="font-size:.6rem;background:var(--brand-amber)">TNI</span>
                     </a>
                 </div>
@@ -339,39 +339,39 @@
                 <button class="nav-group-toggle @(_adminGroup ? "group-active" : "")"
                         data-bs-toggle="collapse" data-bs-target="#grp-admin"
                         aria-expanded="@(_adminGroup ? "true" : "false")" aria-controls="grp-admin">
-                    <i class="bi bi-shield-lock group-icon"></i> Admin
+                    <i class="bi bi-shield-lock group-icon"></i> @L["NavAdmin"]
                     <i class="bi bi-chevron-down toggle-chevron"></i>
                 </button>
                 <div class="collapse @(_adminGroup ? "show" : "")" id="grp-admin">
                     <div class="nav-group-body">
                         <a class="nav-link @(_ctrl == "AiSettings" ? "active" : "")"
                            href="@Url.Action("Index", "AiSettings")">
-                            <i class="bi bi-gear-wide-connected"></i> AI Settings
+                            <i class="bi bi-gear-wide-connected"></i> @L["NavAISettings"]
                             <span class="badge ms-auto bg-secondary" style="font-size:.6rem">RAG</span>
                         </a>
                         <a class="nav-link @(_ctrl == "AuditLog" ? "active" : "")"
                            href="@Url.Action("Index", "AuditLog")">
-                            <i class="bi bi-journal-text"></i> Audit Logs
+                            <i class="bi bi-journal-text"></i> @L["NavAuditLogs"]
                         </a>
                         <a class="nav-link @(_ctrl == "Sampling" ? "active" : "")"
                            href="@Url.Action("Index", "Sampling")">
-                            <i class="bi bi-funnel"></i> Sampling Policies
+                            <i class="bi bi-funnel"></i> @L["NavSamplingPolicies"]
                         </a>
                         <a class="nav-link @(_ctrl == "KnowledgeBase" ? "active" : "")"
                            href="@Url.Action("Index", "KnowledgeBase")">
-                            <i class="bi bi-database"></i> Knowledge Base
+                            <i class="bi bi-database"></i> @L["NavKnowledgeBase"]
                         </a>
                         <a class="nav-link @(_ctrl == "Projects" ? "active" : "")"
                            href="@Url.Action("Index", "Projects")">
-                            <i class="bi bi-building"></i> Projects
+                            <i class="bi bi-building"></i> @L["NavProjects"]
                         </a>
                         <a class="nav-link @(_ctrl == "Lobs" ? "active" : "")"
                            href="@Url.Action("Index", "Lobs")">
-                            <i class="bi bi-layers"></i> Lines of Business
+                            <i class="bi bi-layers"></i> @L["NavLinesOfBusiness"]
                         </a>
                         <a class="nav-link @(_ctrl == "Users" ? "active" : "")"
                            href="@Url.Action("Index", "Users")">
-                            <i class="bi bi-people"></i> Users
+                            <i class="bi bi-people"></i> @L["NavUsers"]
                         </a>
                     </div>
                 </div>
@@ -397,10 +397,41 @@
                     var projectName = User.FindFirst("project_name")?.Value ?? "";
                     var projectCount = int.TryParse(User.FindFirst("project_count")?.Value, out var pc) ? pc : 1;
                 }
+                <!-- Language Switcher -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"
+                            title="@L["LangSwitcherLabel"]" aria-label="@L["LangSwitcherLabel"]">
+                        <i class="bi bi-translate"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">@L["LangSwitcherLabel"]</h6></li>
+                        @foreach (var lang in new (string code, string nameKey, string flag)[] {
+                            ("en", "LangEnglish",  "🇬🇧"),
+                            ("de", "LangGerman",   "🇩🇪"),
+                            ("es", "LangSpanish",  "🇪🇸"),
+                            ("fr", "LangFrench",   "🇫🇷"),
+                            ("hi", "LangHindi",    "🇮🇳"),
+                            ("ja", "LangJapanese", "🇯🇵")
+                        })
+                        {
+                            var isCurrent = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == lang.code;
+                            <li>
+                                <form method="post" action="@Url.Action("SetLanguage", "Account")" class="m-0">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="culture" value="@lang.code" />
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <button type="submit" class="dropdown-item @(isCurrent ? "active fw-semibold" : "")">
+                                        @lang.flag @L[lang.nameKey]
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </div>
                 @if (projectId > 0)
                 {
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-2 px-3"
-                          title="Current project">
+                          title="@L["NavCurrentProject"]">
                         <i class="bi bi-building me-1"></i>@projectName
                     </span>
                 }
@@ -437,10 +468,10 @@
                             <i class="bi bi-arrow-left-right"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px">
-                            <li><h6 class="dropdown-header">Switch Project</h6></li>
+                            <li><h6 class="dropdown-header">@L["NavSwitchProject"]</h6></li>
                             @if (!allProjects.Any())
                             {
-                                <li><span class="dropdown-item-text text-muted small">No projects available</span></li>
+                                <li><span class="dropdown-item-text text-muted small">@L["NavNoProjects"]</span></li>
                             }
                             @foreach (var (pId, pName) in allProjects)
                             {
@@ -466,7 +497,7 @@
                 <form method="post" action="@Url.Action("Logout", "Account")" class="m-0">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-box-arrow-right"></i> Logout
+                        <i class="bi bi-box-arrow-right"></i> @L["NavLogout"]
                     </button>
                 </form>
             </div>
@@ -475,7 +506,7 @@
             @RenderBody()
         </div>
         <footer class="app-footer">
-            &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> All rights reserved.
+            &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> @L["FooterAllRightsReserved"]
             &nbsp;·&nbsp; AuraAI Intelligent Automation
         </footer>
     </div>

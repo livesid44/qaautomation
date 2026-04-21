@@ -1,6 +1,6 @@
 @model HitlComparisonViewModel
 @{
-    ViewData["Title"] = "AI vs Human Comparison";
+    ViewData["Title"] = L["HRComparisonTitle"].Value;
     bool hasData = Model.SectionComparison.Any() || Model.ParameterComparison.Any();
 }
 

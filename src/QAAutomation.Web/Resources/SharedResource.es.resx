@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LangSwitcherLabel" xml:space="preserve"><value>Idioma</value></data>
+  <data name="LangEnglish" xml:space="preserve"><value>Inglés</value></data>
+  <data name="LangGerman" xml:space="preserve"><value>Alemán</value></data>
+  <data name="LangSpanish" xml:space="preserve"><value>Español</value></data>
+  <data name="LangFrench" xml:space="preserve"><value>Francés</value></data>
+  <data name="LangHindi" xml:space="preserve"><value>Hindi</value></data>
+  <data name="LangJapanese" xml:space="preserve"><value>Japonés</value></data>
+  <data name="NavDashboard" xml:space="preserve"><value>Panel</value></data>
+  <data name="NavAnalytics" xml:space="preserve"><value>Analítica</value></data>
+  <data name="NavExplainability" xml:space="preserve"><value>Explicabilidad</value></data>
+  <data name="NavDecisionAssurance" xml:space="preserve"><value>Garantía de Decisión</value></data>
+  <data name="NavInsightsChat" xml:space="preserve"><value>Chat de Perspectivas</value></data>
+  <data name="NavQASetup" xml:space="preserve"><value>Configuración QA</value></data>
+  <data name="NavParameters" xml:space="preserve"><value>Parámetros</value></data>
+  <data name="NavParameterClubs" xml:space="preserve"><value>Clubes de Parámetros</value></data>
+  <data name="NavRatingCriteria" xml:space="preserve"><value>Criterios de Calificación</value></data>
+  <data name="NavFormDesigner" xml:space="preserve"><value>Diseñador de Formularios</value></data>
+  <data name="NavAudits" xml:space="preserve"><value>Auditorías</value></data>
+  <data name="NavAuditRecords" xml:space="preserve"><value>Registros de Auditoría</value></data>
+  <data name="NavAutoAudit" xml:space="preserve"><value>Auditoría Automática</value></data>
+  <data name="NavCallPipeline" xml:space="preserve"><value>Pipeline de Llamadas</value></data>
+  <data name="NavHumanReview" xml:space="preserve"><value>Revisión Humana</value></data>
+  <data name="NavAIvsHuman" xml:space="preserve"><value>IA vs Humano</value></data>
+  <data name="NavTrainingPlans" xml:space="preserve"><value>Planes de Formación</value></data>
+  <data name="NavAdmin" xml:space="preserve"><value>Administración</value></data>
+  <data name="NavAISettings" xml:space="preserve"><value>Configuración IA</value></data>
+  <data name="NavAuditLogs" xml:space="preserve"><value>Registros de Auditoría</value></data>
+  <data name="NavSamplingPolicies" xml:space="preserve"><value>Políticas de Muestreo</value></data>
+  <data name="NavKnowledgeBase" xml:space="preserve"><value>Base de Conocimientos</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>Proyectos</value></data>
+  <data name="NavLinesOfBusiness" xml:space="preserve"><value>Líneas de Negocio</value></data>
+  <data name="NavUsers" xml:space="preserve"><value>Usuarios</value></data>
+  <data name="NavSwitchProject" xml:space="preserve"><value>Cambiar Proyecto</value></data>
+  <data name="NavNoProjects" xml:space="preserve"><value>No hay proyectos disponibles</value></data>
+  <data name="NavLogout" xml:space="preserve"><value>Cerrar sesión</value></data>
+  <data name="NavCurrentProject" xml:space="preserve"><value>Proyecto actual</value></data>
+  <data name="FooterAllRightsReserved" xml:space="preserve"><value>Todos los derechos reservados.</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>Guardar</value></data>
+  <data name="BtnCancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="BtnDelete" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="BtnEdit" xml:space="preserve"><value>Editar</value></data>
+  <data name="BtnCreate" xml:space="preserve"><value>Crear</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>Volver</value></data>
+  <data name="BtnUpdate" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="BtnSubmit" xml:space="preserve"><value>Enviar</value></data>
+  <data name="BtnConfirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="BtnClose" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="BtnAdd" xml:space="preserve"><value>Agregar</value></data>
+  <data name="BtnRemove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="BtnClear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="BtnSearch" xml:space="preserve"><value>Buscar</value></data>
+  <data name="BtnFilter" xml:space="preserve"><value>Filtrar</value></data>
+  <data name="BtnExport" xml:space="preserve"><value>Exportar</value></data>
+  <data name="BtnDownload" xml:space="preserve"><value>Descargar</value></data>
+  <data name="BtnUpload" xml:space="preserve"><value>Subir</value></data>
+  <data name="BtnNew" xml:space="preserve"><value>Nuevo</value></data>
+  <data name="BtnRefresh" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="BtnView" xml:space="preserve"><value>Ver</value></data>
+  <data name="BtnManage" xml:space="preserve"><value>Gestionar</value></data>
+  <data name="BtnAnalyse" xml:space="preserve"><value>Analizar</value></data>
+  <data name="LblName" xml:space="preserve"><value>Nombre</value></data>
+  <data name="LblDescription" xml:space="preserve"><value>Descripción</value></data>
+  <data name="LblStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="LblDate" xml:space="preserve"><value>Fecha</value></data>
+  <data name="LblActions" xml:space="preserve"><value>Acciones</value></data>
+  <data name="LblDetails" xml:space="preserve"><value>Detalles</value></data>
+  <data name="LblRole" xml:space="preserve"><value>Rol</value></data>
+  <data name="LblUsername" xml:space="preserve"><value>Nombre de usuario</value></data>
+  <data name="LblPassword" xml:space="preserve"><value>Contraseña</value></data>
+  <data name="LblEmail" xml:space="preserve"><value>Correo electrónico</value></data>
+  <data name="LblCreatedAt" xml:space="preserve"><value>Creado</value></data>
+  <data name="LblActive" xml:space="preserve"><value>Activo</value></data>
+  <data name="LblInactive" xml:space="preserve"><value>Inactivo</value></data>
+  <data name="LblEnabled" xml:space="preserve"><value>Habilitado</value></data>
+  <data name="LblDisabled" xml:space="preserve"><value>Deshabilitado</value></data>
+  <data name="LblYes" xml:space="preserve"><value>Sí</value></data>
+  <data name="LblNo" xml:space="preserve"><value>No</value></data>
+  <data name="LblLoading" xml:space="preserve"><value>Cargando...</value></data>
+  <data name="LblNoRecords" xml:space="preserve"><value>No se encontraron registros.</value></data>
+  <data name="LblError" xml:space="preserve"><value>Error</value></data>
+  <data name="LblSuccess" xml:space="preserve"><value>Éxito</value></data>
+  <data name="LblAll" xml:space="preserve"><value>Todos</value></data>
+  <data name="LblNone" xml:space="preserve"><value>Ninguno</value></data>
+  <data name="LblType" xml:space="preserve"><value>Tipo</value></data>
+  <data name="LblScore" xml:space="preserve"><value>Puntuación</value></data>
+  <data name="LblAgent" xml:space="preserve"><value>Agente</value></data>
+  <data name="LblForm" xml:space="preserve"><value>Formulario</value></data>
+  <data name="LblSection" xml:space="preserve"><value>Sección</value></data>
+  <data name="LblField" xml:space="preserve"><value>Campo</value></data>
+  <data name="LblProject" xml:space="preserve"><value>Proyecto</value></data>
+  <data name="LblCallDate" xml:space="preserve"><value>Fecha de Llamada</value></data>
+  <data name="LblCallReference" xml:space="preserve"><value>Referencia de Llamada</value></data>
+  <data name="LblEvaluatedBy" xml:space="preserve"><value>Evaluado Por</value></data>
+  <data name="LblEvaluatedAt" xml:space="preserve"><value>Evaluado En</value></data>
+  <data name="LblAvgScore" xml:space="preserve"><value>Puntuación Promedio</value></data>
+  <data name="LblPassRate" xml:space="preserve"><value>Tasa de Aprobación</value></data>
+  <data name="LblTotalAudits" xml:space="preserve"><value>Total de Auditorías</value></data>
+  <data name="LblActiveForms" xml:space="preserve"><value>Formularios Activos</value></data>
+  <data name="LblFilterByForm" xml:space="preserve"><value>Filtrar por Formulario:</value></data>
+  <data name="LblAllForms" xml:space="preserve"><value>— Todos los Formularios —</value></data>
+  <data name="LblRecordNewAudit" xml:space="preserve"><value>Registrar Nuevo Audit</value></data>
+  <data name="LblQualityEvaluations" xml:space="preserve"><value>Evaluaciones de calidad de interacciones de atención al cliente.</value></data>
+  <data name="PageTitleDashboard" xml:space="preserve"><value>Panel</value></data>
+  <data name="PageTitleAuditRecords" xml:space="preserve"><value>Registros de Auditoría</value></data>
+  <data name="PageTitleNewAudit" xml:space="preserve"><value>Registrar Nuevo Audit</value></data>
+  <data name="PageTitleAutoAudit" xml:space="preserve"><value>Auditoría Automática</value></data>
+  <data name="PageTitleParameters" xml:space="preserve"><value>Parámetros</value></data>
+  <data name="PageTitleUsers" xml:space="preserve"><value>Usuarios</value></data>
+  <data name="PageTitleProjects" xml:space="preserve"><value>Proyectos</value></data>
+  <data name="PageTitleAnalytics" xml:space="preserve"><value>Panel Analítico</value></data>
+  <data name="PageTitleHumanReview" xml:space="preserve"><value>Revisión Humana</value></data>
+  <data name="PageTitleTrainingPlans" xml:space="preserve"><value>Planes de Formación</value></data>
+  <data name="PageTitleKnowledgeBase" xml:space="preserve"><value>Base de Conocimientos</value></data>
+  <data name="PageTitleAISettings" xml:space="preserve"><value>Configuración IA</value></data>
+  <data name="PageTitleAuditLog" xml:space="preserve"><value>Registro de Auditoría</value></data>
+  <data name="PageTitleCallPipeline" xml:space="preserve"><value>Pipeline de Llamadas</value></data>
+  <data name="PageTitleFormDesigner" xml:space="preserve"><value>Diseñador de Formularios</value></data>
+  <data name="PageTitleInsightsChat" xml:space="preserve"><value>Chat de Perspectivas</value></data>
+  <data name="PageTitleLobs" xml:space="preserve"><value>Líneas de Negocio</value></data>
+  <data name="PageTitleParameterClubs" xml:space="preserve"><value>Clubes de Parámetros</value></data>
+  <data name="PageTitleRatingCriteria" xml:space="preserve"><value>Criterios de Calificación</value></data>
+  <data name="PageTitleSampling" xml:space="preserve"><value>Políticas de Muestreo</value></data>
+  <data name="DashWelcomeBack" xml:space="preserve"><value>Bienvenido de nuevo,</value></data>
+  <data name="DashOverview" xml:space="preserve"><value>Aquí hay un resumen de su sistema de automatización QA.</value></data>
+  <data name="DashQuickNavigation" xml:space="preserve"><value>Navegación Rápida</value></data>
+  <data name="DashParameterCount" xml:space="preserve"><value>Parámetros</value></data>
+  <data name="DashParameterClubs" xml:space="preserve"><value>Clubes de Parámetros</value></data>
+  <data name="DashRatingCriteria" xml:space="preserve"><value>Criterios de Calificación</value></data>
+  <data name="DashEvaluationForms" xml:space="preserve"><value>Formularios de Evaluación</value></data>
+  <data name="DashAuditRecords" xml:space="preserve"><value>Registros de Auditoría</value></data>
+  <data name="DashManageParameters" xml:space="preserve"><value>Gestionar Parámetros</value></data>
+  <data name="LoginTitle" xml:space="preserve"><value>Iniciar Sesión — AuraAI</value></data>
+  <data name="LoginTagline" xml:space="preserve"><value>Plataforma de Automatización Inteligente</value></data>
+  <data name="LoginUsername" xml:space="preserve"><value>Nombre de usuario</value></data>
+  <data name="LoginPassword" xml:space="preserve"><value>Contraseña</value></data>
+  <data name="LoginEnterUsername" xml:space="preserve"><value>Ingrese nombre de usuario</value></data>
+  <data name="LoginEnterPassword" xml:space="preserve"><value>Ingrese contraseña</value></data>
+  <data name="LoginSignIn" xml:space="preserve"><value>Iniciar Sesión</value></data>
+  <data name="AutoAuditUploadTitle" xml:space="preserve"><value>Auditoría Automática — Subir Transcripción</value></data>
+  <data name="AutoAuditSelectForm" xml:space="preserve"><value>Seleccionar Formulario de Evaluación</value></data>
+  <data name="AutoAuditPasteTranscript" xml:space="preserve"><value>Pegue o escriba la transcripción de la llamada a continuación</value></data>
+  <data name="AutoAuditAnalyse" xml:space="preserve"><value>Analizar Transcripción</value></data>
+  <data name="AutoAuditReviewTitle" xml:space="preserve"><value>Auditoría Automática — Revisar Resultados</value></data>
+  <data name="AutoAuditAcceptSave" xml:space="preserve"><value>Aceptar y Guardar</value></data>
+  <data name="AutoAuditReAnalyse" xml:space="preserve"><value>Re-Analizar</value></data>
+  <data name="HRIndexTitle" xml:space="preserve"><value>Cola de Revisión Humana</value></data>
+  <data name="HRPending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="HRApproved" xml:space="preserve"><value>Aprobado</value></data>
+  <data name="HRRejected" xml:space="preserve"><value>Rechazado</value></data>
+  <data name="TrainingIndexTitle" xml:space="preserve"><value>Planes de Formación</value></data>
+  <data name="TrainingCreatePlan" xml:space="preserve"><value>Crear Plan de Formación</value></data>
+  <data name="TrainingAgentName" xml:space="preserve"><value>Nombre del Agente</value></data>
+  <data name="TrainingStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="TrainingDueDate" xml:space="preserve"><value>Fecha de Vencimiento</value></data>
+  <data name="KBTitle" xml:space="preserve"><value>Base de Conocimientos</value></data>
+  <data name="KBAddSource" xml:space="preserve"><value>Agregar Fuente</value></data>
+  <data name="KBAddDocument" xml:space="preserve"><value>Agregar Documento</value></data>
+  <data name="KBSourceName" xml:space="preserve"><value>Nombre de la Fuente</value></data>
+  <data name="KBDocuments" xml:space="preserve"><value>Documentos</value></data>
+  <data name="AISTitle" xml:space="preserve"><value>Configuración de IA</value></data>
+  <data name="AISProvider" xml:space="preserve"><value>Proveedor</value></data>
+  <data name="AISApiKey" xml:space="preserve"><value>Clave API</value></data>
+  <data name="AISEndpoint" xml:space="preserve"><value>Punto de Acceso</value></data>
+  <data name="AISModel" xml:space="preserve"><value>Modelo</value></data>
+  <data name="AISSave" xml:space="preserve"><value>Guardar Configuración</value></data>
+  <data name="AuditLogTitle" xml:space="preserve"><value>Registro de Auditoría</value></data>
+  <data name="AuditLogTimestamp" xml:space="preserve"><value>Marca de Tiempo</value></data>
+  <data name="AuditLogCategory" xml:space="preserve"><value>Categoría</value></data>
+  <data name="AuditLogResult" xml:space="preserve"><value>Resultado</value></data>
+  <data name="AuditLogMessage" xml:space="preserve"><value>Mensaje</value></data>
+  <data name="CPTitle" xml:space="preserve"><value>Pipeline de Llamadas</value></data>
+  <data name="CPStartNew" xml:space="preserve"><value>Iniciar Nueva Pipeline</value></data>
+  <data name="CPStatus" xml:space="preserve"><value>Estado</value></data>
+  <data name="CPCreated" xml:space="preserve"><value>Creado</value></data>
+  <data name="SamplingTitle" xml:space="preserve"><value>Políticas de Muestreo</value></data>
+  <data name="SamplingCreate" xml:space="preserve"><value>Crear Política</value></data>
+  <data name="LobsTitle" xml:space="preserve"><value>Líneas de Negocio</value></data>
+  <data name="LobsCreate" xml:space="preserve"><value>Crear Línea de Negocio</value></data>
+  <data name="LobsCode" xml:space="preserve"><value>Código</value></data>
+  <data name="UsersTitle" xml:space="preserve"><value>Usuarios</value></data>
+  <data name="UsersCreate" xml:space="preserve"><value>Crear Usuario</value></data>
+  <data name="UsersAdminRole" xml:space="preserve"><value>Administrador</value></data>
+  <data name="UsersUserRole" xml:space="preserve"><value>Usuario</value></data>
+  <data name="ParamsTitle" xml:space="preserve"><value>Parámetros</value></data>
+  <data name="ParamsCreate" xml:space="preserve"><value>Crear Parámetro</value></data>
+  <data name="ParamsMaxRating" xml:space="preserve"><value>Calificación Máxima</value></data>
+  <data name="ParamsEvalType" xml:space="preserve"><value>Tipo de Evaluación</value></data>
+  <data name="ProjectsTitle" xml:space="preserve"><value>Proyectos</value></data>
+  <data name="ProjectsCreate" xml:space="preserve"><value>Crear Proyecto</value></data>
+  <data name="AnalyticsTitle" xml:space="preserve"><value>Panel Analítico</value></data>
+  <data name="AnalyticsTrend" xml:space="preserve"><value>Tendencia de Puntuación</value></data>
+  <data name="AnalyticsTopPerformers" xml:space="preserve"><value>Mejores Performers</value></data>
+  <data name="AnalyticsBottomPerformers" xml:space="preserve"><value>Peores Performers</value></data>
+  <data name="FormDesignerTitle" xml:space="preserve"><value>Diseñador de Formularios</value></data>
+  <data name="FormDesignerCreate" xml:space="preserve"><value>Crear Formulario</value></data>
+  <data name="RCTitle" xml:space="preserve"><value>Criterios de Calificación</value></data>
+  <data name="RCCreate" xml:space="preserve"><value>Crear Criterio</value></data>
+  <data name="PCTitle" xml:space="preserve"><value>Clubes de Parámetros</value></data>
+  <data name="PCCreate" xml:space="preserve"><value>Crear Club</value></data>
+  <data name="InsightsChatTitle" xml:space="preserve"><value>Chat de Perspectivas</value></data>
+  <data name="ICPlaceholder" xml:space="preserve"><value>Haga una pregunta sobre sus datos QA...</value></data>
+  <data name="ICSend" xml:space="preserve"><value>Enviar</value></data>
+  <data name="ExplainabilityTitle" xml:space="preserve"><value>Analítica de Explicabilidad</value></data>
+  <data name="DATitle" xml:space="preserve"><value>Garantía de Decisión</value></data>
+  <data name="AuditDetailTitle" xml:space="preserve"><value>Detalle de Auditoría</value></data>
+  <data name="AuditDetailOverall" xml:space="preserve"><value>Puntuación General</value></data>
+  <data name="AuditDetailTranscript" xml:space="preserve"><value>Transcripción</value></data>
+  <data name="SelectProjectTitle" xml:space="preserve"><value>Seleccionar Proyecto</value></data>
+  <data name="SelectProjectContinue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="HRComparisonTitle" xml:space="preserve"><value>Comparación IA vs Humano</value></data>
+</root>

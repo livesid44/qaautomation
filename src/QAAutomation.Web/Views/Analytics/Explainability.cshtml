@@ -1,6 +1,6 @@
 @model QAAutomation.Web.Models.ExplainabilityViewModel
 @{
-    ViewData["Title"] = "Explainability Analytics";
+    ViewData["Title"] = L["ExplainabilityTitle"].Value;
     var insights = ViewBag.Insights as QAAutomation.Web.Models.ExplainabilityInsightsViewModel
                    ?? new QAAutomation.Web.Models.ExplainabilityInsightsViewModel();
 

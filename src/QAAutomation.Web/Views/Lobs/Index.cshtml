@@ -1,6 +1,6 @@
 @model List<LobViewModel>
 @{
-    ViewData["Title"] = "Lines of Business";
+    ViewData["Title"] = L["PageTitleLobs"].Value;
     var projects = ViewData["Projects"] as List<ProjectViewModel> ?? new();
     var filterProjectId = ViewData["FilterProjectId"] as int?;
 }

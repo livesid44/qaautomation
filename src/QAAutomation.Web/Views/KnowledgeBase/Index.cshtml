@@ -1,6 +1,6 @@
 @model List<KnowledgeSourceViewModel>
 @{
-    ViewData["Title"] = "Knowledge Base";
+    ViewData["Title"] = L["PageTitleKnowledgeBase"].Value;
     var activeSources = Model.Where(s => s.IsActive).ToList();
 }
 

@@ -1,6 +1,6 @@
 @model LobViewModel
 @{
-    ViewData["Title"] = "New Line of Business";
+    ViewData["Title"] = L["LobsCreate"].Value;
     var projects = ViewData["Projects"] as List<ProjectViewModel> ?? new();
     var defaultProjectId = ViewData["DefaultProjectId"] as int? ?? 0;
 }

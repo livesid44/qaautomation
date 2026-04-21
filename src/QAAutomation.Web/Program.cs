@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Options;
 using QAAutomation.Web.Filters;
 using QAAutomation.Web.Services;
 
@@ -29,6 +30,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddMemoryCache();
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
 builder.Services.AddSession(options =>
 {
@@ -67,12 +69,24 @@ builder.Services.AddControllersWithViews(options =>
     // layout can display the appropriate provider badge without per-controller wiring.
     options.Filters.Add<LlmProviderFilter>();
 })
+.AddViewLocalization()
+.AddDataAnnotationsLocalization()
 // Store TempData in the server-side session instead of a cookie.
 // The AI analysis result (AutoAuditReview) can be several kilobytes; keeping it
 // in a cookie causes HTTP 400 "Request Too Long" when the browser sends it back
 // in request headers.  Session storage replaces the data cookie with a tiny
 // session-ID cookie, eliminating the header-size overflow.
 .AddSessionStateTempDataProvider();
+
+var supportedCultures = new[] { "en", "de", "es", "fr", "hi", "ja" };
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.SetDefaultCulture("en")
+           .AddSupportedCultures(supportedCultures)
+           .AddSupportedUICultures(supportedCultures);
+    options.FallBackToParentCultures = true;
+    options.FallBackToParentUICultures = true;
+});
 
 var app = builder.Build();
 
@@ -86,6 +100,8 @@ if (!string.IsNullOrEmpty(pathBase))
     app.UsePathBase(pathBase);
 
 app.UseStaticFiles();
+var locOptions = app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>();
+app.UseRequestLocalization(locOptions.Value);
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();

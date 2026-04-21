@@ -1,6 +1,6 @@
 @model CreateSamplingPolicyViewModel
 @{
-    ViewData["Title"] = "Create Sampling Policy";
+    ViewData["Title"] = L["SamplingCreate"].Value;
     bool isEdit = ViewBag.PolicyId != null;
     var formAction = isEdit
         ? Url.Action("Edit", "Sampling", new { id = ViewBag.PolicyId })

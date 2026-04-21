@@ -1,7 +1,7 @@
 @model CreateTrainingPlanViewModel
 @{
     bool isEdit = ViewBag.PlanId != null;
-    ViewData["Title"] = isEdit ? "Edit Training Plan" : "New Training Plan";
+    ViewData["Title"] = L["TrainingCreatePlan"].Value;
     var formAction = isEdit
         ? Url.Action("Edit", "Training", new { id = ViewBag.PlanId })
         : Url.Action("Create", "Training");

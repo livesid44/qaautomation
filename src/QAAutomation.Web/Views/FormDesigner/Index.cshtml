@@ -1,14 +1,14 @@
 @model List<EvaluationFormViewModel>
 @{
-    ViewData["Title"] = "Form Designer";
+    ViewData["Title"] = L["PageTitleFormDesigner"].Value;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-layout-text-window me-2 text-info"></i>Evaluation Forms</h4>
+        <h4 class="fw-bold mb-1"><i class="bi bi-layout-text-window me-2 text-info"></i>@L["FormDesignerTitle"]</h4>
         <p class="text-muted mb-0">Create and manage QA evaluation forms using a 3-level designer.</p>
     </div>
     <a href="@Url.Action("Designer", "FormDesigner")" class="btn btn-info text-white">
-        <i class="bi bi-plus-lg me-1"></i>New Form
+        <i class="bi bi-plus-lg me-1"></i>@L["FormDesignerCreate"]
     </a>
 </div>
 <div class="card border-0 shadow-sm">

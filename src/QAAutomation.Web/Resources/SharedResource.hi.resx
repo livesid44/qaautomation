@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LangSwitcherLabel" xml:space="preserve"><value>भाषा</value></data>
+  <data name="LangEnglish" xml:space="preserve"><value>अंग्रेज़ी</value></data>
+  <data name="LangGerman" xml:space="preserve"><value>जर्मन</value></data>
+  <data name="LangSpanish" xml:space="preserve"><value>स्पेनिश</value></data>
+  <data name="LangFrench" xml:space="preserve"><value>फ्रेंच</value></data>
+  <data name="LangHindi" xml:space="preserve"><value>हिन्दी</value></data>
+  <data name="LangJapanese" xml:space="preserve"><value>जापानी</value></data>
+  <data name="NavDashboard" xml:space="preserve"><value>डैशबोर्ड</value></data>
+  <data name="NavAnalytics" xml:space="preserve"><value>विश्लेषण</value></data>
+  <data name="NavExplainability" xml:space="preserve"><value>व्याख्यात्मकता</value></data>
+  <data name="NavDecisionAssurance" xml:space="preserve"><value>निर्णय आश्वासन</value></data>
+  <data name="NavInsightsChat" xml:space="preserve"><value>इनसाइट्स चैट</value></data>
+  <data name="NavQASetup" xml:space="preserve"><value>QA सेटअप</value></data>
+  <data name="NavParameters" xml:space="preserve"><value>पैरामीटर</value></data>
+  <data name="NavParameterClubs" xml:space="preserve"><value>पैरामीटर क्लब</value></data>
+  <data name="NavRatingCriteria" xml:space="preserve"><value>रेटिंग मानदंड</value></data>
+  <data name="NavFormDesigner" xml:space="preserve"><value>फॉर्म डिज़ाइनर</value></data>
+  <data name="NavAudits" xml:space="preserve"><value>ऑडिट</value></data>
+  <data name="NavAuditRecords" xml:space="preserve"><value>ऑडिट रिकॉर्ड</value></data>
+  <data name="NavAutoAudit" xml:space="preserve"><value>ऑटो ऑडिट</value></data>
+  <data name="NavCallPipeline" xml:space="preserve"><value>कॉल पाइपलाइन</value></data>
+  <data name="NavHumanReview" xml:space="preserve"><value>मानव समीक्षा</value></data>
+  <data name="NavAIvsHuman" xml:space="preserve"><value>AI बनाम मानव</value></data>
+  <data name="NavTrainingPlans" xml:space="preserve"><value>प्रशिक्षण योजनाएं</value></data>
+  <data name="NavAdmin" xml:space="preserve"><value>व्यवस्थापक</value></data>
+  <data name="NavAISettings" xml:space="preserve"><value>AI सेटिंग्स</value></data>
+  <data name="NavAuditLogs" xml:space="preserve"><value>ऑडिट लॉग</value></data>
+  <data name="NavSamplingPolicies" xml:space="preserve"><value>नमूना नीतियां</value></data>
+  <data name="NavKnowledgeBase" xml:space="preserve"><value>ज्ञान आधार</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>प्रोजेक्ट</value></data>
+  <data name="NavLinesOfBusiness" xml:space="preserve"><value>व्यापार की लाइनें</value></data>
+  <data name="NavUsers" xml:space="preserve"><value>उपयोगकर्ता</value></data>
+  <data name="NavSwitchProject" xml:space="preserve"><value>प्रोजेक्ट बदलें</value></data>
+  <data name="NavNoProjects" xml:space="preserve"><value>कोई प्रोजेक्ट उपलब्ध नहीं</value></data>
+  <data name="NavLogout" xml:space="preserve"><value>लॉग आउट</value></data>
+  <data name="NavCurrentProject" xml:space="preserve"><value>वर्तमान प्रोजेक्ट</value></data>
+  <data name="FooterAllRightsReserved" xml:space="preserve"><value>सर्वाधिकार सुरक्षित.</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>सहेजें</value></data>
+  <data name="BtnCancel" xml:space="preserve"><value>रद्द करें</value></data>
+  <data name="BtnDelete" xml:space="preserve"><value>हटाएं</value></data>
+  <data name="BtnEdit" xml:space="preserve"><value>संपादित करें</value></data>
+  <data name="BtnCreate" xml:space="preserve"><value>बनाएं</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>वापस</value></data>
+  <data name="BtnUpdate" xml:space="preserve"><value>अपडेट करें</value></data>
+  <data name="BtnSubmit" xml:space="preserve"><value>जमा करें</value></data>
+  <data name="BtnConfirm" xml:space="preserve"><value>पुष्टि करें</value></data>
+  <data name="BtnClose" xml:space="preserve"><value>बंद करें</value></data>
+  <data name="BtnAdd" xml:space="preserve"><value>जोड़ें</value></data>
+  <data name="BtnRemove" xml:space="preserve"><value>हटाएं</value></data>
+  <data name="BtnClear" xml:space="preserve"><value>साफ़ करें</value></data>
+  <data name="BtnSearch" xml:space="preserve"><value>खोजें</value></data>
+  <data name="BtnFilter" xml:space="preserve"><value>फ़िल्टर</value></data>
+  <data name="BtnExport" xml:space="preserve"><value>निर्यात</value></data>
+  <data name="BtnDownload" xml:space="preserve"><value>डाउनलोड</value></data>
+  <data name="BtnUpload" xml:space="preserve"><value>अपलोड</value></data>
+  <data name="BtnNew" xml:space="preserve"><value>नया</value></data>
+  <data name="BtnRefresh" xml:space="preserve"><value>रीफ्रेश</value></data>
+  <data name="BtnView" xml:space="preserve"><value>देखें</value></data>
+  <data name="BtnManage" xml:space="preserve"><value>प्रबंधित करें</value></data>
+  <data name="BtnAnalyse" xml:space="preserve"><value>विश्लेषण</value></data>
+  <data name="LblName" xml:space="preserve"><value>नाम</value></data>
+  <data name="LblDescription" xml:space="preserve"><value>विवरण</value></data>
+  <data name="LblStatus" xml:space="preserve"><value>स्थिति</value></data>
+  <data name="LblDate" xml:space="preserve"><value>तारीख</value></data>
+  <data name="LblActions" xml:space="preserve"><value>कार्रवाई</value></data>
+  <data name="LblDetails" xml:space="preserve"><value>विवरण</value></data>
+  <data name="LblRole" xml:space="preserve"><value>भूमिका</value></data>
+  <data name="LblUsername" xml:space="preserve"><value>उपयोगकर्ता नाम</value></data>
+  <data name="LblPassword" xml:space="preserve"><value>पासवर्ड</value></data>
+  <data name="LblEmail" xml:space="preserve"><value>ईमेल</value></data>
+  <data name="LblCreatedAt" xml:space="preserve"><value>बनाया</value></data>
+  <data name="LblActive" xml:space="preserve"><value>सक्रिय</value></data>
+  <data name="LblInactive" xml:space="preserve"><value>निष्क्रिय</value></data>
+  <data name="LblEnabled" xml:space="preserve"><value>सक्षम</value></data>
+  <data name="LblDisabled" xml:space="preserve"><value>अक्षम</value></data>
+  <data name="LblYes" xml:space="preserve"><value>हाँ</value></data>
+  <data name="LblNo" xml:space="preserve"><value>नहीं</value></data>
+  <data name="LblLoading" xml:space="preserve"><value>लोड हो रहा है...</value></data>
+  <data name="LblNoRecords" xml:space="preserve"><value>कोई रिकॉर्ड नहीं मिला.</value></data>
+  <data name="LblError" xml:space="preserve"><value>त्रुटि</value></data>
+  <data name="LblSuccess" xml:space="preserve"><value>सफलता</value></data>
+  <data name="LblAll" xml:space="preserve"><value>सभी</value></data>
+  <data name="LblNone" xml:space="preserve"><value>कोई नहीं</value></data>
+  <data name="LblType" xml:space="preserve"><value>प्रकार</value></data>
+  <data name="LblScore" xml:space="preserve"><value>स्कोर</value></data>
+  <data name="LblAgent" xml:space="preserve"><value>एजेंट</value></data>
+  <data name="LblForm" xml:space="preserve"><value>फ़ॉर्म</value></data>
+  <data name="LblSection" xml:space="preserve"><value>खंड</value></data>
+  <data name="LblField" xml:space="preserve"><value>क्षेत्र</value></data>
+  <data name="LblProject" xml:space="preserve"><value>प्रोजेक्ट</value></data>
+  <data name="LblCallDate" xml:space="preserve"><value>कॉल की तारीख</value></data>
+  <data name="LblCallReference" xml:space="preserve"><value>कॉल संदर्भ</value></data>
+  <data name="LblEvaluatedBy" xml:space="preserve"><value>द्वारा मूल्यांकन</value></data>
+  <data name="LblEvaluatedAt" xml:space="preserve"><value>पर मूल्यांकन</value></data>
+  <data name="LblAvgScore" xml:space="preserve"><value>औसत स्कोर</value></data>
+  <data name="LblPassRate" xml:space="preserve"><value>पास दर</value></data>
+  <data name="LblTotalAudits" xml:space="preserve"><value>कुल ऑडिट</value></data>
+  <data name="LblActiveForms" xml:space="preserve"><value>सक्रिय फ़ॉर्म</value></data>
+  <data name="LblFilterByForm" xml:space="preserve"><value>फ़ॉर्म द्वारा फ़िल्टर:</value></data>
+  <data name="LblAllForms" xml:space="preserve"><value>— सभी फ़ॉर्म —</value></data>
+  <data name="LblRecordNewAudit" xml:space="preserve"><value>नया ऑडिट रिकॉर्ड</value></data>
+  <data name="LblQualityEvaluations" xml:space="preserve"><value>ग्राहक सहायता इंटरैक्शन के गुणवत्ता मूल्यांकन.</value></data>
+  <data name="PageTitleDashboard" xml:space="preserve"><value>डैशबोर्ड</value></data>
+  <data name="PageTitleAuditRecords" xml:space="preserve"><value>ऑडिट रिकॉर्ड</value></data>
+  <data name="PageTitleNewAudit" xml:space="preserve"><value>नया ऑडिट दर्ज करें</value></data>
+  <data name="PageTitleAutoAudit" xml:space="preserve"><value>ऑटो ऑडिट</value></data>
+  <data name="PageTitleParameters" xml:space="preserve"><value>पैरामीटर</value></data>
+  <data name="PageTitleUsers" xml:space="preserve"><value>उपयोगकर्ता</value></data>
+  <data name="PageTitleProjects" xml:space="preserve"><value>प्रोजेक्ट</value></data>
+  <data name="PageTitleAnalytics" xml:space="preserve"><value>विश्लेषण डैशबोर्ड</value></data>
+  <data name="PageTitleHumanReview" xml:space="preserve"><value>मानव समीक्षा</value></data>
+  <data name="PageTitleTrainingPlans" xml:space="preserve"><value>प्रशिक्षण योजनाएं</value></data>
+  <data name="PageTitleKnowledgeBase" xml:space="preserve"><value>ज्ञान आधार</value></data>
+  <data name="PageTitleAISettings" xml:space="preserve"><value>AI सेटिंग्स</value></data>
+  <data name="PageTitleAuditLog" xml:space="preserve"><value>ऑडिट लॉग</value></data>
+  <data name="PageTitleCallPipeline" xml:space="preserve"><value>कॉल पाइपलाइन</value></data>
+  <data name="PageTitleFormDesigner" xml:space="preserve"><value>फॉर्म डिज़ाइनर</value></data>
+  <data name="PageTitleInsightsChat" xml:space="preserve"><value>इनसाइट्स चैट</value></data>
+  <data name="PageTitleLobs" xml:space="preserve"><value>व्यापार की लाइनें</value></data>
+  <data name="PageTitleParameterClubs" xml:space="preserve"><value>पैरामीटर क्लब</value></data>
+  <data name="PageTitleRatingCriteria" xml:space="preserve"><value>रेटिंग मानदंड</value></data>
+  <data name="PageTitleSampling" xml:space="preserve"><value>नमूना नीतियां</value></data>
+  <data name="DashWelcomeBack" xml:space="preserve"><value>वापसी पर स्वागत है,</value></data>
+  <data name="DashOverview" xml:space="preserve"><value>यहाँ आपके QA ऑटोमेशन सिस्टम का एक अवलोकन है.</value></data>
+  <data name="DashQuickNavigation" xml:space="preserve"><value>त्वरित नेविगेशन</value></data>
+  <data name="DashParameterCount" xml:space="preserve"><value>पैरामीटर</value></data>
+  <data name="DashParameterClubs" xml:space="preserve"><value>पैरामीटर क्लब</value></data>
+  <data name="DashRatingCriteria" xml:space="preserve"><value>रेटिंग मानदंड</value></data>
+  <data name="DashEvaluationForms" xml:space="preserve"><value>मूल्यांकन फ़ॉर्म</value></data>
+  <data name="DashAuditRecords" xml:space="preserve"><value>ऑडिट रिकॉर्ड</value></data>
+  <data name="DashManageParameters" xml:space="preserve"><value>पैरामीटर प्रबंधित करें</value></data>
+  <data name="LoginTitle" xml:space="preserve"><value>साइन इन — AuraAI</value></data>
+  <data name="LoginTagline" xml:space="preserve"><value>इंटेलिजेंट ऑटोमेशन प्लेटफ़ॉर्म</value></data>
+  <data name="LoginUsername" xml:space="preserve"><value>उपयोगकर्ता नाम</value></data>
+  <data name="LoginPassword" xml:space="preserve"><value>पासवर्ड</value></data>
+  <data name="LoginEnterUsername" xml:space="preserve"><value>उपयोगकर्ता नाम दर्ज करें</value></data>
+  <data name="LoginEnterPassword" xml:space="preserve"><value>पासवर्ड दर्ज करें</value></data>
+  <data name="LoginSignIn" xml:space="preserve"><value>साइन इन</value></data>
+  <data name="AutoAuditUploadTitle" xml:space="preserve"><value>ऑटो ऑडिट — ट्रांसक्रिप्ट अपलोड</value></data>
+  <data name="AutoAuditSelectForm" xml:space="preserve"><value>मूल्यांकन फ़ॉर्म चुनें</value></data>
+  <data name="AutoAuditPasteTranscript" xml:space="preserve"><value>नीचे कॉल ट्रांसक्रिप्ट पेस्ट या टाइप करें</value></data>
+  <data name="AutoAuditAnalyse" xml:space="preserve"><value>ट्रांसक्रिप्ट विश्लेषण</value></data>
+  <data name="AutoAuditReviewTitle" xml:space="preserve"><value>ऑटो ऑडिट — परिणाम समीक्षा</value></data>
+  <data name="AutoAuditAcceptSave" xml:space="preserve"><value>स्वीकार करें और सहेजें</value></data>
+  <data name="AutoAuditReAnalyse" xml:space="preserve"><value>पुनः विश्लेषण</value></data>
+  <data name="HRIndexTitle" xml:space="preserve"><value>मानव समीक्षा कतार</value></data>
+  <data name="HRPending" xml:space="preserve"><value>लंबित</value></data>
+  <data name="HRApproved" xml:space="preserve"><value>अनुमोदित</value></data>
+  <data name="HRRejected" xml:space="preserve"><value>अस्वीकृत</value></data>
+  <data name="TrainingIndexTitle" xml:space="preserve"><value>प्रशिक्षण योजनाएं</value></data>
+  <data name="TrainingCreatePlan" xml:space="preserve"><value>प्रशिक्षण योजना बनाएं</value></data>
+  <data name="TrainingAgentName" xml:space="preserve"><value>एजेंट का नाम</value></data>
+  <data name="TrainingStatus" xml:space="preserve"><value>स्थिति</value></data>
+  <data name="TrainingDueDate" xml:space="preserve"><value>नियत तारीख</value></data>
+  <data name="KBTitle" xml:space="preserve"><value>ज्ञान आधार</value></data>
+  <data name="KBAddSource" xml:space="preserve"><value>स्रोत जोड़ें</value></data>
+  <data name="KBAddDocument" xml:space="preserve"><value>दस्तावेज़ जोड़ें</value></data>
+  <data name="KBSourceName" xml:space="preserve"><value>स्रोत का नाम</value></data>
+  <data name="KBDocuments" xml:space="preserve"><value>दस्तावेज़</value></data>
+  <data name="AISTitle" xml:space="preserve"><value>AI सेटिंग्स</value></data>
+  <data name="AISProvider" xml:space="preserve"><value>प्रदाता</value></data>
+  <data name="AISApiKey" xml:space="preserve"><value>API कुंजी</value></data>
+  <data name="AISEndpoint" xml:space="preserve"><value>एंडपॉइंट</value></data>
+  <data name="AISModel" xml:space="preserve"><value>मॉडल</value></data>
+  <data name="AISSave" xml:space="preserve"><value>सेटिंग्स सहेजें</value></data>
+  <data name="AuditLogTitle" xml:space="preserve"><value>ऑडिट लॉग</value></data>
+  <data name="AuditLogTimestamp" xml:space="preserve"><value>समय-चिह्न</value></data>
+  <data name="AuditLogCategory" xml:space="preserve"><value>श्रेणी</value></data>
+  <data name="AuditLogResult" xml:space="preserve"><value>परिणाम</value></data>
+  <data name="AuditLogMessage" xml:space="preserve"><value>संदेश</value></data>
+  <data name="CPTitle" xml:space="preserve"><value>कॉल पाइपलाइन</value></data>
+  <data name="CPStartNew" xml:space="preserve"><value>नई पाइपलाइन शुरू करें</value></data>
+  <data name="CPStatus" xml:space="preserve"><value>स्थिति</value></data>
+  <data name="CPCreated" xml:space="preserve"><value>बनाया</value></data>
+  <data name="SamplingTitle" xml:space="preserve"><value>नमूना नीतियां</value></data>
+  <data name="SamplingCreate" xml:space="preserve"><value>नीति बनाएं</value></data>
+  <data name="LobsTitle" xml:space="preserve"><value>व्यापार की लाइनें</value></data>
+  <data name="LobsCreate" xml:space="preserve"><value>व्यापार लाइन बनाएं</value></data>
+  <data name="LobsCode" xml:space="preserve"><value>कोड</value></data>
+  <data name="UsersTitle" xml:space="preserve"><value>उपयोगकर्ता</value></data>
+  <data name="UsersCreate" xml:space="preserve"><value>उपयोगकर्ता बनाएं</value></data>
+  <data name="UsersAdminRole" xml:space="preserve"><value>व्यवस्थापक</value></data>
+  <data name="UsersUserRole" xml:space="preserve"><value>उपयोगकर्ता</value></data>
+  <data name="ParamsTitle" xml:space="preserve"><value>पैरामीटर</value></data>
+  <data name="ParamsCreate" xml:space="preserve"><value>पैरामीटर बनाएं</value></data>
+  <data name="ParamsMaxRating" xml:space="preserve"><value>अधिकतम रेटिंग</value></data>
+  <data name="ParamsEvalType" xml:space="preserve"><value>मूल्यांकन प्रकार</value></data>
+  <data name="ProjectsTitle" xml:space="preserve"><value>प्रोजेक्ट</value></data>
+  <data name="ProjectsCreate" xml:space="preserve"><value>प्रोजेक्ट बनाएं</value></data>
+  <data name="AnalyticsTitle" xml:space="preserve"><value>विश्लेषण डैशबोर्ड</value></data>
+  <data name="AnalyticsTrend" xml:space="preserve"><value>स्कोर ट्रेंड</value></data>
+  <data name="AnalyticsTopPerformers" xml:space="preserve"><value>शीर्ष प्रदर्शनकर्ता</value></data>
+  <data name="AnalyticsBottomPerformers" xml:space="preserve"><value>निम्न प्रदर्शनकर्ता</value></data>
+  <data name="FormDesignerTitle" xml:space="preserve"><value>फॉर्म डिज़ाइनर</value></data>
+  <data name="FormDesignerCreate" xml:space="preserve"><value>फ़ॉर्म बनाएं</value></data>
+  <data name="RCTitle" xml:space="preserve"><value>रेटिंग मानदंड</value></data>
+  <data name="RCCreate" xml:space="preserve"><value>मानदंड बनाएं</value></data>
+  <data name="PCTitle" xml:space="preserve"><value>पैरामीटर क्लब</value></data>
+  <data name="PCCreate" xml:space="preserve"><value>क्लब बनाएं</value></data>
+  <data name="InsightsChatTitle" xml:space="preserve"><value>इनसाइट्स चैट</value></data>
+  <data name="ICPlaceholder" xml:space="preserve"><value>अपने QA डेटा के बारे में एक प्रश्न पूछें...</value></data>
+  <data name="ICSend" xml:space="preserve"><value>भेजें</value></data>
+  <data name="ExplainabilityTitle" xml:space="preserve"><value>व्याख्यात्मकता विश्लेषण</value></data>
+  <data name="DATitle" xml:space="preserve"><value>निर्णय आश्वासन</value></data>
+  <data name="AuditDetailTitle" xml:space="preserve"><value>ऑडिट विवरण</value></data>
+  <data name="AuditDetailOverall" xml:space="preserve"><value>कुल स्कोर</value></data>
+  <data name="AuditDetailTranscript" xml:space="preserve"><value>ट्रांसक्रिप्ट</value></data>
+  <data name="SelectProjectTitle" xml:space="preserve"><value>प्रोजेक्ट चुनें</value></data>
+  <data name="SelectProjectContinue" xml:space="preserve"><value>जारी रखें</value></data>
+  <data name="HRComparisonTitle" xml:space="preserve"><value>AI बनाम मानव तुलना</value></data>
+</root>
