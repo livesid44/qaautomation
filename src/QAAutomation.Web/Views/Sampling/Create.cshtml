@@ -11,7 +11,7 @@
     <div>
         <h4 class="fw-bold mb-1">
             <i class="bi bi-funnel me-2 text-primary"></i>
-            @(isEdit ? "Edit Sampling Policy" : "New Sampling Policy")
+            @(isEdit ? L["BtnEdit"].Value + " " + L["SamplingTitle"].Value : L["SamplingCreate"].Value)
         </h4>
         <p class="text-muted mb-0">
             Define the sampling rules. When applied, the system will select a subset of
@@ -19,7 +19,7 @@
         </p>
     </div>
     <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Back
+        <i class="bi bi-arrow-left me-1"></i>@L["BtnBack"]
     </a>
 </div>
 
@@ -31,13 +31,13 @@
                     @Html.AntiForgeryToken()
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Policy Name <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">@L["LblName"] <span class="text-danger">*</span></label>
                         <input type="text" name="Name" class="form-control" value="@Model.Name" required placeholder="e.g. 10% Random QA Check" />
                         @Html.ValidationMessage("Name", new { @class = "text-danger small" })
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
+                        <label class="form-label fw-semibold">@L["LblDescription"]</label>
                         <textarea name="Description" class="form-control" rows="2" placeholder="Optional description…">@Model.Description</textarea>
                     </div>
 
@@ -104,9 +104,9 @@
 
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save me-1"></i>@(isEdit ? "Save Changes" : "Create Policy")
+                            <i class="bi bi-save me-1"></i>@(isEdit ? L["BtnSave"].Value : L["SamplingCreate"].Value)
                         </button>
-                        <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="@Url.Action("Index", "Sampling")" class="btn btn-outline-secondary">@L["BtnCancel"]</a>
                     </div>
                 </form>
             </div>

@@ -6,11 +6,11 @@
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-layers me-2 text-primary"></i>Lines of Business</h4>
+        <h4 class="fw-bold mb-1"><i class="bi bi-layers me-2 text-primary"></i>@L["LobsTitle"]</h4>
         <p class="text-muted mb-0">Each LOB belongs to a Project and groups related Evaluation Forms.</p>
     </div>
     <a href="@(filterProjectId.HasValue ? Url.Action("Create", "Lobs", new { projectId = filterProjectId }) : Url.Action("Create", "Lobs"))" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle me-1"></i>New LOB
+        <i class="bi bi-plus-circle me-1"></i>@L["LobsCreate"]
     </a>
 </div>
 
@@ -22,7 +22,7 @@
 <!-- Filter by project -->
 <div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
     <span class="text-muted small fw-semibold">Filter:</span>
-    <a href="@Url.Action("Index", "Lobs")" class="btn btn-sm @(filterProjectId == null ? "btn-primary" : "btn-outline-secondary")">All Projects</a>
+    <a href="@Url.Action("Index", "Lobs")" class="btn btn-sm @(filterProjectId == null ? "btn-primary" : "btn-outline-secondary")">@L["LblAll"] @L["NavProjects"]</a>
     @foreach (var p in projects)
     {
         <a href="@Url.Action("Index", "Lobs", new { projectId = p.Id })"
@@ -47,11 +47,11 @@ else
         <table class="table table-hover align-middle">
             <thead class="table-light">
                 <tr>
-                    <th>Name</th>
-                    <th>Project</th>
+                    <th>@L["LblName"]</th>
+                    <th>@L["LblProject"]</th>
                     <th>Forms</th>
-                    <th>Status</th>
-                    <th>Created</th>
+                    <th>@L["LblStatus"]</th>
+                    <th>@L["LblCreatedAt"]</th>
                     <th></th>
                 </tr>
             </thead>
@@ -69,8 +69,8 @@ else
                         <td><span class="badge bg-primary bg-opacity-10 text-primary">@lob.ProjectName</span></td>
                         <td><span class="text-muted">@lob.FormCount</span></td>
                         <td>
-                            @if (lob.IsActive) { <span class="badge bg-success">Active</span> }
-                            else { <span class="badge bg-secondary">Inactive</span> }
+                            @if (lob.IsActive) { <span class="badge bg-success">@L["LblActive"]</span> }
+                            else { <span class="badge bg-secondary">@L["LblInactive"]</span> }
                         </td>
                         <td class="text-muted small">@lob.CreatedAt.ToString("MMM d, yyyy")</td>
                         <td>

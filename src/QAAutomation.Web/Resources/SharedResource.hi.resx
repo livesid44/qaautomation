@@ -230,4 +230,12 @@
   <data name="SelectProjectTitle" xml:space="preserve"><value>प्रोजेक्ट चुनें</value></data>
   <data name="SelectProjectContinue" xml:space="preserve"><value>जारी रखें</value></data>
   <data name="HRComparisonTitle" xml:space="preserve"><value>AI बनाम मानव तुलना</value></data>
+  <data name="AuditTitle" xml:space="preserve"><value>शीर्षक</value></data>
+  <data name="BtnSend" xml:space="preserve"><value>भेजें</value></data>
+  <data name="InsightsChatPlaceholder" xml:space="preserve"><value>अपने QA डेटा के बारे में एक प्रश्न पूछें…</value></data>
+  <data name="KBNoSources" xml:space="preserve"><value>अभी तक कोई ज्ञान स्रोत नहीं</value></data>
+  <data name="AllJobs" xml:space="preserve"><value>सभी कार्य</value></data>
+  <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>बैच URL सबमिट करें — कॉल पाइपलाइन</value></data>
+  <data name="CallPipelineUploadTitle" xml:space="preserve"><value>ट्रांसक्रिप्ट फ़ाइल अपलोड करें</value></data>
+  <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>कनेक्टर कॉन्फ़िगर करें — कॉल पाइपलाइन</value></data>
 </root>

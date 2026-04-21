@@ -230,4 +230,12 @@
   <data name="SelectProjectTitle" xml:space="preserve"><value>Projekt auswählen</value></data>
   <data name="SelectProjectContinue" xml:space="preserve"><value>Weiter</value></data>
   <data name="HRComparisonTitle" xml:space="preserve"><value>KI vs. Mensch Vergleich</value></data>
+  <data name="AuditTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="BtnSend" xml:space="preserve"><value>Senden</value></data>
+  <data name="InsightsChatPlaceholder" xml:space="preserve"><value>Stellen Sie eine Frage zu Ihren QA-Daten…</value></data>
+  <data name="KBNoSources" xml:space="preserve"><value>Noch keine Wissensquellen</value></data>
+  <data name="AllJobs" xml:space="preserve"><value>Alle Jobs</value></data>
+  <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>Stapel-URLs einreichen — Call Pipeline</value></data>
+  <data name="CallPipelineUploadTitle" xml:space="preserve"><value>Transkriptdatei hochladen</value></data>
+  <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>Connector konfigurieren — Call Pipeline</value></data>
 </root>

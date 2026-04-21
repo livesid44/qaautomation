@@ -230,4 +230,12 @@
   <data name="SelectProjectTitle" xml:space="preserve"><value>プロジェクトを選択</value></data>
   <data name="SelectProjectContinue" xml:space="preserve"><value>続ける</value></data>
   <data name="HRComparisonTitle" xml:space="preserve"><value>AIと人間の比較</value></data>
+  <data name="AuditTitle" xml:space="preserve"><value>タイトル</value></data>
+  <data name="BtnSend" xml:space="preserve"><value>送信</value></data>
+  <data name="InsightsChatPlaceholder" xml:space="preserve"><value>QAデータについて質問してください…</value></data>
+  <data name="KBNoSources" xml:space="preserve"><value>まだナレッジソースがありません</value></data>
+  <data name="AllJobs" xml:space="preserve"><value>全ジョブ</value></data>
+  <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>バッチURLを送信 — 通話パイプライン</value></data>
+  <data name="CallPipelineUploadTitle" xml:space="preserve"><value>トランスクリプトファイルをアップロード</value></data>
+  <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>コネクタを設定 — 通話パイプライン</value></data>
 </root>
