@@ -124,6 +124,7 @@ public class AccountController : Controller
             {
                 Expires = DateTimeOffset.UtcNow.AddYears(1),
                 IsEssential = true,
+                Secure = true,
                 SameSite = SameSiteMode.Lax
             });
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
