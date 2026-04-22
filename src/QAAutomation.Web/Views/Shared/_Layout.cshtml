@@ -430,7 +430,7 @@
                                 <form method="post" action="@Url.Action("SetLanguage", "Account")" class="m-0">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="culture" value="@lang.code" />
-                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.PathBase@Context.Request.Path@Context.Request.QueryString" />
                                     <button type="submit" class="dropdown-item @(isCurrent ? "active fw-semibold" : "")">
                                         @lang.flag @L[lang.nameKey]
                                     </button>
