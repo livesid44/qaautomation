@@ -164,11 +164,21 @@
             top: 0;
             z-index: 99;
             box-shadow: 0 2px 6px rgba(0,0,0,.08);
+            overflow: visible;
         }
         .topbar .page-title {
             font-weight: 600;
             color: var(--brand-dark);
             font-size: 0.9rem;
+        }
+        .topbar-logo {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 36px;
+            width: auto;
+            object-fit: contain;
+            pointer-events: none;
         }
 
         .page-content { padding: 24px; flex: 1; }
@@ -381,6 +391,7 @@
     </div>
     <div class="main-content">
         <div class="topbar">
+            <img src="~/logo.jpg" alt="AuraAI" class="topbar-logo" />
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-sm btn-outline-secondary" type="button"
                         data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu"
