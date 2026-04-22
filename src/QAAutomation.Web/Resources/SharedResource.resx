@@ -248,4 +248,21 @@
   <data name="ScoreBandMedium" xml:space="preserve"><value>Medium</value></data>
   <data name="ScoreBandLow" xml:space="preserve"><value>Low</value></data>
   <data name="LabelOverallAverage" xml:space="preserve"><value>Overall Average</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>QA performance trends across all audits</value></data>
+  <data name="KpiOverallAvg" xml:space="preserve"><value>Overall Avg Score</value></data>
+  <data name="KpiTopAgent" xml:space="preserve"><value>Top Agent</value></data>
+  <data name="KpiWeakestParam" xml:space="preserve"><value>Weakest Parameter</value></data>
+  <data name="KpiBestForm" xml:space="preserve"><value>Best Form</value></data>
+  <data name="AnalyticsDailyChartTitle" xml:space="preserve"><value>Day-by-Day QA Score</value></data>
+  <data name="AnalyticsDailyChartSub" xml:space="preserve"><value>Average score % per call date</value></data>
+  <data name="AnalyticsDistChartTitle" xml:space="preserve"><value>Agent Score Distribution</value></data>
+  <data name="AnalyticsDistChartSub" xml:space="preserve"><value>Agents by performance band</value></data>
+  <data name="TabOverview" xml:space="preserve"><value>Overview</value></data>
+  <data name="TabAgentPerf" xml:space="preserve"><value>Agent Performance</value></data>
+  <data name="TabParamAnalysis" xml:space="preserve"><value>Parameter Analysis</value></data>
+  <data name="TabCallType" xml:space="preserve"><value>Call Type / Form</value></data>
+  <data name="TabTrends" xml:space="preserve"><value>Trends</value></data>
+  <data name="TabSectionAnalysis" xml:space="preserve"><value>Section Analysis</value></data>
+  <data name="TabTni" xml:space="preserve"><value>TNI Dashboard</value></data>
+  <data name="TabLeadership" xml:space="preserve"><value>Leadership Summary</value></data>
 </root>

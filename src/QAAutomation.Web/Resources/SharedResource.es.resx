@@ -248,4 +248,21 @@
   <data name="ScoreBandMedium" xml:space="preserve"><value>Medio</value></data>
   <data name="ScoreBandLow" xml:space="preserve"><value>Bajo</value></data>
   <data name="LabelOverallAverage" xml:space="preserve"><value>Promedio general</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>Tendencias de rendimiento de QA en todas las auditorías</value></data>
+  <data name="KpiOverallAvg" xml:space="preserve"><value>Puntuación media general</value></data>
+  <data name="KpiTopAgent" xml:space="preserve"><value>Agente principal</value></data>
+  <data name="KpiWeakestParam" xml:space="preserve"><value>Parámetro más débil</value></data>
+  <data name="KpiBestForm" xml:space="preserve"><value>Mejor formulario</value></data>
+  <data name="AnalyticsDailyChartTitle" xml:space="preserve"><value>Puntuación QA por día</value></data>
+  <data name="AnalyticsDailyChartSub" xml:space="preserve"><value>Puntuación media % por fecha de llamada</value></data>
+  <data name="AnalyticsDistChartTitle" xml:space="preserve"><value>Distribución de puntuaciones por agente</value></data>
+  <data name="AnalyticsDistChartSub" xml:space="preserve"><value>Agentes por banda de rendimiento</value></data>
+  <data name="TabOverview" xml:space="preserve"><value>Resumen</value></data>
+  <data name="TabAgentPerf" xml:space="preserve"><value>Rendimiento de agentes</value></data>
+  <data name="TabParamAnalysis" xml:space="preserve"><value>Análisis de parámetros</value></data>
+  <data name="TabCallType" xml:space="preserve"><value>Tipo de llamada / Formulario</value></data>
+  <data name="TabTrends" xml:space="preserve"><value>Tendencias</value></data>
+  <data name="TabSectionAnalysis" xml:space="preserve"><value>Análisis de secciones</value></data>
+  <data name="TabTni" xml:space="preserve"><value>Panel TNI</value></data>
+  <data name="TabLeadership" xml:space="preserve"><value>Resumen de liderazgo</value></data>
 </root>

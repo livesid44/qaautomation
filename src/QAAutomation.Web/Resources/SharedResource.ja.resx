@@ -248,4 +248,21 @@
   <data name="ScoreBandMedium" xml:space="preserve"><value>中程度</value></data>
   <data name="ScoreBandLow" xml:space="preserve"><value>低い</value></data>
   <data name="LabelOverallAverage" xml:space="preserve"><value>全体平均</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>すべての監査のQAパフォーマンストレンド</value></data>
+  <data name="KpiOverallAvg" xml:space="preserve"><value>総合平均スコア</value></data>
+  <data name="KpiTopAgent" xml:space="preserve"><value>トップエージェント</value></data>
+  <data name="KpiWeakestParam" xml:space="preserve"><value>最弱パラメータ</value></data>
+  <data name="KpiBestForm" xml:space="preserve"><value>最良フォーム</value></data>
+  <data name="AnalyticsDailyChartTitle" xml:space="preserve"><value>日別QAスコア</value></data>
+  <data name="AnalyticsDailyChartSub" xml:space="preserve"><value>通話日付ごとの平均スコア%</value></data>
+  <data name="AnalyticsDistChartTitle" xml:space="preserve"><value>エージェントスコア分布</value></data>
+  <data name="AnalyticsDistChartSub" xml:space="preserve"><value>パフォーマンスバンド別エージェント</value></data>
+  <data name="TabOverview" xml:space="preserve"><value>概要</value></data>
+  <data name="TabAgentPerf" xml:space="preserve"><value>エージェントパフォーマンス</value></data>
+  <data name="TabParamAnalysis" xml:space="preserve"><value>パラメータ分析</value></data>
+  <data name="TabCallType" xml:space="preserve"><value>コールタイプ / フォーム</value></data>
+  <data name="TabTrends" xml:space="preserve"><value>トレンド</value></data>
+  <data name="TabSectionAnalysis" xml:space="preserve"><value>セクション分析</value></data>
+  <data name="TabTni" xml:space="preserve"><value>TNIダッシュボード</value></data>
+  <data name="TabLeadership" xml:space="preserve"><value>リーダーシップサマリー</value></data>
 </root>

@@ -248,4 +248,21 @@
   <data name="ScoreBandMedium" xml:space="preserve"><value>मध्यम</value></data>
   <data name="ScoreBandLow" xml:space="preserve"><value>निम्न</value></data>
   <data name="LabelOverallAverage" xml:space="preserve"><value>कुल औसत</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>सभी ऑडिट में QA प्रदर्शन रुझान</value></data>
+  <data name="KpiOverallAvg" xml:space="preserve"><value>समग्र औसत स्कोर</value></data>
+  <data name="KpiTopAgent" xml:space="preserve"><value>शीर्ष एजेंट</value></data>
+  <data name="KpiWeakestParam" xml:space="preserve"><value>सबसे कमज़ोर पैरामीटर</value></data>
+  <data name="KpiBestForm" xml:space="preserve"><value>सर्वश्रेष्ठ फॉर्म</value></data>
+  <data name="AnalyticsDailyChartTitle" xml:space="preserve"><value>दिन-प्रतिदिन QA स्कोर</value></data>
+  <data name="AnalyticsDailyChartSub" xml:space="preserve"><value>कॉल तारीख के अनुसार औसत स्कोर %</value></data>
+  <data name="AnalyticsDistChartTitle" xml:space="preserve"><value>एजेंट स्कोर वितरण</value></data>
+  <data name="AnalyticsDistChartSub" xml:space="preserve"><value>प्रदर्शन बैंड के अनुसार एजेंट</value></data>
+  <data name="TabOverview" xml:space="preserve"><value>अवलोकन</value></data>
+  <data name="TabAgentPerf" xml:space="preserve"><value>एजेंट प्रदर्शन</value></data>
+  <data name="TabParamAnalysis" xml:space="preserve"><value>पैरामीटर विश्लेषण</value></data>
+  <data name="TabCallType" xml:space="preserve"><value>कॉल प्रकार / फॉर्म</value></data>
+  <data name="TabTrends" xml:space="preserve"><value>रुझान</value></data>
+  <data name="TabSectionAnalysis" xml:space="preserve"><value>अनुभाग विश्लेषण</value></data>
+  <data name="TabTni" xml:space="preserve"><value>TNI डैशबोर्ड</value></data>
+  <data name="TabLeadership" xml:space="preserve"><value>नेतृत्व सारांश</value></data>
 </root>
