@@ -238,4 +238,14 @@
   <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>बैच URL सबमिट करें — कॉल पाइपलाइन</value></data>
   <data name="CallPipelineUploadTitle" xml:space="preserve"><value>ट्रांसक्रिप्ट फ़ाइल अपलोड करें</value></data>
   <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>कनेक्टर कॉन्फ़िगर करें — कॉल पाइपलाइन</value></data>
+  <data name="TrendImproving" xml:space="preserve"><value>सुधर रहा है</value></data>
+  <data name="TrendDeclining" xml:space="preserve"><value>घट रहा है</value></data>
+  <data name="TrendStable" xml:space="preserve"><value>स्थिर</value></data>
+  <data name="HealthGood" xml:space="preserve"><value>अच्छा</value></data>
+  <data name="HealthNeedsAttention" xml:space="preserve"><value>ध्यान चाहिए</value></data>
+  <data name="HealthCritical" xml:space="preserve"><value>गंभीर</value></data>
+  <data name="ScoreBandHigh" xml:space="preserve"><value>उच्च</value></data>
+  <data name="ScoreBandMedium" xml:space="preserve"><value>मध्यम</value></data>
+  <data name="ScoreBandLow" xml:space="preserve"><value>निम्न</value></data>
+  <data name="LabelOverallAverage" xml:space="preserve"><value>कुल औसत</value></data>
 </root>

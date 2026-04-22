@@ -256,11 +256,22 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(AnalyticsInsightsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<AnalyticsInsightsDto>> GetAnalyticsInsights(
         [FromQuery] int? projectId = null,
+        [FromQuery] string lang = "en",
         CancellationToken ct = default)
     {
         var cfg = await _aiConfig.GetAsync();
         if (string.IsNullOrWhiteSpace(cfg.LlmEndpoint) || string.IsNullOrWhiteSpace(cfg.LlmApiKey))
             return Ok(new AnalyticsInsightsDto());
+
+        var langName = lang switch
+        {
+            "de" => "German",
+            "es" => "Spanish",
+            "fr" => "French",
+            "hi" => "Hindi",
+            "ja" => "Japanese",
+            _    => "English"
+        };
 
         // Load the same data as Get()
         var query = _db.EvaluationResults
@@ -325,15 +336,16 @@ public class AnalyticsController : ControllerBase
         var aiClient = AzureOpenAIHelper.CreateClient(ep, cfg.LlmApiKey, dep);
         var aiOpts = new ChatCompletionOptions { Temperature = 0.4f, MaxOutputTokenCount = 180 };
 
-        async Task<string?> Ask(string prompt)
+        async Task<string?> AskInsights(string prompt)
         {
             try
             {
                 var messages = new List<ChatMessage>
                 {
                     ChatMessage.CreateSystemMessage(
-                        "You are a QA analytics expert. Write concise, actionable insights (2-3 sentences, plain English) " +
-                        "based on the data summary provided. Focus on what the numbers mean for call-centre quality and what action to take."),
+                        $"You are a QA analytics expert. Write concise, actionable insights (2-3 sentences) " +
+                        $"based on the data summary provided. Respond in {langName}. " +
+                        "Focus on what the numbers mean for call-centre quality and what action to take."),
                     ChatMessage.CreateUserMessage(prompt)
                 };
                 var resp = await aiClient.CompleteChatAsync(messages, aiOpts, ct);
@@ -342,21 +354,21 @@ public class AnalyticsController : ControllerBase
             catch { return null; }
         }
 
-        var dailyTask = Ask(
+        var dailyTask = AskInsights(
             $"Day-by-day QA score trend: {dailySummary}\n" +
             "What does this trend indicate about quality improvement or decline?");
 
         var agentTask = string.IsNullOrWhiteSpace(agentSummary)
             ? Task.FromResult<string?>(null)
-            : Ask($"Agent performance ({results.Count} total audits). Top agents by avg score:\n{agentSummary}\n" +
+            : AskInsights($"Agent performance ({results.Count} total audits). Top agents by avg score:\n{agentSummary}\n" +
                   "What does this distribution indicate about agent performance and coaching needs?");
 
-        var paramTask = Ask(
+        var paramTask = AskInsights(
             $"Parameter performance — 5 lowest-scoring parameters across {results.Count} audits:\n" +
             string.Join("\n", paramSummary) +
             "\nWhat do these low scores indicate and what should be prioritised?");
 
-        var ctTask = Ask(
+        var ctTask = AskInsights(
             $"Call type / form performance ({results.Count} total audits):\n" +
             string.Join("\n", ctSummary) +
             "\nWhat does this distribution indicate about which call types need quality focus?");
@@ -569,11 +581,22 @@ public class AnalyticsController : ControllerBase
     [ProducesResponseType(typeof(ExplainabilityInsightsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ExplainabilityInsightsDto>> GetExplainabilityInsights(
         [FromQuery] int? projectId = null,
+        [FromQuery] string lang = "en",
         CancellationToken ct = default)
     {
         var cfg = await _aiConfig.GetAsync();
         if (string.IsNullOrWhiteSpace(cfg.LlmEndpoint) || string.IsNullOrWhiteSpace(cfg.LlmApiKey))
             return Ok(new ExplainabilityInsightsDto());
+
+        var langName = lang switch
+        {
+            "de" => "German",
+            "es" => "Spanish",
+            "fr" => "French",
+            "hi" => "Hindi",
+            "ja" => "Japanese",
+            _    => "English"
+        };
 
         // ── Load data (same scope as GetExplainability) ──────────────────────
         var resultQuery = _db.EvaluationResults
@@ -658,8 +681,9 @@ public class AnalyticsController : ControllerBase
                 var messages = new List<ChatMessage>
                 {
                     ChatMessage.CreateSystemMessage(
-                        "You are a QA analytics expert. Write concise, actionable insights (2-3 sentences, plain English) " +
-                        "based on the data summary provided. Focus on what the numbers mean for call-centre quality and what action to take."),
+                        $"You are a QA analytics expert. Write concise, actionable insights (2-3 sentences) " +
+                        $"based on the data summary provided. Respond in {langName}. " +
+                        "Focus on what the numbers mean for call-centre quality and what action to take."),
                     ChatMessage.CreateUserMessage(prompt)
                 };
                 var resp = await aiClient.CompleteChatAsync(messages, aiOpts, ct);

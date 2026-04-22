@@ -238,4 +238,14 @@
   <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>バッチURLを送信 — 通話パイプライン</value></data>
   <data name="CallPipelineUploadTitle" xml:space="preserve"><value>トランスクリプトファイルをアップロード</value></data>
   <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>コネクタを設定 — 通話パイプライン</value></data>
+  <data name="TrendImproving" xml:space="preserve"><value>改善中</value></data>
+  <data name="TrendDeclining" xml:space="preserve"><value>低下中</value></data>
+  <data name="TrendStable" xml:space="preserve"><value>安定</value></data>
+  <data name="HealthGood" xml:space="preserve"><value>良好</value></data>
+  <data name="HealthNeedsAttention" xml:space="preserve"><value>要注意</value></data>
+  <data name="HealthCritical" xml:space="preserve"><value>重大</value></data>
+  <data name="ScoreBandHigh" xml:space="preserve"><value>高い</value></data>
+  <data name="ScoreBandMedium" xml:space="preserve"><value>中程度</value></data>
+  <data name="ScoreBandLow" xml:space="preserve"><value>低い</value></data>
+  <data name="LabelOverallAverage" xml:space="preserve"><value>全体平均</value></data>
 </root>

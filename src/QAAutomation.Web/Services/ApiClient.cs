@@ -608,16 +608,18 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
     }
 
-    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null)
+    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null, string lang = "en")
     {
-        var url = projectId.HasValue ? $"api/analytics/explainability/insights?projectId={projectId.Value}" : "api/analytics/explainability/insights";
+        var qs = projectId.HasValue ? $"?projectId={projectId.Value}&lang={lang}" : $"?lang={lang}";
+        var url = $"api/analytics/explainability/insights{qs}";
         try { return await _http.GetFromJsonAsync<ExplainabilityInsightsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityInsights failed"); return null; }
     }
 
-    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null)
+    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null, string lang = "en")
     {
-        var url = projectId.HasValue ? $"api/analytics/insights?projectId={projectId.Value}" : "api/analytics/insights";
+        var qs = projectId.HasValue ? $"?projectId={projectId.Value}&lang={lang}" : $"?lang={lang}";
+        var url = $"api/analytics/insights{qs}";
         try { return await _http.GetFromJsonAsync<AnalyticsInsightsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
     }

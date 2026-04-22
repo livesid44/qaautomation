@@ -238,4 +238,14 @@
   <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>Stapel-URLs einreichen — Call Pipeline</value></data>
   <data name="CallPipelineUploadTitle" xml:space="preserve"><value>Transkriptdatei hochladen</value></data>
   <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>Connector konfigurieren — Call Pipeline</value></data>
+  <data name="TrendImproving" xml:space="preserve"><value>verbessernd</value></data>
+  <data name="TrendDeclining" xml:space="preserve"><value>rückläufig</value></data>
+  <data name="TrendStable" xml:space="preserve"><value>stabil</value></data>
+  <data name="HealthGood" xml:space="preserve"><value>Gut</value></data>
+  <data name="HealthNeedsAttention" xml:space="preserve"><value>Aufmerksamkeit erforderlich</value></data>
+  <data name="HealthCritical" xml:space="preserve"><value>Kritisch</value></data>
+  <data name="ScoreBandHigh" xml:space="preserve"><value>Hoch</value></data>
+  <data name="ScoreBandMedium" xml:space="preserve"><value>Mittel</value></data>
+  <data name="ScoreBandLow" xml:space="preserve"><value>Niedrig</value></data>
+  <data name="LabelOverallAverage" xml:space="preserve"><value>Gesamtdurchschnitt</value></data>
 </root>

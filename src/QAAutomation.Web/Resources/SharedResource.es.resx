@@ -238,4 +238,14 @@
   <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>Enviar URLs por lotes — Canalización de llamadas</value></data>
   <data name="CallPipelineUploadTitle" xml:space="preserve"><value>Cargar archivo de transcripción</value></data>
   <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>Configurar conector — Canalización de llamadas</value></data>
+  <data name="TrendImproving" xml:space="preserve"><value>mejorando</value></data>
+  <data name="TrendDeclining" xml:space="preserve"><value>en declive</value></data>
+  <data name="TrendStable" xml:space="preserve"><value>estable</value></data>
+  <data name="HealthGood" xml:space="preserve"><value>Bueno</value></data>
+  <data name="HealthNeedsAttention" xml:space="preserve"><value>Necesita atención</value></data>
+  <data name="HealthCritical" xml:space="preserve"><value>Crítico</value></data>
+  <data name="ScoreBandHigh" xml:space="preserve"><value>Alto</value></data>
+  <data name="ScoreBandMedium" xml:space="preserve"><value>Medio</value></data>
+  <data name="ScoreBandLow" xml:space="preserve"><value>Bajo</value></data>
+  <data name="LabelOverallAverage" xml:space="preserve"><value>Promedio general</value></data>
 </root>
