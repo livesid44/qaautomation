@@ -1,0 +1,593 @@
+==============================================================================
+  QA AUTOMATION PLATFORM — OUTCOMES, MEASUREMENT & ANALYTICS EXPLAINABILITY
+  TechM / livesid44/qaautomation
+  Last updated: April 2026
+==============================================================================
+
+This notepad expands on the high-level outcomes and measurement bullet points
+in the TechM AI QA Design Document and explains each analytics feature in
+detail — including the Risk Radar, Decision Assurance, Explainability,
+AI-vs-Human (HITL) Comparison, and TNI dashboards.
+
+------------------------------------------------------------------------------
+SECTION 1 — TARGET OUTCOMES (Detailed Explainability)
+------------------------------------------------------------------------------
+
+1.1  Reduce per-call QA time from ~30 minutes to < 5 minutes within 90 days
+     -------------------------------------------------------------------------
+     WHY THIS MATTERS:
+     In a traditional manual QA workflow a QA analyst must:
+       (a) Locate and play the recorded call (~2–5 min)
+       (b) Listen end-to-end while filling in a scoring form (~15–20 min)
+       (c) Write coaching notes and submit (~5–10 min)
+     This creates a bottleneck when call volumes exceed analyst capacity.
+
+     HOW THE PLATFORM ACHIEVES IT:
+       - Audio is automatically transcribed by Google Cloud Speech-to-Text
+         (typically < 60 seconds for a 10-minute call).
+       - Google Gemini 1.5 Pro scores every parameter in the evaluation form
+         against the transcript, with a reasoning note per score, in < 90
+         seconds.
+       - The analyst sees a pre-filled review form and needs only to
+         accept / adjust / reject AI suggestions — not fill in from scratch.
+       - RAG (Retrieval-Augmented Generation) enriches the prompt with
+         relevant policy excerpts, so the AI can handle specialist parameters
+         that would otherwise require the analyst to cross-reference manuals.
+
+     HOW IT IS MEASURED:
+       - AuditLog table timestamps:
+           * UploadedAt   → when the transcript or audio was submitted
+           * EvaluatedAt  → when the AI completed scoring
+           * ReviewedAt   → when the human analyst submitted the final review
+       - Analytics API computes: ReviewedAt – UploadedAt = Total QA time
+       - GCP Cloud Monitoring tracks P50 / P95 pipeline latency over time.
+       - Target: median Total QA time < 5 minutes at the 90-day checkpoint.
+
+     ANALYTICS EVIDENCE (where to look):
+       - Main Analytics Dashboard → Daily Score Trend chart shows throughput
+         growth (more evaluations per day = less time per evaluation).
+       - Decision Assurance → Section Calibration shows whether time savings
+         correlate with maintained or improved scoring quality.
+
+------------------------------------------------------------------------------
+
+1.2  Achieve >= 0.85 correlation between AI scores and human-reviewed scores
+     -------------------------------------------------------------------------
+     WHY THIS MATTERS:
+     A Pearson correlation of >= 0.85 between AI-suggested scores and
+     analyst-adjusted scores means the AI is a reliable first-pass scorer.
+     Below 0.85, analysts are overriding too often, negating time savings
+     and introducing doubt about AI reliability.
+
+     HOW IT IS MEASURED:
+       - HumanReview module records both the AI-suggested score and the
+         human-approved score for every parameter.
+       - The Analytics API computes Pearson r across all reviewed
+         parameter-level scores (AI score vs human score pairs).
+       - A rolling 30-day window is tracked so regression after model
+         updates is detected early.
+
+     HOW IT IS SURFACED (HITL Comparison Analytics — see Section 3.4):
+       - AI vs Human Comparison → Section Comparison bar chart: shows the
+         average AI score % vs average human score % per form section.
+       - AI vs Human Comparison → Parameter Comparison table: drills into
+         individual parameters where AI and human diverge most, flagging
+         those with a large Difference value (Human % – AI %).
+       - Explainability → HITL Agreement chart: shows the % of reviews where
+         analyst chose Agree / Disagree / Partial for each sampling policy.
+
+     RISK SIGNAL:
+       - If correlation drops below 0.85, the Decision Assurance → Risk Radar
+         may flag affected parameters under the "DecisionReversal" category.
+       - Gemini model version is pinned in AiConfig to prevent silent
+         regression after model updates.
+
+------------------------------------------------------------------------------
+
+1.3  Onboard 80% of targeted QA analysts within 3 months
+     -------------------------------------------------------
+     WHY THIS MATTERS:
+     A powerful platform that is not adopted delivers no value. Tracking
+     active adoption ensures training and change management are working.
+
+     HOW IT IS MEASURED:
+       - AppUsers table: role = QA Analyst, IsActive = true.
+       - AuditLog table: any analyst with at least one ReviewedAt record
+         within the 90-day window is counted as "active".
+       - Adoption rate = active analysts / total licensed analyst seats.
+       - Tracked weekly; escalated to TechM GVO team in weekly review meeting
+         if adoption lags behind the 80% target trajectory.
+
+     SUPPORTING ANALYTICS:
+       - TNI Dashboard (see Section 3.5) shows per-analyst training plan
+         completion rates — low completion may predict low adoption.
+       - Insights Chat can be queried: "Which analysts have not submitted
+         a review in the last two weeks?" to identify at-risk users.
+
+------------------------------------------------------------------------------
+
+1.4  Zero PII data leakage incidents post go-live
+     ------------------------------------------------
+     WHY THIS MATTERS:
+     Calls contain customer names, account numbers, addresses, and
+     potentially payment card data. A single leakage incident can trigger
+     GDPR fines, loss of customer trust, and contract penalties.
+
+     HOW IT IS PREVENTED:
+       - PiiRedactionService (powered by Gemini) masks PII entities in
+         the transcript before any data is written to the database.
+       - Entities masked include: names, phone numbers, email addresses,
+         account IDs, dates of birth, payment card numbers (PCI-DSS).
+       - Audio files are never persisted to the database — only the
+         redacted text transcript is stored.
+       - Google API keys are stored encrypted in the AiConfigs table or
+         OS environment variables; never in source code.
+
+     HOW IT IS MEASURED:
+       - AuditLog table: PiiRedacted = true/false recorded per call.
+       - Manual spot-check sample: compliance team reviews 20 random
+         transcripts per month to verify redaction accuracy.
+       - Target: >= 99% PII redaction accuracy (verified by spot-check).
+       - Incident tracking: any confirmed PII leakage reported to the
+         Security team and escalated to GVO within 24 hours.
+
+     RISK SIGNAL:
+       - Decision Assurance → Risk Radar may flag a "BiasIndicator" if
+         a parameter consistently produces anomalous low scores on calls
+         where PII redaction removed key phrases, indicating the AI
+         may be making decisions based on removed tokens.
+
+------------------------------------------------------------------------------
+SECTION 2 — MEASUREMENT (System-Level Analytics)
+------------------------------------------------------------------------------
+
+2.1  AuditLog table — tracks every action
+     -----------------------------------------
+     WHAT IT RECORDS:
+       - Entity type (Audit, CallRecord, EvaluationForm, KnowledgeSource, etc.)
+       - Action type (Create, Update, Delete, Review, Export, Login)
+       - Timestamp (UTC)
+       - Actor (UserId + username)
+       - Project context (ProjectId)
+       - Before/after snapshot for update actions
+
+     HOW IT FEEDS ANALYTICS:
+       - Analytics API aggregates AuditLog entries to compute:
+           * QA Analyst throughput: audit count per analyst per day
+           * Time-to-review: ReviewedAt – UploadedAt per call
+           * Session frequency: login events per analyst per week
+       - AuditLog is immutable (append-only); no Update/Delete on the log
+         itself — ensuring a tamper-proof compliance trail.
+       - Available via Insights Chat: natural-language queries like "How
+         many calls did Agent X review last week?" are answered using
+         AuditLog aggregations.
+
+------------------------------------------------------------------------------
+
+2.2  HumanReview module — AI vs human score diff
+     ------------------------------------------------
+     WHAT IT CAPTURES:
+       - For each evaluated parameter:
+           * AiScore     (raw Gemini-suggested score)
+           * HumanScore  (analyst-approved score)
+           * AiReasoning (Gemini's explanation of the score)
+           * HumanNote   (analyst's override justification, optional)
+           * ReviewVerdict: Agree | Disagree | Partial
+       - Stored in HumanFieldScores table, linked to the parent Audit record.
+
+     WHY THE DIFF MATTERS:
+       - Systematic disagreements (e.g., Gemini always over-scores
+         "Compliance Disclosure") point to prompt engineering gaps or
+         knowledge-base deficiencies, not random error.
+       - These gaps feed directly into sprint retrospectives and model
+         improvement backlog.
+
+     HOW THE DIFF IS SURFACED:
+       - HITL Comparison Analytics: Section and Parameter level side-by-side
+         bar charts (AI % vs Human %).
+       - Explainability Analytics: HITL Agreement doughnut chart showing
+         Agree / Disagree / Partial split by sampling policy.
+       - Decision Assurance: Risk Radar flags parameters with high
+         DecisionReversal rate (frequent human overrides).
+
+------------------------------------------------------------------------------
+
+2.3  GCP Cloud Monitoring — uptime, latency, error rate
+     ------------------------------------------------------
+     WHAT IS MONITORED:
+       - /api/ping health endpoint (uptime check, 1-minute interval)
+       - API response time (P50, P95, P99 latencies)
+       - Error rate: HTTP 5xx responses per minute
+       - Gemini API call latency and error rate (429 / 500)
+       - Google Cloud STT call latency and error rate
+       - SQL Server query duration (via custom metrics from the app)
+       - VM CPU / memory / disk utilisation on the e2-standard-4 instance
+
+     ALERTING:
+       - Uptime check failure → PagerDuty / email alert within 2 minutes.
+       - P95 latency > 10 seconds → warning alert.
+       - Error rate > 5% over 5 minutes → critical alert.
+       - Disk utilisation > 80% → warning alert (guards against large
+         transcript accumulation).
+
+     RELATIONSHIP TO OUTCOME METRICS:
+       - If P95 pipeline latency exceeds 5 minutes the "< 5 min QA time"
+         target is at risk — Cloud Monitoring provides early warning.
+       - GCP dashboards are linked from the weekly TechM GVO review pack.
+
+------------------------------------------------------------------------------
+
+2.4  User satisfaction survey (30 / 60 / 90-day checkpoints)
+     ------------------------------------------------------------
+     SURVEY STRUCTURE:
+       - Distributed at day 30, 60, and 90 of the pilot to all QA analysts
+         and QA managers using the platform.
+       - Questions cover:
+           * Overall satisfaction (NPS: 0–10)
+           * Time saved per evaluation (perceived, vs. the measured metric)
+           * Trust in AI scores (1–5 Likert)
+           * Ease of overriding AI scores (1–5 Likert)
+           * Usefulness of coaching recommendations (1–5 Likert)
+           * Top 3 pain points (open text)
+           * Top 3 requested improvements (open text)
+
+     HOW RESULTS FEED BACK:
+       - Survey results are reviewed in the monthly GVO steering meeting.
+       - Low trust scores (<3/5) trigger a sprint to improve AI reasoning
+         explainability and coaching note quality.
+       - Pain points are triaged into the product backlog and communicated
+         back to participants within 1 week of the survey close.
+
+------------------------------------------------------------------------------
+SECTION 3 — ANALYTICS FEATURES — DETAILED EXPLAINABILITY
+------------------------------------------------------------------------------
+
+3.1  Main Analytics Dashboard
+     --------------------------
+     CHARTS AND THEIR MEANING:
+
+     a) Daily QA Score Trend (Line Chart)
+        - X-axis: date; Y-axis: average QA score % across all audits that day.
+        - Data source: DailyScores (average of all EvaluationScores per day,
+          keyed by CallDate or EvaluatedAt).
+        - WHY IT MATTERS: A sudden drop in the daily average may indicate a
+          new evaluation form that is harder to score, a change in call
+          quality, or an AI model version change.
+        - AI-GENERATED INSIGHT: DailyTrendInsight — Gemini analyses the
+          trend and returns a 2–3 sentence narrative (e.g., "Scores improved
+          steadily from 72% to 81% over the last 30 days, consistent with
+          increased adoption and analyst familiarity with the review workflow.
+          No significant dips were observed following the v2 form rollout.").
+
+     b) Agent Performance Bar Chart
+        - Shows average QA score % per agent, sorted descending.
+        - Data source: AgentScores.
+        - WHY IT MATTERS: Identifies high performers and agents at risk,
+          feeding the TNI (training needs) workflow.
+        - AI-GENERATED INSIGHT: AgentPerformanceInsight.
+
+     c) Parameter Trend Chart (Horizontal Bar)
+        - Shows average score % per evaluation parameter (top 15 by volume).
+        - Data source: ParameterTrends.
+        - WHY IT MATTERS: Pinpoints which specific QA criteria are
+          consistently missed across all agents — a systemic coaching gap
+          rather than an individual one.
+        - AI-GENERATED INSIGHT: ParameterInsight.
+
+     d) Call Type Score Chart (Doughnut / Radar)
+        - Compares average QA score % per evaluation form (e.g., Sales call,
+          Complaint call, Technical support call).
+        - Data source: CallTypeScores.
+        - WHY IT MATTERS: Some call types are inherently harder to score
+          well. This chart prevents unfair agent comparisons across
+          different call types.
+        - AI-GENERATED INSIGHT: CallTypeInsight.
+
+     e) Agent Daily Trend (Multi-line Chart)
+        - One line per agent; X-axis = date; Y-axis = daily avg score %.
+        - Data source: AgentDailyTrends.
+        - WHY IT MATTERS: Shows whether an individual agent's improvement
+          or decline is a short-term blip or a sustained trend.
+
+     f) Section Score Overview (Radar Chart)
+        - Per-section average score % plotted on a radar/spider chart.
+        - Data source: SectionScores.
+        - WHY IT MATTERS: Immediately shows which sections of the evaluation
+          form (e.g., "Opening", "Compliance", "Resolution") are weakest
+          across the whole team.
+
+------------------------------------------------------------------------------
+
+3.2  Explainability Analytics
+     --------------------------
+     PURPOSE: Explains WHY audits pass or fail by surfacing which parameters
+     drove outcomes — moving beyond "what the score is" to "why it is that".
+
+     CHARTS AND THEIR MEANING:
+
+     a) Decision Drivers Table / Bar Chart
+        - Lists each evaluation parameter with:
+            * Average score %
+            * LowScoreCount (audits where this parameter scored < 60%)
+            * HighScoreCount (audits where this parameter scored >= 80%)
+            * ScoreVariability (standard deviation of scores)
+            * IsRiskArea flag (average < 60%)
+        - WHY IT MATTERS: Parameters with high variability AND high
+          LowScoreCount are systemic failure drivers — they need policy
+          clarification or additional knowledge-base content so Gemini
+          can score them more consistently.
+        - AI-GENERATED INSIGHT: DecisionDriversInsight.
+
+     b) AI vs Human Agreement (HITL Agreement) Doughnut
+        - Shows split of reviewer verdicts: Agree / Disagree / Partial.
+        - Broken down by sampling policy name.
+        - WHY IT MATTERS: A high Disagree rate on a specific sampling policy
+          may mean the policy selects calls that are atypical and harder for
+          the AI to score (e.g., escalation calls selected at a higher rate).
+        - AI-GENERATED INSIGHT: HitlAgreementInsight.
+
+     c) Signal Utilisation Chart (Stacked Bar)
+        - Per parameter: FullScoreRate vs MissRate.
+        - FullScoreRate: % of times the agent achieved maximum marks.
+        - MissRate: % of times the parameter scored zero.
+        - WHY IT MATTERS: A parameter with a 60% MissRate is a training
+          priority. It also validates whether the AI's scoring is
+          discriminating (low MissRate = AI may be too lenient).
+        - AI-GENERATED INSIGHT: SignalUsageInsight.
+
+     d) Failure Reason Analysis Table
+        - Ranks parameters by FailedAuditCount (how many failed audits
+          this parameter contributed to) and ContributionPercent.
+        - WHY IT MATTERS: Gives QA managers a prioritised list of coaching
+          interventions with the highest expected impact on pass rates.
+        - AI-GENERATED INSIGHT: FailureReasonsInsight.
+
+     OVERALL EXPLAINABILITY METRICS (page header):
+       - TotalAudits: total evaluations in the analysis window.
+       - TotalReviewed: evaluations that have gone through human review.
+       - AiHitlAgreementRate: overall % of reviewed parameters where
+         the analyst selected "Agree" (AI score accepted unchanged).
+
+------------------------------------------------------------------------------
+
+3.3  Decision Assurance Analytics (Advanced)
+     ------------------------------------------
+     PURPOSE: Provides a higher-order view of decision quality, consistency,
+     and risk — answering "Can we trust the decisions this platform is
+     making, and where are the highest-risk gaps?"
+
+     CHARTS AND THEIR MEANING:
+
+     a) Decision Confidence Score Chart (Horizontal Bar)
+        - Per parameter:
+            * AvgScorePercent: mean score across all audits
+            * ConsistencyScore: 1 – (StdDev / MaxPossible)
+              → 1.0 = always scored the same; 0 = completely random
+            * ConfidenceScore: AvgScorePercent × ConsistencyScore / 100
+              → composite; high = consistently good; low = inconsistent
+            * RiskLevel: High / Medium / Low
+        - WHY IT MATTERS: A parameter can have a high average score but
+          low confidence (inconsistent — sometimes perfect, sometimes zero).
+          That inconsistency is a risk because decisions cannot be relied
+          upon. Conversely, a consistently low score is a known, manageable
+          training gap.
+
+     b) Agent Risk Profile Table
+        - Per agent:
+            * RecentAvgPercent: average score % in the last 30 days
+            * PriorAvgPercent: average score % in the 30 days before that
+            * Momentum: RecentAvg – PriorAvg
+              → Positive = improving; negative = declining
+            * Trend: Improving / Stable / Declining
+            * RiskLevel: High / Medium / Low
+        - WHY IT MATTERS: An agent with a Declining trend and High risk
+          level should be prioritised for coaching before their metrics
+          cause customer-impact. This proactive flagging replaces reactive
+          spot-check-based identification.
+
+     c) Section Calibration Chart (Grouped Bar + Confusion Score)
+        - Per evaluation section:
+            * RecentAvgPercent vs PriorAvgPercent (side-by-side bars)
+            * ConfusionScore (0–100): derived from StdDev relative to mean
+              → High confusion = analysts/AI are interpreting the section
+                inconsistently (policy is unclear or AI prompt needs work)
+            * DriftDirection: Improving / Stable / Declining / Volatile
+        - WHY IT MATTERS: Section-level confusion scores are actionable at
+          the QA team management level — they identify which sections of
+          the evaluation form need policy rewrites, training sessions, or
+          updated knowledge-base documents.
+
+     d) *** RISK RADAR *** (Highlighted Feature)
+        ------------------------------------------
+        WHAT IS THE RISK RADAR?
+        The Risk Radar is the platform's highest-level early-warning system.
+        It scans all evaluation parameters and flags items that exhibit one
+        or more of four specific risk patterns, assigning each a risk score
+        from 0 to 100.
+
+        RISK CATEGORIES (what each one means):
+
+        i.  PolicyConfusion
+            SIGNAL: High score variability (large standard deviation) on a
+            parameter across audits — the same behaviour is being scored
+            very differently in different calls.
+            ROOT CAUSE: Unclear policy wording, ambiguous scoring guidance,
+            or insufficient knowledge-base documentation for that parameter.
+            ACTION: QA Manager reviews the parameter definition; knowledge-
+            base document is updated; Gemini prompt is refined.
+
+        ii. EscalationRisk
+            SIGNAL: A parameter that strongly correlates with call escalations
+            or negative sentiment, AND has a high MissRate or declining trend.
+            ROOT CAUSE: Agents are not following the specific compliance step
+            (e.g., "Offer callback") that prevents escalations.
+            ACTION: Targeted coaching; the parameter is elevated to P0 in
+            the evaluation form; sampling rate for this call type is increased.
+
+        iii. BiasIndicator
+            SIGNAL: A parameter where the AI score and human score differ
+            consistently in one direction (AI always higher or always lower
+            than human) for a specific agent or call type.
+            ROOT CAUSE: The AI may have a systematic bias based on transcript
+            patterns (e.g., always rewarding formal language even when the
+            required behaviour was absent). Alternatively, a human analyst
+            may have a personal bias in scoring.
+            ACTION: The parameter's scoring rubric is reviewed; golden
+            transcript regression tests are added; the affected analyst
+            may receive calibration coaching.
+
+        iv. DecisionReversal
+            SIGNAL: A high rate of human overrides (Disagree / Partial) for a
+            specific parameter — the analyst frequently rejects the AI score.
+            ROOT CAUSE: The AI's reasoning for that parameter is not aligned
+            with how analysts interpret the policy in practice.
+            ACTION: The parameter's prompt context is updated; additional
+            RAG knowledge chunks are added; the model's output is reviewed
+            for reasoning quality.
+
+        HOW RISK SCORE (0–100) IS COMPUTED:
+          - PolicyConfusion:    Risk Score = min(100, ScoreStdDev × 5)
+          - EscalationRisk:     Risk Score = MissRate × 100
+          - BiasIndicator:      Risk Score = abs(AvgAiScore – AvgHumanScore)
+                                             / MaxRating × 100
+          - DecisionReversal:   Risk Score = DisagreeRate × 100
+          Items with RiskScore >= 40 appear in the Risk Radar panel.
+
+        HOW IT IS DISPLAYED:
+          - A table of risk items, sortable by RiskScore descending.
+          - Each row: Parameter, Section, Risk Category, Risk Score (0–100),
+            and a plain-English Description generated by the analytics engine.
+          - Colour-coded severity: Red (>= 70), Amber (40–69), Green (< 40).
+          - Feeds directly into the sprint planning backlog:
+            Red items → immediate action; Amber → next sprint.
+
+     e) Calibration Heatmap
+        - A grid: parameters (rows) × agents (columns).
+        - Cell value: agent's average score % for that parameter.
+        - AgentSpread: Max – Min across agents for that parameter.
+        - High spread (e.g., >30%) means different agents score the same
+          parameter very differently — calibration sessions needed.
+        - WHY IT MATTERS: The heatmap makes cross-agent inconsistency visible
+          at a glance. A parameter that one agent scores at 90% and another
+          at 40% is not a quality problem — it is a calibration problem.
+
+------------------------------------------------------------------------------
+
+3.4  AI vs Human (HITL) Comparison Analytics
+     --------------------------------------------
+     PURPOSE: Side-by-side comparison of Gemini AI scores vs human analyst
+     scores at section and parameter level.
+
+     CHARTS:
+       a) Section Comparison (Grouped Bar)
+          - Per section: AI avg % (blue) vs Human avg % (orange).
+          - Difference column: Human% – AI% (positive = human rates higher).
+          - SampleCount: number of reviewed parameters in this section.
+
+       b) Parameter Comparison (Data Table)
+          - Per parameter: MaxRating, AvgAiScore, AvgHumanScore,
+            AvgAiScorePercent, AvgHumanScorePercent, Difference, SampleCount.
+          - Sortable by Difference to find biggest AI-Human gaps quickly.
+
+     HOW THIS SUPPORTS THE >= 0.85 CORRELATION TARGET:
+       - If section-level differences are consistently large (> 10%),
+         the overall Pearson r is likely below target.
+       - Drilling into the parameter table identifies the specific
+         parameters pulling down the correlation score.
+       - Actions: update knowledge-base content, refine Gemini prompt
+         for that parameter, or re-run calibration with the analyst team.
+
+------------------------------------------------------------------------------
+
+3.5  TNI (Training Needs Identification) Dashboard
+     -------------------------------------------------
+     PURPOSE: Tracks training plan creation, progress, and completion for
+     each agent, auto-generated from QA scoring data.
+
+     KEY METRICS:
+       - TotalPlans: all active training plans in the project.
+       - OpenPlans: plans in Draft / Active / InProgress status.
+       - CompletedPlans: plans marked Completed or Closed.
+       - OverduePlans: plans whose DueDate has passed and are not closed.
+
+     BY AGENT VIEW:
+       - Per agent: TotalPlans, OpenPlans, CompletedPlans, CompletionRate %.
+       - Agents with low CompletionRate AND high RiskLevel (from Agent Risk
+         Profile) are the highest-priority coaching interventions.
+
+     AUTO-GENERATION LINK:
+       - When Call Pipeline finishes and QA scores are below threshold,
+         TniGenerationService creates a training plan automatically, listing
+         the specific parameters the agent missed and suggested resources.
+       - IsAutoGenerated flag distinguishes these from manually created plans.
+
+     RELATIONSHIP TO ADOPTION TARGET:
+       - TNI completion rate is a leading indicator of adoption.
+         Analysts who engage with their training plans are more likely to
+         actively use the platform's review features.
+
+------------------------------------------------------------------------------
+SECTION 4 — QUALITATIVE FEEDBACK MECHANISMS
+------------------------------------------------------------------------------
+
+4.1  QA analyst interviews at end of each sprint
+     -----------------------------------------------
+     FREQUENCY: End of each 3-week sprint (approx. every 3 weeks).
+     FORMAT: 30-minute structured interview with 2–3 QA analysts.
+     TOPICS:
+       - What did you find easiest / hardest about using the platform?
+       - Were AI-suggested scores helpful or misleading?
+       - Did the coaching notes improve your feedback to agents?
+       - What feature would most improve your daily workflow?
+     OUTPUT: Sprint retrospective action items; input to product backlog.
+
+     ANALYTICS LINKAGE:
+       - Interview insights are cross-referenced with analytics data.
+         E.g., if an analyst says "I always disagree with the Compliance
+         score", the HITL Comparison chart is pulled to verify whether
+         this is statistically significant or an individual perception.
+
+------------------------------------------------------------------------------
+
+4.2  In-app feedback form (linked from Review page)
+     ---------------------------------------------------
+     LOCATION: "Give Feedback" button on the Human Review and Call Pipeline
+     results pages.
+     CAPTURES:
+       - Overall usefulness of AI suggestions (1–5 stars)
+       - Was the AI reasoning clear? (Yes / Partially / No)
+       - Free-text comment (optional)
+       - Page context (auto-captured: which review form, which call type)
+     STORAGE: FeedbackSubmissions table (if implemented) or exported to
+     a shared spreadsheet reviewed weekly.
+     RESPONSE SLA: Product team acknowledges actionable feedback within
+     5 business days.
+
+------------------------------------------------------------------------------
+
+4.3  Weekly review meeting — TechM GVO team
+     -------------------------------------------
+     CADENCE: Every Monday, 45 minutes.
+     ATTENDEES: QA Automation Engineering lead, TechM GVO team lead,
+                QA Manager (pilot team), Product Owner.
+     STANDING AGENDA:
+       1. Review GCP Cloud Monitoring dashboard (uptime, latency, errors)
+       2. Review Analytics Dashboard (throughput, score trends)
+       3. Review Risk Radar — any Red items require an owner and due date
+       4. Adoption rate vs 80% target trajectory
+       5. User satisfaction survey results (at checkpoint weeks)
+       6. Sprint demo of new features (sprint boundary weeks)
+       7. Blockers and escalations
+     OUTPUT: Action log updated in shared project tracker; blockers
+     escalated same day if customer-impacting.
+
+     WHY THE RISK RADAR IS A STANDING AGENDA ITEM:
+       - The Risk Radar aggregates signals that would otherwise require
+         manually reviewing multiple analytics tabs. By surfacing
+         PolicyConfusion, EscalationRisk, BiasIndicator, and
+         DecisionReversal items in one ranked table, the weekly meeting
+         can prioritise the highest-impact actions in under 10 minutes.
+
+==============================================================================
+END OF DOCUMENT
+==============================================================================

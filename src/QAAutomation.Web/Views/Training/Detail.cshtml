@@ -1,7 +1,7 @@
 @model TrainingPlanViewModel
 @inject QAAutomation.Web.Services.ApiClient ApiClient
 @{
-    ViewData["Title"] = "Training Plan Detail";
+    ViewData["Title"] = L["PageTitleTrainingPlans"].Value;
     bool isAdmin = User.IsInRole("Admin");
     bool isTrainer = string.Equals(User.Identity?.Name, Model.TrainerUsername, StringComparison.OrdinalIgnoreCase);
     bool canMarkDone = isAdmin || isTrainer;
@@ -24,7 +24,7 @@
         </p>
     </div>
     <a href="@Url.Action("Index", "Training")" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Back to Plans
+        <i class="bi bi-arrow-left me-1"></i>@L["NavTrainingPlans"]
     </a>
 </div>
 

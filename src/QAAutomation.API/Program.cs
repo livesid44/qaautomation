@@ -251,6 +251,72 @@ using (var scope = app.Services.CreateScope())
         try { db.Database.ExecuteSqlRaw(migrationSql); }
         catch (Exception ex) { logger.LogWarning(ex, "Column migration failed: {Sql}", migrationSql); }
     }
+
+    // Table-level migrations for SQL Server — EnsureCreated() only creates tables on a completely
+    // empty database; it does NOT add tables that are missing from an existing database.
+    // Each entry: (guard SQL that returns 0 when table is absent, DDL to create it)
+    if (isSqlServer)
+    {
+        var tableMigrations = new (string CheckSql, string CreateSql)[]
+        {
+            (
+                "SELECT COUNT(*) FROM sys.tables WHERE name = 'HumanFieldScores'",
+                @"CREATE TABLE [HumanFieldScores] (
+                    [Id]                  int            NOT NULL IDENTITY CONSTRAINT [PK_HumanFieldScores] PRIMARY KEY,
+                    [HumanReviewItemId]   int            NOT NULL,
+                    [FieldId]             int            NOT NULL,
+                    [AiScore]             float          NOT NULL,
+                    [HumanScore]          float          NOT NULL,
+                    [Comment]             nvarchar(1000) NULL,
+                    CONSTRAINT [FK_HumanFieldScores_HumanReviewItems] FOREIGN KEY ([HumanReviewItemId]) REFERENCES [HumanReviewItems] ([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_HumanFieldScores_FormFields]       FOREIGN KEY ([FieldId])             REFERENCES [FormFields]      ([Id]) ON DELETE NO ACTION
+                );
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HumanFieldScores_HumanReviewItemId' AND object_id = OBJECT_ID('HumanFieldScores'))
+                    CREATE INDEX [IX_HumanFieldScores_HumanReviewItemId] ON [HumanFieldScores] ([HumanReviewItemId]);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HumanFieldScores_FieldId' AND object_id = OBJECT_ID('HumanFieldScores'))
+                    CREATE INDEX [IX_HumanFieldScores_FieldId] ON [HumanFieldScores] ([FieldId]);"
+            ),
+        };
+
+        var conn2 = db.Database.GetDbConnection();
+        bool opened2 = conn2.State == ConnectionState.Closed;
+        if (opened2) conn2.Open();
+        try
+        {
+            foreach (var (checkSql, createSql) in tableMigrations)
+            {
+                using var cmd = conn2.CreateCommand();
+                cmd.CommandText = checkSql;
+                var exists2 = (int)(cmd.ExecuteScalar() ?? 0);
+                if (exists2 > 0) continue; // table already present — skip
+                try { db.Database.ExecuteSqlRaw(createSql); }
+                catch (Exception ex) { logger.LogWarning(ex, "Table migration failed for check: {Check}", checkSql); }
+            }
+
+            // If the table already existed with ON DELETE CASCADE on FieldId (from a previous
+            // migration), alter it to NO ACTION to avoid SQL Server cascade path conflicts.
+            try
+            {
+                using var chk = conn2.CreateCommand();
+                chk.CommandText = @"
+                    SELECT COUNT(*)
+                    FROM   sys.foreign_keys
+                    WHERE  name = 'FK_HumanFieldScores_FormFields'
+                      AND  delete_referential_action_desc = 'CASCADE'";
+                var hasCascade = (int)(chk.ExecuteScalar() ?? 0);
+                if (hasCascade > 0)
+                {
+                    db.Database.ExecuteSqlRaw("ALTER TABLE [HumanFieldScores] DROP CONSTRAINT [FK_HumanFieldScores_FormFields]");
+                    db.Database.ExecuteSqlRaw(@"ALTER TABLE [HumanFieldScores]
+                        ADD CONSTRAINT [FK_HumanFieldScores_FormFields]
+                        FOREIGN KEY ([FieldId]) REFERENCES [FormFields]([Id]) ON DELETE NO ACTION");
+                }
+            }
+            catch (Exception ex) { logger.LogDebug(ex, "FK migration for HumanFieldScores skipped"); }
+        }
+        finally { if (opened2) conn2.Close(); }
+    }
+
     await db.SeedAsync();
     await db.SeedYouTubeAsync();
 

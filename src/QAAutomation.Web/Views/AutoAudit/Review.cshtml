@@ -1,6 +1,6 @@
 @model AutoAuditReviewViewModel
 @{
-    ViewData["Title"] = "Auto Audit — Review Results";
+    ViewData["Title"] = L["AutoAuditReviewTitle"].Value;
     var pct = Model.ScorePercent;
     var scoreClass = pct >= 80 ? "text-success" : pct >= 60 ? "text-warning" : "text-danger";
     var statusText = pct >= 80 ? "PASS" : pct >= 60 ? "NEEDS IMPROVEMENT" : "FAIL";

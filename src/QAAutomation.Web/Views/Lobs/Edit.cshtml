@@ -1,6 +1,6 @@
 @model LobViewModel
 @{
-    ViewData["Title"] = $"Edit LOB — {Model.Name}";
+    ViewData["Title"] = L["BtnEdit"].Value + " — " + Model.Name;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -8,7 +8,7 @@
         <small class="text-muted">Project: <strong>@Model.ProjectName</strong></small>
     </div>
     <a href="@Url.Action("Index", "Lobs", new { projectId = Model.ProjectId })" class="btn btn-sm btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i>Back to LOBs
+        <i class="bi bi-arrow-left me-1"></i>@L["BtnBack"]
     </a>
 </div>
 @if (TempData["Success"] != null)
@@ -20,20 +20,20 @@
         <form method="post" action="@Url.Action("Edit", "Lobs", new { id = Model.Id })">
             @Html.AntiForgeryToken()
             <div class="mb-3">
-                <label class="form-label fw-semibold small">LOB Name *</label>
+                <label class="form-label fw-semibold small">@L["LblName"] *</label>
                 <input name="name" class="form-control" value="@Model.Name" required maxlength="200" />
             </div>
             <div class="mb-3">
-                <label class="form-label fw-semibold small">Description</label>
+                <label class="form-label fw-semibold small">@L["LblDescription"]</label>
                 <textarea name="description" class="form-control" rows="2">@Model.Description</textarea>
             </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" name="isActive" value="true" class="form-check-input" id="isActive"
                        @(Model.IsActive ? "checked" : "") />
                 <input type="hidden" name="isActive" value="false" />
-                <label for="isActive" class="form-check-label small">LOB is active</label>
+                <label for="isActive" class="form-check-label small">@L["LblActive"]</label>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Save</button>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>@L["BtnSave"]</button>
         </form>
     </div>
 </div>

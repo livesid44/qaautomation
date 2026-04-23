@@ -1,12 +1,12 @@
 @model List<TrainingPlanViewModel>
 @{
-    ViewData["Title"] = "Training Plans";
+    ViewData["Title"] = L["PageTitleTrainingPlans"].Value;
     string? currentStatus = ViewBag.StatusFilter as string;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-mortarboard me-2 text-primary"></i>Training Need Identification</h4>
+        <h4 class="fw-bold mb-1"><i class="bi bi-mortarboard me-2 text-primary"></i>@L["TrainingIndexTitle"]</h4>
         <p class="text-muted mb-0">Track improvement plans from audit observations to closure. Quality managers create plans, trainers deliver them, agents receive coaching.</p>
     </div>
     @if (User.IsInRole("Admin"))
@@ -71,13 +71,13 @@ else
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Title</th>
-                        <th>Agent</th>
+                        <th>@L["AuditTitle"]</th>
+                        <th>@L["LblAgent"]</th>
                         <th>Trainer</th>
-                        <th>Status</th>
+                        <th>@L["LblStatus"]</th>
                         <th>Progress</th>
                         <th>Due Date</th>
-                        <th>Created By</th>
+                        <th>@L["LblEvaluatedBy"]</th>
                         <th></th>
                     </tr>
                 </thead>

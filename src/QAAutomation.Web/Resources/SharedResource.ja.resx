@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LangSwitcherLabel" xml:space="preserve"><value>言語</value></data>
+  <data name="LangEnglish" xml:space="preserve"><value>英語</value></data>
+  <data name="LangGerman" xml:space="preserve"><value>ドイツ語</value></data>
+  <data name="LangSpanish" xml:space="preserve"><value>スペイン語</value></data>
+  <data name="LangFrench" xml:space="preserve"><value>フランス語</value></data>
+  <data name="LangHindi" xml:space="preserve"><value>ヒンディー語</value></data>
+  <data name="LangJapanese" xml:space="preserve"><value>日本語</value></data>
+  <data name="NavDashboard" xml:space="preserve"><value>ダッシュボード</value></data>
+  <data name="NavAnalytics" xml:space="preserve"><value>分析</value></data>
+  <data name="NavExplainability" xml:space="preserve"><value>説明可能性</value></data>
+  <data name="NavDecisionAssurance" xml:space="preserve"><value>意思決定保証</value></data>
+  <data name="NavInsightsChat" xml:space="preserve"><value>インサイトチャット</value></data>
+  <data name="NavQASetup" xml:space="preserve"><value>QA設定</value></data>
+  <data name="NavParameters" xml:space="preserve"><value>パラメータ</value></data>
+  <data name="NavParameterClubs" xml:space="preserve"><value>パラメータクラブ</value></data>
+  <data name="NavRatingCriteria" xml:space="preserve"><value>評価基準</value></data>
+  <data name="NavFormDesigner" xml:space="preserve"><value>フォームデザイナー</value></data>
+  <data name="NavAudits" xml:space="preserve"><value>監査</value></data>
+  <data name="NavAuditRecords" xml:space="preserve"><value>監査記録</value></data>
+  <data name="NavAutoAudit" xml:space="preserve"><value>自動監査</value></data>
+  <data name="NavCallPipeline" xml:space="preserve"><value>コールパイプライン</value></data>
+  <data name="NavHumanReview" xml:space="preserve"><value>人間レビュー</value></data>
+  <data name="NavAIvsHuman" xml:space="preserve"><value>AIと人間の比較</value></data>
+  <data name="NavTrainingPlans" xml:space="preserve"><value>トレーニング計画</value></data>
+  <data name="NavAdmin" xml:space="preserve"><value>管理</value></data>
+  <data name="NavAISettings" xml:space="preserve"><value>AI設定</value></data>
+  <data name="NavAuditLogs" xml:space="preserve"><value>監査ログ</value></data>
+  <data name="NavSamplingPolicies" xml:space="preserve"><value>サンプリングポリシー</value></data>
+  <data name="NavKnowledgeBase" xml:space="preserve"><value>ナレッジベース</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="NavLinesOfBusiness" xml:space="preserve"><value>事業ライン</value></data>
+  <data name="NavUsers" xml:space="preserve"><value>ユーザー</value></data>
+  <data name="NavSwitchProject" xml:space="preserve"><value>プロジェクト切替</value></data>
+  <data name="NavNoProjects" xml:space="preserve"><value>プロジェクトなし</value></data>
+  <data name="NavLogout" xml:space="preserve"><value>ログアウト</value></data>
+  <data name="NavCurrentProject" xml:space="preserve"><value>現在のプロジェクト</value></data>
+  <data name="FooterAllRightsReserved" xml:space="preserve"><value>全著作権所有.</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>保存</value></data>
+  <data name="BtnCancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="BtnDelete" xml:space="preserve"><value>削除</value></data>
+  <data name="BtnEdit" xml:space="preserve"><value>編集</value></data>
+  <data name="BtnCreate" xml:space="preserve"><value>作成</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>戻る</value></data>
+  <data name="BtnUpdate" xml:space="preserve"><value>更新</value></data>
+  <data name="BtnSubmit" xml:space="preserve"><value>送信</value></data>
+  <data name="BtnConfirm" xml:space="preserve"><value>確認</value></data>
+  <data name="BtnClose" xml:space="preserve"><value>閉じる</value></data>
+  <data name="BtnAdd" xml:space="preserve"><value>追加</value></data>
+  <data name="BtnRemove" xml:space="preserve"><value>削除</value></data>
+  <data name="BtnClear" xml:space="preserve"><value>クリア</value></data>
+  <data name="BtnSearch" xml:space="preserve"><value>検索</value></data>
+  <data name="BtnFilter" xml:space="preserve"><value>フィルター</value></data>
+  <data name="BtnExport" xml:space="preserve"><value>エクスポート</value></data>
+  <data name="BtnDownload" xml:space="preserve"><value>ダウンロード</value></data>
+  <data name="BtnUpload" xml:space="preserve"><value>アップロード</value></data>
+  <data name="BtnNew" xml:space="preserve"><value>新規</value></data>
+  <data name="BtnRefresh" xml:space="preserve"><value>更新</value></data>
+  <data name="BtnView" xml:space="preserve"><value>表示</value></data>
+  <data name="BtnManage" xml:space="preserve"><value>管理</value></data>
+  <data name="BtnAnalyse" xml:space="preserve"><value>分析</value></data>
+  <data name="LblName" xml:space="preserve"><value>名前</value></data>
+  <data name="LblDescription" xml:space="preserve"><value>説明</value></data>
+  <data name="LblStatus" xml:space="preserve"><value>ステータス</value></data>
+  <data name="LblDate" xml:space="preserve"><value>日付</value></data>
+  <data name="LblActions" xml:space="preserve"><value>アクション</value></data>
+  <data name="LblDetails" xml:space="preserve"><value>詳細</value></data>
+  <data name="LblRole" xml:space="preserve"><value>役割</value></data>
+  <data name="LblUsername" xml:space="preserve"><value>ユーザー名</value></data>
+  <data name="LblPassword" xml:space="preserve"><value>パスワード</value></data>
+  <data name="LblEmail" xml:space="preserve"><value>メール</value></data>
+  <data name="LblCreatedAt" xml:space="preserve"><value>作成日</value></data>
+  <data name="LblActive" xml:space="preserve"><value>アクティブ</value></data>
+  <data name="LblInactive" xml:space="preserve"><value>非アクティブ</value></data>
+  <data name="LblEnabled" xml:space="preserve"><value>有効</value></data>
+  <data name="LblDisabled" xml:space="preserve"><value>無効</value></data>
+  <data name="LblYes" xml:space="preserve"><value>はい</value></data>
+  <data name="LblNo" xml:space="preserve"><value>いいえ</value></data>
+  <data name="LblLoading" xml:space="preserve"><value>読み込み中...</value></data>
+  <data name="LblNoRecords" xml:space="preserve"><value>記録が見つかりません.</value></data>
+  <data name="LblError" xml:space="preserve"><value>エラー</value></data>
+  <data name="LblSuccess" xml:space="preserve"><value>成功</value></data>
+  <data name="LblAll" xml:space="preserve"><value>すべて</value></data>
+  <data name="LblNone" xml:space="preserve"><value>なし</value></data>
+  <data name="LblType" xml:space="preserve"><value>タイプ</value></data>
+  <data name="LblScore" xml:space="preserve"><value>スコア</value></data>
+  <data name="LblAgent" xml:space="preserve"><value>エージェント</value></data>
+  <data name="LblForm" xml:space="preserve"><value>フォーム</value></data>
+  <data name="LblSection" xml:space="preserve"><value>セクション</value></data>
+  <data name="LblField" xml:space="preserve"><value>フィールド</value></data>
+  <data name="LblProject" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="LblCallDate" xml:space="preserve"><value>通話日</value></data>
+  <data name="LblCallReference" xml:space="preserve"><value>通話参照</value></data>
+  <data name="LblEvaluatedBy" xml:space="preserve"><value>評価者</value></data>
+  <data name="LblEvaluatedAt" xml:space="preserve"><value>評価日時</value></data>
+  <data name="LblAvgScore" xml:space="preserve"><value>平均スコア</value></data>
+  <data name="LblPassRate" xml:space="preserve"><value>合格率</value></data>
+  <data name="LblTotalAudits" xml:space="preserve"><value>総監査数</value></data>
+  <data name="LblActiveForms" xml:space="preserve"><value>アクティブフォーム</value></data>
+  <data name="LblFilterByForm" xml:space="preserve"><value>フォームでフィルター:</value></data>
+  <data name="LblAllForms" xml:space="preserve"><value>— すべてのフォーム —</value></data>
+  <data name="LblRecordNewAudit" xml:space="preserve"><value>新規監査記録</value></data>
+  <data name="LblQualityEvaluations" xml:space="preserve"><value>顧客サポートインタラクションの品質評価.</value></data>
+  <data name="PageTitleDashboard" xml:space="preserve"><value>ダッシュボード</value></data>
+  <data name="PageTitleAuditRecords" xml:space="preserve"><value>監査記録</value></data>
+  <data name="PageTitleNewAudit" xml:space="preserve"><value>新規監査記録</value></data>
+  <data name="PageTitleAutoAudit" xml:space="preserve"><value>自動監査</value></data>
+  <data name="PageTitleParameters" xml:space="preserve"><value>パラメータ</value></data>
+  <data name="PageTitleUsers" xml:space="preserve"><value>ユーザー</value></data>
+  <data name="PageTitleProjects" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="PageTitleAnalytics" xml:space="preserve"><value>分析ダッシュボード</value></data>
+  <data name="PageTitleHumanReview" xml:space="preserve"><value>人間レビュー</value></data>
+  <data name="PageTitleTrainingPlans" xml:space="preserve"><value>トレーニング計画</value></data>
+  <data name="PageTitleKnowledgeBase" xml:space="preserve"><value>ナレッジベース</value></data>
+  <data name="PageTitleAISettings" xml:space="preserve"><value>AI設定</value></data>
+  <data name="PageTitleAuditLog" xml:space="preserve"><value>監査ログ</value></data>
+  <data name="PageTitleCallPipeline" xml:space="preserve"><value>コールパイプライン</value></data>
+  <data name="PageTitleFormDesigner" xml:space="preserve"><value>フォームデザイナー</value></data>
+  <data name="PageTitleInsightsChat" xml:space="preserve"><value>インサイトチャット</value></data>
+  <data name="PageTitleLobs" xml:space="preserve"><value>事業ライン</value></data>
+  <data name="PageTitleParameterClubs" xml:space="preserve"><value>パラメータクラブ</value></data>
+  <data name="PageTitleRatingCriteria" xml:space="preserve"><value>評価基準</value></data>
+  <data name="PageTitleSampling" xml:space="preserve"><value>サンプリングポリシー</value></data>
+  <data name="DashWelcomeBack" xml:space="preserve"><value>おかえりなさい、</value></data>
+  <data name="DashOverview" xml:space="preserve"><value>QA自動化システムの概要です.</value></data>
+  <data name="DashQuickNavigation" xml:space="preserve"><value>クイックナビゲーション</value></data>
+  <data name="DashParameterCount" xml:space="preserve"><value>パラメータ</value></data>
+  <data name="DashParameterClubs" xml:space="preserve"><value>パラメータクラブ</value></data>
+  <data name="DashRatingCriteria" xml:space="preserve"><value>評価基準</value></data>
+  <data name="DashEvaluationForms" xml:space="preserve"><value>評価フォーム</value></data>
+  <data name="DashAuditRecords" xml:space="preserve"><value>監査記録</value></data>
+  <data name="DashManageParameters" xml:space="preserve"><value>パラメータ管理</value></data>
+  <data name="LoginTitle" xml:space="preserve"><value>サインイン — AuraAI</value></data>
+  <data name="LoginTagline" xml:space="preserve"><value>インテリジェント自動化プラットフォーム</value></data>
+  <data name="LoginUsername" xml:space="preserve"><value>ユーザー名</value></data>
+  <data name="LoginPassword" xml:space="preserve"><value>パスワード</value></data>
+  <data name="LoginEnterUsername" xml:space="preserve"><value>ユーザー名を入力</value></data>
+  <data name="LoginEnterPassword" xml:space="preserve"><value>パスワードを入力</value></data>
+  <data name="LoginSignIn" xml:space="preserve"><value>サインイン</value></data>
+  <data name="AutoAuditUploadTitle" xml:space="preserve"><value>自動監査 — トランスクリプトのアップロード</value></data>
+  <data name="AutoAuditSelectForm" xml:space="preserve"><value>評価フォームを選択</value></data>
+  <data name="AutoAuditPasteTranscript" xml:space="preserve"><value>下に通話トランスクリプトを貼り付けまたは入力</value></data>
+  <data name="AutoAuditAnalyse" xml:space="preserve"><value>トランスクリプトを分析</value></data>
+  <data name="AutoAuditReviewTitle" xml:space="preserve"><value>自動監査 — 結果レビュー</value></data>
+  <data name="AutoAuditAcceptSave" xml:space="preserve"><value>承認して保存</value></data>
+  <data name="AutoAuditReAnalyse" xml:space="preserve"><value>再分析</value></data>
+  <data name="HRIndexTitle" xml:space="preserve"><value>人間レビューキュー</value></data>
+  <data name="HRPending" xml:space="preserve"><value>保留中</value></data>
+  <data name="HRApproved" xml:space="preserve"><value>承認済み</value></data>
+  <data name="HRRejected" xml:space="preserve"><value>却下済み</value></data>
+  <data name="TrainingIndexTitle" xml:space="preserve"><value>トレーニング計画</value></data>
+  <data name="TrainingCreatePlan" xml:space="preserve"><value>トレーニング計画を作成</value></data>
+  <data name="TrainingAgentName" xml:space="preserve"><value>エージェント名</value></data>
+  <data name="TrainingStatus" xml:space="preserve"><value>ステータス</value></data>
+  <data name="TrainingDueDate" xml:space="preserve"><value>期限日</value></data>
+  <data name="KBTitle" xml:space="preserve"><value>ナレッジベース</value></data>
+  <data name="KBAddSource" xml:space="preserve"><value>ソースを追加</value></data>
+  <data name="KBAddDocument" xml:space="preserve"><value>ドキュメントを追加</value></data>
+  <data name="KBSourceName" xml:space="preserve"><value>ソース名</value></data>
+  <data name="KBDocuments" xml:space="preserve"><value>ドキュメント</value></data>
+  <data name="AISTitle" xml:space="preserve"><value>AI設定</value></data>
+  <data name="AISProvider" xml:space="preserve"><value>プロバイダー</value></data>
+  <data name="AISApiKey" xml:space="preserve"><value>APIキー</value></data>
+  <data name="AISEndpoint" xml:space="preserve"><value>エンドポイント</value></data>
+  <data name="AISModel" xml:space="preserve"><value>モデル</value></data>
+  <data name="AISSave" xml:space="preserve"><value>設定を保存</value></data>
+  <data name="AuditLogTitle" xml:space="preserve"><value>監査ログ</value></data>
+  <data name="AuditLogTimestamp" xml:space="preserve"><value>タイムスタンプ</value></data>
+  <data name="AuditLogCategory" xml:space="preserve"><value>カテゴリー</value></data>
+  <data name="AuditLogResult" xml:space="preserve"><value>結果</value></data>
+  <data name="AuditLogMessage" xml:space="preserve"><value>メッセージ</value></data>
+  <data name="CPTitle" xml:space="preserve"><value>コールパイプライン</value></data>
+  <data name="CPStartNew" xml:space="preserve"><value>新規パイプライン開始</value></data>
+  <data name="CPStatus" xml:space="preserve"><value>ステータス</value></data>
+  <data name="CPCreated" xml:space="preserve"><value>作成</value></data>
+  <data name="SamplingTitle" xml:space="preserve"><value>サンプリングポリシー</value></data>
+  <data name="SamplingCreate" xml:space="preserve"><value>ポリシーを作成</value></data>
+  <data name="LobsTitle" xml:space="preserve"><value>事業ライン</value></data>
+  <data name="LobsCreate" xml:space="preserve"><value>事業ライン作成</value></data>
+  <data name="LobsCode" xml:space="preserve"><value>コード</value></data>
+  <data name="UsersTitle" xml:space="preserve"><value>ユーザー</value></data>
+  <data name="UsersCreate" xml:space="preserve"><value>ユーザーを作成</value></data>
+  <data name="UsersAdminRole" xml:space="preserve"><value>管理者</value></data>
+  <data name="UsersUserRole" xml:space="preserve"><value>ユーザー</value></data>
+  <data name="ParamsTitle" xml:space="preserve"><value>パラメータ</value></data>
+  <data name="ParamsCreate" xml:space="preserve"><value>パラメータを作成</value></data>
+  <data name="ParamsMaxRating" xml:space="preserve"><value>最大評価</value></data>
+  <data name="ParamsEvalType" xml:space="preserve"><value>評価タイプ</value></data>
+  <data name="ProjectsTitle" xml:space="preserve"><value>プロジェクト</value></data>
+  <data name="ProjectsCreate" xml:space="preserve"><value>プロジェクトを作成</value></data>
+  <data name="AnalyticsTitle" xml:space="preserve"><value>分析ダッシュボード</value></data>
+  <data name="AnalyticsTrend" xml:space="preserve"><value>スコアトレンド</value></data>
+  <data name="AnalyticsTopPerformers" xml:space="preserve"><value>トップパフォーマー</value></data>
+  <data name="AnalyticsBottomPerformers" xml:space="preserve"><value>ボトムパフォーマー</value></data>
+  <data name="FormDesignerTitle" xml:space="preserve"><value>フォームデザイナー</value></data>
+  <data name="FormDesignerCreate" xml:space="preserve"><value>フォームを作成</value></data>
+  <data name="RCTitle" xml:space="preserve"><value>評価基準</value></data>
+  <data name="RCCreate" xml:space="preserve"><value>基準を作成</value></data>
+  <data name="PCTitle" xml:space="preserve"><value>パラメータクラブ</value></data>
+  <data name="PCCreate" xml:space="preserve"><value>クラブを作成</value></data>
+  <data name="InsightsChatTitle" xml:space="preserve"><value>インサイटチャット</value></data>
+  <data name="ICPlaceholder" xml:space="preserve"><value>QAデータについて質問する...</value></data>
+  <data name="ICSend" xml:space="preserve"><value>送信</value></data>
+  <data name="ExplainabilityTitle" xml:space="preserve"><value>説明可能性分析</value></data>
+  <data name="DATitle" xml:space="preserve"><value>意思決定保証</value></data>
+  <data name="AuditDetailTitle" xml:space="preserve"><value>監査詳細</value></data>
+  <data name="AuditDetailOverall" xml:space="preserve"><value>総合スコア</value></data>
+  <data name="AuditDetailTranscript" xml:space="preserve"><value>トランスクリプト</value></data>
+  <data name="SelectProjectTitle" xml:space="preserve"><value>プロジェクトを選択</value></data>
+  <data name="SelectProjectContinue" xml:space="preserve"><value>続ける</value></data>
+  <data name="HRComparisonTitle" xml:space="preserve"><value>AIと人間の比較</value></data>
+  <data name="AuditTitle" xml:space="preserve"><value>タイトル</value></data>
+  <data name="BtnSend" xml:space="preserve"><value>送信</value></data>
+  <data name="InsightsChatPlaceholder" xml:space="preserve"><value>QAデータについて質問してください…</value></data>
+  <data name="KBNoSources" xml:space="preserve"><value>まだナレッジソースがありません</value></data>
+  <data name="AllJobs" xml:space="preserve"><value>全ジョブ</value></data>
+  <data name="CallPipelineBatchUrlTitle" xml:space="preserve"><value>バッチURLを送信 — 通話パイプライン</value></data>
+  <data name="CallPipelineUploadTitle" xml:space="preserve"><value>トランスクリプトファイルをアップロード</value></data>
+  <data name="CallPipelineConnectorTitle" xml:space="preserve"><value>コネクタを設定 — 通話パイプライン</value></data>
+  <data name="TrendImproving" xml:space="preserve"><value>改善中</value></data>
+  <data name="TrendDeclining" xml:space="preserve"><value>低下中</value></data>
+  <data name="TrendStable" xml:space="preserve"><value>安定</value></data>
+  <data name="HealthGood" xml:space="preserve"><value>良好</value></data>
+  <data name="HealthNeedsAttention" xml:space="preserve"><value>要注意</value></data>
+  <data name="HealthCritical" xml:space="preserve"><value>重大</value></data>
+  <data name="ScoreBandHigh" xml:space="preserve"><value>高い</value></data>
+  <data name="ScoreBandMedium" xml:space="preserve"><value>中程度</value></data>
+  <data name="ScoreBandLow" xml:space="preserve"><value>低い</value></data>
+  <data name="LabelOverallAverage" xml:space="preserve"><value>全体平均</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>すべての監査のQAパフォーマンストレンド</value></data>
+  <data name="KpiOverallAvg" xml:space="preserve"><value>総合平均スコア</value></data>
+  <data name="KpiTopAgent" xml:space="preserve"><value>トップエージェント</value></data>
+  <data name="KpiWeakestParam" xml:space="preserve"><value>最弱パラメータ</value></data>
+  <data name="KpiBestForm" xml:space="preserve"><value>最良フォーム</value></data>
+  <data name="AnalyticsDailyChartTitle" xml:space="preserve"><value>日別QAスコア</value></data>
+  <data name="AnalyticsDailyChartSub" xml:space="preserve"><value>通話日付ごとの平均スコア%</value></data>
+  <data name="AnalyticsDistChartTitle" xml:space="preserve"><value>エージェントスコア分布</value></data>
+  <data name="AnalyticsDistChartSub" xml:space="preserve"><value>パフォーマンスバンド別エージェント</value></data>
+  <data name="TabOverview" xml:space="preserve"><value>概要</value></data>
+  <data name="TabAgentPerf" xml:space="preserve"><value>エージェントパフォーマンス</value></data>
+  <data name="TabParamAnalysis" xml:space="preserve"><value>パラメータ分析</value></data>
+  <data name="TabCallType" xml:space="preserve"><value>コールタイプ / フォーム</value></data>
+  <data name="TabTrends" xml:space="preserve"><value>トレンド</value></data>
+  <data name="TabSectionAnalysis" xml:space="preserve"><value>セクション分析</value></data>
+  <data name="TabTni" xml:space="preserve"><value>TNIダッシュボード</value></data>
+  <data name="TabLeadership" xml:space="preserve"><value>リーダーシップサマリー</value></data>
+</root>

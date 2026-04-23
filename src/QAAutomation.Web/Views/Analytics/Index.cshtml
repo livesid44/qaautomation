@@ -1,6 +1,6 @@
 @model QAAutomation.Web.Models.AnalyticsViewModel
 @{
-    ViewData["Title"] = "Analytics Dashboard";
+    ViewData["Title"] = L["PageTitleAnalytics"].Value;
     var insights = ViewBag.Insights as QAAutomation.Web.Models.AnalyticsInsightsViewModel
                    ?? new QAAutomation.Web.Models.AnalyticsInsightsViewModel();
     var tni = ViewBag.TniSummary as QAAutomation.Web.Models.TniSummaryViewModel
@@ -45,14 +45,14 @@
     // Data-linked fallback summaries (used when LLM insight is not available)
     var _dailyFirst      = Model.DailyScores.FirstOrDefault()?.AvgScorePercent ?? 0;
     var _dailyLast       = Model.DailyScores.LastOrDefault()?.AvgScorePercent ?? 0;
-    var _dailyTrendLabel = _dailyLast > _dailyFirst + 1 ? "improving" : _dailyLast < _dailyFirst - 1 ? "declining" : "stable";
+    var _dailyTrendLabel = _dailyLast > _dailyFirst + 1 ? L["TrendImproving"].Value : _dailyLast < _dailyFirst - 1 ? L["TrendDeclining"].Value : L["TrendStable"].Value;
     var _bottomAgent     = Model.AgentScores.OrderBy(a => a.AvgScorePercent).FirstOrDefault();
     var _bottom3Params   = Model.ParameterTrends.OrderBy(p => p.AvgScorePercent).Take(3).ToList();
     var _lowParamCount   = Model.ParameterTrends.Count(p => p.AvgScorePercent < 60);
     var _worstForm       = Model.CallTypeScores.OrderBy(c => c.AvgScorePercent).FirstOrDefault();
     var _lowFormCount    = Model.CallTypeScores.Count(c => c.AvgScorePercent < 70);
 
-    var distLabels = System.Text.Json.JsonSerializer.Serialize(new[] { "High (>=80%)", "Medium (60-79%)", "Low (<60%)" });
+    var distLabels = System.Text.Json.JsonSerializer.Serialize(new[] { L["ScoreBandHigh"].Value + " (>=80%)", L["ScoreBandMedium"].Value + " (60-79%)", L["ScoreBandLow"].Value + " (<60%)" });
     var distData   = System.Text.Json.JsonSerializer.Serialize(new[] { agentHigh, agentMed, agentLow });
 
     // Section Analysis chart data
@@ -69,7 +69,7 @@
     var _worstSection     = Model.SectionScores.OrderBy(s => s.AvgScorePercent).FirstOrDefault();
     var _bestSection      = Model.SectionScores.OrderByDescending(s => s.AvgScorePercent).FirstOrDefault();
     var _healthColor      = overallAvg >= 80 ? "success" : overallAvg >= 60 ? "warning" : "danger";
-    var _healthLabel      = overallAvg >= 80 ? "Good" : overallAvg >= 60 ? "Needs Attention" : "Critical";
+    var _healthLabel      = overallAvg >= 80 ? L["HealthGood"].Value : overallAvg >= 60 ? L["HealthNeedsAttention"].Value : L["HealthCritical"].Value;
     var _trackedAgents    = Model.AgentDailyTrends.Select(t => t.AgentName).Distinct().Count();
     var _agentTrends      = Model.AgentDailyTrends
                                 .GroupBy(t => t.AgentName)
@@ -110,8 +110,8 @@
 <!-- Page header -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Analytics Dashboard</h4>
-        <p class="text-muted mb-0">QA performance trends across all audits</p>
+        <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2 text-primary"></i>@L["PageTitleAnalytics"]</h4>
+        <p class="text-muted mb-0">@L["AnalyticsSubtitle"]</p>
     </div>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-primary py-2 px-3 fs-6">@Model.TotalAudits audit@(Model.TotalAudits != 1 ? "s" : "")</span>
@@ -154,42 +154,42 @@ else
     <ul class="nav nav-tabs border-bottom" id="analyticsTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#pane-overview" type="button" role="tab">
-                <i class="bi bi-speedometer2 me-1"></i>Overview
+                <i class="bi bi-speedometer2 me-1"></i>@L["TabOverview"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-agent" data-bs-toggle="tab" data-bs-target="#pane-agent" type="button" role="tab">
-                <i class="bi bi-people me-1"></i>Agent Performance
+                <i class="bi bi-people me-1"></i>@L["TabAgentPerf"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-param" data-bs-toggle="tab" data-bs-target="#pane-param" type="button" role="tab">
-                <i class="bi bi-sliders me-1"></i>Parameter Analysis
+                <i class="bi bi-sliders me-1"></i>@L["TabParamAnalysis"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-calltype" data-bs-toggle="tab" data-bs-target="#pane-calltype" type="button" role="tab">
-                <i class="bi bi-telephone me-1"></i>Call Type / Form
+                <i class="bi bi-telephone me-1"></i>@L["TabCallType"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-trends" data-bs-toggle="tab" data-bs-target="#pane-trends" type="button" role="tab">
-                <i class="bi bi-graph-up-arrow me-1"></i>Trends
+                <i class="bi bi-graph-up-arrow me-1"></i>@L["TabTrends"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-sections" data-bs-toggle="tab" data-bs-target="#pane-sections" type="button" role="tab">
-                <i class="bi bi-layers me-1"></i>Section Analysis
+                <i class="bi bi-layers me-1"></i>@L["TabSectionAnalysis"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-tni" data-bs-toggle="tab" data-bs-target="#pane-tni" type="button" role="tab">
-                <i class="bi bi-mortarboard me-1"></i>TNI Dashboard
+                <i class="bi bi-mortarboard me-1"></i>@L["TabTni"]
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-leadership" data-bs-toggle="tab" data-bs-target="#pane-leadership" type="button" role="tab">
-                <i class="bi bi-clipboard2-data me-1"></i>Leadership Summary
+                <i class="bi bi-clipboard2-data me-1"></i>@L["TabLeadership"]
             </button>
         </li>
     </ul>
@@ -208,7 +208,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold">@overallAvg<small class="fs-6 text-muted">%</small></div>
-                                <div class="text-muted small">Overall Avg Score</div>
+                                <div class="text-muted small">@L["KpiOverallAvg"]</div>
                             </div>
                         </div>
                     </div>
@@ -221,7 +221,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-5 fw-bold text-truncate" style="max-width:130px" title="@topAgent?.AgentName">@(topAgent?.AgentName ?? "—")</div>
-                                <div class="text-muted small">Top Agent (@(topAgent != null ? topAgent.AvgScorePercent + "%" : "—"))</div>
+                                <div class="text-muted small">@L["KpiTopAgent"] (@(topAgent != null ? topAgent.AvgScorePercent + "%" : "—"))</div>
                             </div>
                         </div>
                     </div>
@@ -234,7 +234,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@weakestParam?.ParameterLabel">@(weakestParam?.ParameterLabel ?? "—")</div>
-                                <div class="text-muted small">Weakest Parameter (@(weakestParam != null ? weakestParam.AvgScorePercent + "%" : "—"))</div>
+                                <div class="text-muted small">@L["KpiWeakestParam"] (@(weakestParam != null ? weakestParam.AvgScorePercent + "%" : "—"))</div>
                             </div>
                         </div>
                     </div>
@@ -247,7 +247,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-6 fw-semibold text-truncate" style="max-width:130px" title="@bestForm?.FormName">@(bestForm?.FormName ?? "—")</div>
-                                <div class="text-muted small">Best Form (@(bestForm != null ? bestForm.AvgScorePercent + "%" : "—"))</div>
+                                <div class="text-muted small">@L["KpiBestForm"] (@(bestForm != null ? bestForm.AvgScorePercent + "%" : "—"))</div>
                             </div>
                         </div>
                     </div>
@@ -264,7 +264,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-success">@agentHigh</div>
-                                <div class="text-muted small">Agents &ge; 80% (High)</div>
+                                <div class="text-muted small">Agents &ge; 80% (@L["ScoreBandHigh"])</div>
                             </div>
                         </div>
                     </div>
@@ -277,7 +277,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-warning">@agentMed</div>
-                                <div class="text-muted small">Agents 60&ndash;79% (Medium)</div>
+                                <div class="text-muted small">Agents 60&ndash;79% (@L["ScoreBandMedium"])</div>
                             </div>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-danger">@agentLow</div>
-                                <div class="text-muted small">Agents &lt; 60% (Low)</div>
+                                <div class="text-muted small">Agents &lt; 60% (@L["ScoreBandLow"])</div>
                             </div>
                         </div>
                     </div>
@@ -315,8 +315,8 @@ else
                 <div class="col-lg-8">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Day-by-Day QA Score</h6>
-                            <small class="text-muted">Average score % per call date</small>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>@L["AnalyticsDailyChartTitle"]</h6>
+                            <small class="text-muted">@L["AnalyticsDailyChartSub"]</small>
                         </div>
                         <div class="card-body"><canvas id="dailyChart" height="100"></canvas></div>
                     </div>
@@ -324,8 +324,8 @@ else
                 <div class="col-lg-4">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2 text-info"></i>Agent Score Distribution</h6>
-                            <small class="text-muted">Agents by performance band</small>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2 text-info"></i>@L["AnalyticsDistChartTitle"]</h6>
+                            <small class="text-muted">@L["AnalyticsDistChartSub"]</small>
                         </div>
                         <div class="card-body"><canvas id="distChart" height="200"></canvas></div>
                     </div>
@@ -387,7 +387,7 @@ else
                                     @foreach (var agent in Model.AgentScores.OrderByDescending(a => a.AvgScorePercent))
                                     {
                                         var color = agent.AvgScorePercent >= 80 ? "success" : agent.AvgScorePercent >= 60 ? "warning" : "danger";
-                                        var band = agent.AvgScorePercent >= 80 ? "High" : agent.AvgScorePercent >= 60 ? "Medium" : "Low";
+                                        var band = agent.AvgScorePercent >= 80 ? L["ScoreBandHigh"].Value : agent.AvgScorePercent >= 60 ? L["ScoreBandMedium"].Value : L["ScoreBandLow"].Value;
                                         <tr>
                                             <td class="fw-semibold">@agent.AgentName</td>
                                             <td class="text-center">@agent.AuditCount</td>
@@ -920,7 +920,7 @@ else
                         </span>
                     </div>
                     <div class="vr mx-2"></div>
-                    <div><div class="fs-2 fw-bold text-@_healthColor">@overallAvg<small class="fs-6">%</small></div><div class="text-muted small">Overall Average</div></div>
+                    <div><div class="fs-2 fw-bold text-@_healthColor">@overallAvg<small class="fs-6">%</small></div><div class="text-muted small">@L["LabelOverallAverage"]</div></div>
                     <div class="vr mx-2"></div>
                     <div><div class="fs-4 fw-bold">@Model.TotalAudits</div><div class="text-muted small">Total Audits</div></div>
                     <div class="vr mx-2"></div>
