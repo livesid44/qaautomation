@@ -264,7 +264,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-success">@agentHigh</div>
-                                <div class="text-muted small">Agents &ge; 80% (@L["ScoreBandHigh"])</div>
+                                <div class="text-muted small">@L["AgentsBandHigh"] (@L["ScoreBandHigh"])</div>
                             </div>
                         </div>
                     </div>
@@ -277,7 +277,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-warning">@agentMed</div>
-                                <div class="text-muted small">Agents 60&ndash;79% (@L["ScoreBandMedium"])</div>
+                                <div class="text-muted small">@L["AgentsBandMedium"] (@L["ScoreBandMedium"])</div>
                             </div>
                         </div>
                     </div>
@@ -290,7 +290,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-danger">@agentLow</div>
-                                <div class="text-muted small">Agents &lt; 60% (@L["ScoreBandLow"])</div>
+                                <div class="text-muted small">@L["AgentsBandLow"] (@L["ScoreBandLow"])</div>
                             </div>
                         </div>
                     </div>
@@ -298,14 +298,14 @@ else
             </div>
 
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-bar-chart-line me-1"></i>QA Portfolio Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-bar-chart-line me-1"></i>@L["SnapshotPortfolioTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@Model.TotalAudits audit(s)</strong> across <strong>@_totalDays day(s)</strong> (@_dateFrom → @_dateTo). Portfolio average: <strong>@overallAvg%</strong>. Score trend is <strong>@_dailyTrendLabel</strong> (@_dailyFirst% → @_dailyLast%). Agent distribution: <strong class="text-success">@agentHigh High (≥80%)</strong>, <strong class="text-warning">@agentMed Medium (60–79%)</strong>, <strong class="text-danger">@agentLow Low (&lt;60%)</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(!string.IsNullOrWhiteSpace(insights.DailyTrendInsight) ? insights.DailyTrendInsight : $"Scores are {_dailyTrendLabel} ({_dailyFirst}% → {_dailyLast}%). {(agentLow > 0 ? $"Prioritise coaching for the {agentLow} agent(s) below 60% — this band delivers the highest per-session score uplift." : "All agents are at or above 60%.")}")</p>
                     </div>
                 </div>
@@ -336,14 +336,14 @@ else
         <!-- TAB 2: AGENT PERFORMANCE -->
         <div class="tab-pane fade" id="pane-agent" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-people me-1"></i>Agent Performance Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-people me-1"></i>@L["SnapshotAgentPerfTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@_totalAgents agent(s)</strong> audited (@Model.TotalAudits total audits). Top performer: <strong>@(topAgent?.AgentName ?? "—")</strong> at <strong>@(topAgent?.AvgScorePercent ?? 0)%</strong> (@(topAgent?.AuditCount ?? 0) audit(s)). Lowest performer: <strong>@(_bottomAgent?.AgentName ?? "—")</strong> at <strong>@(_bottomAgent?.AvgScorePercent ?? 0)%</strong> (@(_bottomAgent?.AuditCount ?? 0) audit(s)). Distribution: <strong class="text-success">@agentHigh High</strong> / <strong class="text-warning">@agentMed Medium</strong> / <strong class="text-danger">@agentLow Low</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(!string.IsNullOrWhiteSpace(insights.AgentPerformanceInsight) ? insights.AgentPerformanceInsight : $"{agentHigh} High (≥80%), {agentMed} Medium, {agentLow} Low (<60%). {(_bottomAgent != null && _bottomAgent.AvgScorePercent < 60 ? $"Schedule immediate coaching for {_bottomAgent.AgentName} ({_bottomAgent.AvgScorePercent}%) — the lowest-scoring agent." : topAgent != null ? $"Recognise {topAgent.AgentName} ({topAgent.AvgScorePercent}%) and use their calls as coaching examples." : "Review individual agent scorecards for targeted improvement opportunities.")}")</p>
                     </div>
                 </div>
@@ -352,8 +352,8 @@ else
                 <div class="col-lg-6">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-success"></i>Top 5 Agents</h6>
-                            <small class="text-muted">Highest average score %</small>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-success"></i>@L["Top5AgentsTitle"]</h6>
+                            <small class="text-muted">@L["Top5AgentsSub"]</small>
                         </div>
                         <div class="card-body"><canvas id="top5Chart"></canvas></div>
                     </div>
@@ -361,8 +361,8 @@ else
                 <div class="col-lg-6">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-circle me-2 text-danger"></i>Bottom 5 Agents</h6>
-                            <small class="text-muted">Lowest average score % — coaching priority</small>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-circle me-2 text-danger"></i>@L["Bottom5AgentsTitle"]</h6>
+                            <small class="text-muted">@L["Bottom5AgentsSub"]</small>
                         </div>
                         <div class="card-body"><canvas id="bottom5Chart"></canvas></div>
                     </div>
@@ -372,16 +372,16 @@ else
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Performance Details</h6>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>@L["AgentPerfDetails"]</h6>
                         <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('agentTable','agent-performance')">
-                            <i class="bi bi-download me-1"></i>Export CSV
+                            <i class="bi bi-download me-1"></i>@L["BtnExportCsv"]
                         </button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0" id="agentTable">
                                 <thead class="table-light">
-                                    <tr><th>Agent</th><th class="text-center">Audits</th><th>Avg Score</th><th>Band</th><th>Score Bar</th></tr>
+                                    <tr><th>@L["LblAgent"]</th><th class="text-center">@L["ThAudits"]</th><th>@L["LblAvgScore"]</th><th>@L["ThBand"]</th><th>@L["ThScoreBar"]</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var agent in Model.AgentScores.OrderByDescending(a => a.AvgScorePercent))
@@ -411,21 +411,21 @@ else
         <!-- TAB 3: PARAMETER ANALYSIS -->
         <div class="tab-pane fade" id="pane-param" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-sliders me-1"></i>Parameter Performance Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-sliders me-1"></i>@L["SnapshotParamPerfTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@_totalParams parameter(s)</strong> evaluated across <strong>@(Model.SectionScores.Count) section(s)</strong>. <strong class="text-danger">@_lowParamCount parameter(s)</strong> score below 60%.@(weakestParam != null ? $" Weakest: <strong>{weakestParam.ParameterLabel}</strong> ({weakestParam.SectionTitle}) at <strong>{weakestParam.AvgScorePercent}%</strong>." : "")@(_bottom3Params.Count > 1 ? $" Next lowest: {string.Join(", ", _bottom3Params.Skip(1).Select(p => $"{p.ParameterLabel} ({p.AvgScorePercent}%)"))}" : "")</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(!string.IsNullOrWhiteSpace(insights.ParameterInsight) ? insights.ParameterInsight : (_top3Params.Count > 0 ? $"Address '{_top3Params[0].ParameterLabel}' ({_top3Params[0].AvgScorePercent}%) first — it is the most frequently failed criterion across all agents. {(_top3Params.Count > 1 ? $"Then target '{_top3Params[1].ParameterLabel}' ({_top3Params[1].AvgScorePercent}%)." : "")}" : "All parameters are at or above 60%."))</p>
                     </div>
                 </div>
             </div>
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-0">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-warning"></i>Parameter-wise Performance</h6>
+                    <h6 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-warning"></i>@L["ParamPerfTitle"]</h6>
                     <small class="text-muted">Average score % per evaluation parameter</small>
                 </div>
                 <div class="card-body" style="overflow-x:auto"><canvas id="paramChart"></canvas></div>
@@ -434,16 +434,16 @@ else
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>Parameter Performance Details</h6>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-secondary"></i>@L["ParamPerfDetails"]</h6>
                         <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('paramTable','parameter-performance')">
-                            <i class="bi bi-download me-1"></i>Export CSV
+                            <i class="bi bi-download me-1"></i>@L["BtnExportCsv"]
                         </button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0" id="paramTable">
                                 <thead class="table-light">
-                                    <tr><th>Section</th><th>Parameter</th><th class="text-center">Scored</th><th>Avg Score</th><th>Score Bar</th></tr>
+                                    <tr><th>@L["LblSection"]</th><th>@L["ThParameter"]</th><th class="text-center">@L["ThScored"]</th><th>@L["LblAvgScore"]</th><th>@L["ThScoreBar"]</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var param in Model.ParameterTrends.OrderBy(p => p.SectionTitle).ThenBy(p => p.ParameterLabel))
@@ -472,14 +472,14 @@ else
         <!-- TAB 4: CALL TYPE / FORM -->
         <div class="tab-pane fade" id="pane-calltype" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-telephone me-1"></i>Call Type / Form Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-telephone me-1"></i>@L["SnapshotCallTypeTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@_totalForms evaluation form(s)</strong> covering @Model.TotalAudits audit(s). Best-scoring: <strong>@(bestForm?.FormName ?? "—")</strong> at <strong>@(bestForm?.AvgScorePercent ?? 0)%</strong> (@(bestForm?.AuditCount ?? 0) audits). Lowest-scoring: <strong>@(_worstForm?.FormName ?? "—")</strong> at <strong>@(_worstForm?.AvgScorePercent ?? 0)%</strong>. <strong class="text-danger">@_lowFormCount form(s)</strong> average below 70%.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(!string.IsNullOrWhiteSpace(insights.CallTypeInsight) ? insights.CallTypeInsight : $"{(bestForm != null ? $"{bestForm.FormName} leads at {bestForm.AvgScorePercent}% ({bestForm.AuditCount} audit(s)). " : "")}{(_lowFormCount > 0 ? $"Review {_worstForm?.FormName} ({_worstForm?.AvgScorePercent}%) — it is the lowest-scoring form and may require policy clarification or targeted coaching." : "All call types are at or above 70%.")}")</p>
                     </div>
                 </div>
@@ -488,8 +488,8 @@ else
                 <div class="col-lg-5">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-0">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-telephone me-2 text-info"></i>Call Type / Form Performance</h6>
-                            <small class="text-muted">Average score % by evaluation form</small>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-telephone me-2 text-info"></i>@L["CallTypeFormPerfTitle"]</h6>
+                            <small class="text-muted">@L["AvgScorePercentLabel"]</small>
                         </div>
                         <div class="card-body"><canvas id="callTypeChart" height="240"></canvas></div>
                     </div>
@@ -498,18 +498,18 @@ else
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Form Performance Details</h6>
-                                <small class="text-muted">Metrics per evaluation form</small>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>@L["FormPerfDetails"]</h6>
+                                <small class="text-muted">@L["FormPerfDetails"]</small>
                             </div>
                             <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('callTypeTable','call-type-performance')">
-                                <i class="bi bi-download me-1"></i>Export CSV
+                                <i class="bi bi-download me-1"></i>@L["BtnExportCsv"]
                             </button>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0" id="callTypeTable">
                                     <thead class="table-light">
-                                        <tr><th>Form Name</th><th class="text-center">Audits</th><th>Avg Score</th><th>Score Bar</th></tr>
+                                        <tr><th>@L["ThFormName"]</th><th class="text-center">@L["ThAudits"]</th><th>@L["LblAvgScore"]</th><th>@L["ThScoreBar"]</th></tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var ct in Model.CallTypeScores.OrderByDescending(c => c.AvgScorePercent))
@@ -538,14 +538,14 @@ else
         <!-- TAB 5: TRENDS -->
         <div class="tab-pane fade" id="pane-trends" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-graph-up-arrow me-1"></i>Performance Trends Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-graph-up-arrow me-1"></i>@L["SnapshotTrendsTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@_trackedAgents agent(s)</strong> tracked over <strong>@_totalDays day(s)</strong> (@_dateFrom → @_dateTo). Portfolio trend: <strong>@_dailyTrendLabel</strong> (@_dailyFirst% → @_dailyLast%).@(_mostImproved != null && _mostImproved.Change > 0 ? $" Most improved: <strong>{_mostImproved.AgentName}</strong> (+{_mostImproved.Change}pp)." : "")@(_mostDeclining != null && _mostDeclining.Change < 0 ? $" Most declining: <strong>{_mostDeclining.AgentName}</strong> ({_mostDeclining.Change}pp)." : "")</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(_mostDeclining != null && _mostDeclining.Change < -2 ? $"Schedule an immediate coaching session for {_mostDeclining.AgentName} — scores have dropped {_mostDeclining.Change}pp over this period. " : "")@(_mostImproved != null && _mostImproved.Change > 2 ? $"Recognise {_mostImproved.AgentName}'s improvement (+{_mostImproved.Change}pp) and share their approach as a coaching example for the team." : _dailyTrendLabel == "declining" ? "Investigate what changed during the declining period — review call recordings or feedback from that date range." : "Performance is stable. Continue current coaching approach and monitor weekly.")</p>
                     </div>
                 </div>
@@ -554,8 +554,8 @@ else
             {
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 pt-4 pb-0">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-success"></i>Agent-wise Performance Trend</h6>
-                        <small class="text-muted">Day-by-day average score % per agent</small>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-success"></i>@L["AgentWisePerfTrend"]</h6>
+                        <small class="text-muted">@L["AgentWiseTrendSub"]</small>
                     </div>
                     <div class="card-body" style="overflow-x:auto"><canvas id="agentTrendChart"></canvas></div>
                 </div>
@@ -564,8 +564,8 @@ else
             {
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 pt-4 pb-0">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-warning"></i>Section-wise Score Trend</h6>
-                        <small class="text-muted">Day-by-day average score % per evaluation section</small>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-layers me-2 text-warning"></i>@L["SectionWiseScoreTrend"]</h6>
+                        <small class="text-muted">@L["SectionWiseTrendSub"]</small>
                     </div>
                     <div class="card-body" style="overflow-x:auto"><canvas id="sectionTrendChart"></canvas></div>
                 </div>
@@ -574,16 +574,16 @@ else
             {
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>Agent Daily Score Data</h6>
+                        <h6 class="fw-bold mb-0"><i class="bi bi-table me-2 text-secondary"></i>@L["AgentDailyScoreData"]</h6>
                         <button class="btn btn-outline-success btn-sm export-btn" onclick="exportTableCsv('agentTrendTable','agent-daily-trend')">
-                            <i class="bi bi-download me-1"></i>Export CSV
+                            <i class="bi bi-download me-1"></i>@L["BtnExportCsv"]
                         </button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height:300px;overflow-y:auto">
                             <table class="table table-sm table-hover mb-0" id="agentTrendTable">
                                 <thead class="table-light sticky-top">
-                                    <tr><th>Agent</th><th>Date</th><th class="text-center">Audits</th><th>Avg Score</th></tr>
+                                    <tr><th>@L["LblAgent"]</th><th>@L["ThDate"]</th><th class="text-center">@L["ThAudits"]</th><th>@L["LblAvgScore"]</th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var t in Model.AgentDailyTrends.OrderByDescending(x => x.Date).ThenBy(x => x.AgentName))
@@ -607,21 +607,21 @@ else
         <!-- TAB 6: SECTION ANALYSIS -->
         <div class="tab-pane fade" id="pane-sections" role="tabpanel">
             <div class="ai-insight-box">
-                <div class="ai-label"><i class="bi bi-layers me-1"></i>Section Score Snapshot — based on live audit data</div>
+                <div class="ai-label"><i class="bi bi-layers me-1"></i>@L["SnapshotSectionTitle"] — @L["SnapshotLiveData"]</div>
                 <div class="ai-insight-grid">
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>Current State</div>
+                        <div class="section-tag" style="color:#0d6efd"><i class="bi bi-bar-chart-line me-1"></i>@L["LabelCurrentState"]</div>
                         <p><strong>@(Model.SectionScores.Count) section(s)</strong> evaluated. Weakest: <strong>@(_worstSection?.SectionTitle ?? "—")</strong> at <strong>@(_worstSection?.AvgScorePercent ?? 0)%</strong> (@(_worstSection?.ParameterCount ?? 0) parameter(s), @(_worstSection?.AuditCount ?? 0) audit(s)). Strongest: <strong>@(_bestSection?.SectionTitle ?? "—")</strong> at <strong>@(_bestSection?.AvgScorePercent ?? 0)%</strong>.</p>
                     </div>
                     <div class="ai-insight-section">
-                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>Recommended Action</div>
+                        <div class="section-tag" style="color:#198754"><i class="bi bi-lightbulb me-1"></i>@L["LabelRecommendedAction"]</div>
                         <p>@(_worstSection != null ? $"Focus coaching on '{_worstSection.SectionTitle}' (currently {_worstSection.AvgScorePercent}%) — the highest-impact area for score improvement. {(_worstSection.AvgScorePercent < 60 ? "Urgently review the parameters in this section and run targeted training before the next audit cycle." : "Run a calibration session to raise awareness of evaluation expectations in this section.")}" : "All sections are performing well. Continue monitoring to detect early drift.")</p>
                     </div>
                 </div>
             </div>
             @if (!Model.SectionScores.Any())
             {
-                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No section data available yet.</div>
+                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>@L["NoDataAvailable"]</div>
             }
             else
             {
@@ -635,7 +635,7 @@ else
                                     <div class="fw-semibold mb-1">@sec.SectionTitle</div>
                                     <div class="d-flex align-items-center gap-2 mb-2">
                                         <span class="fs-4 fw-bold text-@secColor">@sec.AvgScorePercent<small class="fs-6">%</small></span>
-                                        <span class="text-muted small">avg score</span>
+                                        <span class="text-muted small">@L["LabelAvgScore"]</span>
                                     </div>
                                     <div class="progress mb-1" style="height:6px">
                                         <div class="progress-bar bg-@secColor" style="width:@sec.AvgScorePercent%"></div>
@@ -705,7 +705,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold">@tni.TotalPlans</div>
-                                <div class="text-muted small">Total TNI Plans</div>
+                                <div class="text-muted small">@L["TniTotalPlans"]</div>
                             </div>
                         </div>
                     </div>
@@ -718,7 +718,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-warning">@tni.OpenPlans</div>
-                                <div class="text-muted small">Open Plans</div>
+                                <div class="text-muted small">@L["TniOpenPlans"]</div>
                             </div>
                         </div>
                     </div>
@@ -731,7 +731,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-success">@tni.CompletedPlans</div>
-                                <div class="text-muted small">Completed Plans</div>
+                                <div class="text-muted small">@L["TniCompletedPlans"]</div>
                             </div>
                         </div>
                     </div>
@@ -744,7 +744,7 @@ else
                             </div>
                             <div>
                                 <div class="fs-2 fw-bold text-danger">@tni.OverduePlans</div>
-                                <div class="text-muted small">Overdue Plans</div>
+                                <div class="text-muted small">@L["TniOverduePlans"]</div>
                             </div>
                         </div>
                     </div>
@@ -761,7 +761,7 @@ else
                     <!-- Status breakdown -->
                     <div class="col-md-5">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-semibold small">Plans by Status</div>
+                            <div class="card-header bg-white fw-semibold small">@L["TniPlansByStatus"]</div>
                             <div class="card-body">
                                 @foreach (var s in tni.ByStatus)
                                 {
@@ -781,13 +781,13 @@ else
                     <div class="col-md-7">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white fw-semibold small d-flex justify-content-between">
-                                <span>Recent Plans</span>
+                                <span>@L["TniRecentPlans"]</span>
                                 <a href="@Url.Action("Index", "Training")" class="btn btn-outline-primary btn-sm py-0">View All</a>
                             </div>
                             <div class="card-body p-0" style="max-height:260px;overflow-y:auto">
                                 <table class="table table-hover table-sm mb-0">
                                     <thead class="table-light sticky-top">
-                                        <tr><th>Agent</th><th>Title</th><th>Status</th><th>Due</th></tr>
+                                        <tr><th>@L["LblAgent"]</th><th>@L["ThTitle"]</th><th>@L["LblStatus"]</th><th>@L["ThDue"]</th></tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var p in tni.RecentPlans)
@@ -814,16 +814,16 @@ else
 
                 <!-- Per-agent TNI table -->
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white fw-semibold small">Agent TNI Summary</div>
+                    <div class="card-header bg-white fw-semibold small">@L["TniAgentSummary"]</div>
                     <div class="card-body p-0">
                         <table class="table table-hover table-sm mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Agent</th>
-                                    <th class="text-center">Total Plans</th>
-                                    <th class="text-center">Open</th>
-                                    <th class="text-center">Completed</th>
-                                    <th>Completion Rate</th>
+                                    <th>@L["LblAgent"]</th>
+                                    <th class="text-center">@L["ThTotalPlans"]</th>
+                                    <th class="text-center">@L["ThOpen"]</th>
+                                    <th class="text-center">@L["ThCompleted"]</th>
+                                    <th>@L["ThCompletionRate"]</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -933,7 +933,7 @@ else
             <!-- Key inferences -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 pt-4 pb-2">
-                    <h6 class="fw-bold mb-0"><i class="bi bi-lightbulb-fill me-2 text-warning"></i>Leadership Inferences — derived from @Model.TotalAudits audit(s)</h6>
+                    <h6 class="fw-bold mb-0"><i class="bi bi-lightbulb-fill me-2 text-warning"></i>@L["LeadershipInferences"] — derived from @Model.TotalAudits audit(s)</h6>
                     <small class="text-muted">All statements are computed directly from your QA data — no generic text</small>
                 </div>
                 <div class="card-body pt-2">
@@ -956,7 +956,7 @@ else
                     <div class="col-lg-6">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-2">
-                                <h6 class="fw-bold mb-0"><i class="bi bi-trophy-fill me-2 text-success"></i>Top @(_top5Agents.Count) Performers</h6>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-trophy-fill me-2 text-success"></i>Top @(_top5Agents.Count) @L["LeadershipTopPerformers"]</h6>
                             </div>
                             <div class="card-body p-0">
                                 <table class="table table-sm table-hover mb-0">
@@ -981,7 +981,7 @@ else
                     <div class="col-lg-6">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white border-0 pt-4 pb-2">
-                                <h6 class="fw-bold mb-0"><i class="bi bi-person-exclamation-fill me-2 text-danger"></i>Bottom @(_bottom5Agents.Count) — Coaching Priority</h6>
+                                <h6 class="fw-bold mb-0"><i class="bi bi-person-exclamation-fill me-2 text-danger"></i>@L["LeadershipBottomPriority"]</h6>
                             </div>
                             <div class="card-body p-0">
                                 <table class="table table-sm table-hover mb-0">
@@ -1039,7 +1039,7 @@ else
                 <div class="col-lg-@(_top3Params.Count > 0 ? "5" : "12")">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-white border-0 pt-4 pb-2">
-                            <h6 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill me-2 text-primary"></i>Training Plans (TNI) Status</h6>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-mortarboard-fill me-2 text-primary"></i>@L["TrainingPlansTniStatus"]</h6>
                         </div>
                         <div class="card-body">
                             @if (tni.TotalPlans == 0)
@@ -1058,7 +1058,7 @@ else
                                     <div class="col-6">
                                         <div class="text-center">
                                             <div class="fs-2 fw-bold text-warning">@tni.OpenPlans</div>
-                                            <div class="text-muted small">Open Plans</div>
+                                            <div class="text-muted small">@L["TniOpenPlans"]</div>
                                         </div>
                                     </div>
                                     <div class="col-6">
@@ -1101,6 +1101,8 @@ else
 <script>
 (function () {
     const gridColor = 'rgba(0,0,0,0.06)';
+    const avgScoreLabel = '@Html.Raw(L["AvgScorePercentLabel"].Value)';
+    const auditCountLabel = '@Html.Raw(L["AuditCountLabel"].Value)';
 
     const dailyLabels   = @Html.Raw(dailyLabels);
     const dailyData     = @Html.Raw(dailyData);
@@ -1135,8 +1137,8 @@ else
             data: {
                 labels,
                 datasets: [
-                    { label: 'Avg Score %', data, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.08)', pointBackgroundColor: '#0d6efd', tension: 0.3, fill: true, yAxisID: 'y' },
-                    { label: 'Audit Count', data: counts, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.12)', tension: 0.2, borderDash: [5,3], fill: false, yAxisID: 'y1' }
+                    { label: avgScoreLabel, data, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.08)', pointBackgroundColor: '#0d6efd', tension: 0.3, fill: true, yAxisID: 'y' },
+                    { label: auditCountLabel, data: counts, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.12)', tension: 0.2, borderDash: [5,3], fill: false, yAxisID: 'y1' }
                 ]
             },
             options: {
@@ -1177,7 +1179,7 @@ else
         if (charts.top5) charts.top5.destroy();
         charts.top5 = new Chart(el, {
             type: 'bar',
-            data: { labels: items.map(i => i.label), datasets: [{ label: 'Avg Score %', data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
+            data: { labels: items.map(i => i.label), datasets: [{ label: avgScoreLabel, data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
             options: {
                 indexAxis: 'y', responsive: true,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${items[ctx.dataIndex].count}` } } },
@@ -1192,7 +1194,7 @@ else
         if (charts.bottom5) charts.bottom5.destroy();
         charts.bottom5 = new Chart(el, {
             type: 'bar',
-            data: { labels: items.map(i => i.label), datasets: [{ label: 'Avg Score %', data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
+            data: { labels: items.map(i => i.label), datasets: [{ label: avgScoreLabel, data: items.map(i => i.score), backgroundColor: items.map(i => scoreColor(i.score)), borderRadius: 5 }] },
             options: {
                 indexAxis: 'y', responsive: true,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: (ctx) => `Audits: ${items[ctx.dataIndex].count}` } } },
@@ -1209,7 +1211,7 @@ else
         el.style.height = h + 'px';
         charts.param = new Chart(el, {
             type: 'bar',
-            data: { labels, datasets: [{ label: 'Avg Score %', data, backgroundColor: data.map(v => scoreColorBg(v)), borderRadius: 4 }] },
+            data: { labels, datasets: [{ label: avgScoreLabel, data, backgroundColor: data.map(v => scoreColorBg(v)), borderRadius: 4 }] },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { beforeTitle: (items) => sections[items[0].dataIndex] ? `[${sections[items[0].dataIndex]}]` : '' } } },
@@ -1244,7 +1246,7 @@ else
         el.style.height = Math.max(260, agents.length * 20 + 120) + 'px';
         charts.agentTrend = new Chart(el, {
             type: 'line', data: { labels: dates, datasets },
-            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: avgScoreLabel }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
         });
     }
 
@@ -1262,7 +1264,7 @@ else
         el.style.height = Math.max(260, sections.length * 20 + 120) + 'px';
         charts.sectionTrend = new Chart(el, {
             type: 'line', data: { labels: dates, datasets },
-            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Avg Score %' }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: avgScoreLabel }, grid: { color: gridColor } }, x: { grid: { color: gridColor } } } }
         });
     }
 
@@ -1295,7 +1297,7 @@ else
             data: {
                 labels,
                 datasets: [{
-                    label: 'Avg Score %',
+                    label: avgScoreLabel,
                     data,
                     backgroundColor: data.map(v => scoreColorBg(v)),
                     borderColor: data.map(v => scoreColor(v)),

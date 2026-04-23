@@ -265,4 +265,61 @@
   <data name="TabSectionAnalysis" xml:space="preserve"><value>Abschnittsanalyse</value></data>
   <data name="TabTni" xml:space="preserve"><value>TNI-Dashboard</value></data>
   <data name="TabLeadership" xml:space="preserve"><value>Führungszusammenfassung</value></data>
+  <data name="AgentsBandHigh" xml:space="preserve"><value>Agenten ≥ 80%</value></data>
+  <data name="AgentsBandMedium" xml:space="preserve"><value>Agenten 60–79%</value></data>
+  <data name="AgentsBandLow" xml:space="preserve"><value>Agenten &lt; 60%</value></data>
+  <data name="LabelCurrentState" xml:space="preserve"><value>Aktueller Zustand</value></data>
+  <data name="LabelRecommendedAction" xml:space="preserve"><value>Empfohlene Maßnahme</value></data>
+  <data name="SnapshotPortfolioTitle" xml:space="preserve"><value>QA-Portfolio-Snapshot</value></data>
+  <data name="SnapshotAgentPerfTitle" xml:space="preserve"><value>Agenten-Leistungs-Snapshot</value></data>
+  <data name="SnapshotParamPerfTitle" xml:space="preserve"><value>Parameter-Leistungs-Snapshot</value></data>
+  <data name="SnapshotCallTypeTitle" xml:space="preserve"><value>Anruftyp / Formular-Snapshot</value></data>
+  <data name="SnapshotTrendsTitle" xml:space="preserve"><value>Leistungstrends-Snapshot</value></data>
+  <data name="SnapshotSectionTitle" xml:space="preserve"><value>Abschnittsbewertungs-Snapshot</value></data>
+  <data name="SnapshotLiveData" xml:space="preserve"><value>basierend auf Live-Audit-Daten</value></data>
+  <data name="Top5AgentsTitle" xml:space="preserve"><value>Top 5 Agenten</value></data>
+  <data name="Top5AgentsSub" xml:space="preserve"><value>Höchster Durchschnittswert %</value></data>
+  <data name="Bottom5AgentsTitle" xml:space="preserve"><value>Schlechteste 5 Agenten</value></data>
+  <data name="Bottom5AgentsSub" xml:space="preserve"><value>Niedrigster Durchschnittswert % — Coaching-Priorität</value></data>
+  <data name="AgentPerfDetails" xml:space="preserve"><value>Agenten-Leistungsdetails</value></data>
+  <data name="BtnExportCsv" xml:space="preserve"><value>CSV exportieren</value></data>
+  <data name="ThAudits" xml:space="preserve"><value>Audits</value></data>
+  <data name="ThBand" xml:space="preserve"><value>Band</value></data>
+  <data name="ThScoreBar" xml:space="preserve"><value>Bewertungsbalken</value></data>
+  <data name="ThParameter" xml:space="preserve"><value>Parameter</value></data>
+  <data name="ThScored" xml:space="preserve"><value>Bewertet</value></data>
+  <data name="ParamPerfTitle" xml:space="preserve"><value>Parameterweise Leistung</value></data>
+  <data name="ParamPerfDetails" xml:space="preserve"><value>Parameter-Leistungsdetails</value></data>
+  <data name="CallTypeFormPerfTitle" xml:space="preserve"><value>Anruftyp / Formular-Leistung</value></data>
+  <data name="FormPerfDetails" xml:space="preserve"><value>Formular-Leistungsdetails</value></data>
+  <data name="ThFormName" xml:space="preserve"><value>Formularname</value></data>
+  <data name="AgentWisePerfTrend" xml:space="preserve"><value>Agenten-Leistungstrend</value></data>
+  <data name="AgentWiseTrendSub" xml:space="preserve"><value>Täglicher Durchschnittswert % pro Agent</value></data>
+  <data name="SectionWiseScoreTrend" xml:space="preserve"><value>Abschnittsweise Bewertungstrend</value></data>
+  <data name="SectionWiseTrendSub" xml:space="preserve"><value>Täglicher Durchschnittswert % pro Bewertungsabschnitt</value></data>
+  <data name="AgentDailyScoreData" xml:space="preserve"><value>Tägliche Agenten-Bewertungsdaten</value></data>
+  <data name="TniTotalPlans" xml:space="preserve"><value>Gesamte TNI-Pläne</value></data>
+  <data name="TniOpenPlans" xml:space="preserve"><value>Offene Pläne</value></data>
+  <data name="TniCompletedPlans" xml:space="preserve"><value>Abgeschlossene Pläne</value></data>
+  <data name="TniOverduePlans" xml:space="preserve"><value>Überfällige Pläne</value></data>
+  <data name="TniPlansByStatus" xml:space="preserve"><value>Pläne nach Status</value></data>
+  <data name="TniRecentPlans" xml:space="preserve"><value>Aktuelle Pläne</value></data>
+  <data name="TniAgentSummary" xml:space="preserve"><value>Agenten-TNI-Zusammenfassung</value></data>
+  <data name="ThTotalPlans" xml:space="preserve"><value>Gesamtpläne</value></data>
+  <data name="ThOpen" xml:space="preserve"><value>Offen</value></data>
+  <data name="ThCompleted" xml:space="preserve"><value>Abgeschlossen</value></data>
+  <data name="ThCompletionRate" xml:space="preserve"><value>Abschlussrate</value></data>
+  <data name="ThTitle" xml:space="preserve"><value>Titel</value></data>
+  <data name="ThDue" xml:space="preserve"><value>Fällig</value></data>
+  <data name="TrainingPlansTniStatus" xml:space="preserve"><value>Trainingsplan (TNI) Status</value></data>
+  <data name="LeadershipInferences" xml:space="preserve"><value>Führungs-Rückschlüsse</value></data>
+  <data name="LeadershipTopPerformers" xml:space="preserve"><value>Top-Performer</value></data>
+  <data name="LeadershipBottomPriority" xml:space="preserve"><value>Coaching-Priorität</value></data>
+  <data name="AvgScorePercentLabel" xml:space="preserve"><value>Durchschnittl. Score %</value></data>
+  <data name="AuditCountLabel" xml:space="preserve"><value>Audit-Anzahl</value></data>
+  <data name="LabelAvgScore" xml:space="preserve"><value>Durchschnittswert</value></data>
+  <data name="SectionPerfDetails" xml:space="preserve"><value>Abschnitts-Leistungsdetails</value></data>
+  <data name="ThPerformance" xml:space="preserve"><value>Leistung</value></data>
+  <data name="NoDataAvailable" xml:space="preserve"><value>Noch keine Daten verfügbar.</value></data>
+  <data name="ThDate" xml:space="preserve"><value>Datum</value></data>
 </root>

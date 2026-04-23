@@ -265,4 +265,61 @@
   <data name="TabSectionAnalysis" xml:space="preserve"><value>अनुभाग विश्लेषण</value></data>
   <data name="TabTni" xml:space="preserve"><value>TNI डैशबोर्ड</value></data>
   <data name="TabLeadership" xml:space="preserve"><value>नेतृत्व सारांश</value></data>
+  <data name="AgentsBandHigh" xml:space="preserve"><value>एजेंट ≥ 80%</value></data>
+  <data name="AgentsBandMedium" xml:space="preserve"><value>एजेंट 60–79%</value></data>
+  <data name="AgentsBandLow" xml:space="preserve"><value>एजेंट &lt; 60%</value></data>
+  <data name="LabelCurrentState" xml:space="preserve"><value>वर्तमान स्थिति</value></data>
+  <data name="LabelRecommendedAction" xml:space="preserve"><value>अनुशंसित कार्रवाई</value></data>
+  <data name="SnapshotPortfolioTitle" xml:space="preserve"><value>QA पोर्टफोलियो स्नैपशॉट</value></data>
+  <data name="SnapshotAgentPerfTitle" xml:space="preserve"><value>एजेंट प्रदर्शन स्नैपशॉट</value></data>
+  <data name="SnapshotParamPerfTitle" xml:space="preserve"><value>पैरामीटर प्रदर्शन स्नैपशॉट</value></data>
+  <data name="SnapshotCallTypeTitle" xml:space="preserve"><value>कॉल प्रकार / फ़ॉर्म स्नैपशॉट</value></data>
+  <data name="SnapshotTrendsTitle" xml:space="preserve"><value>प्रदर्शन ट्रेंड स्नैपशॉट</value></data>
+  <data name="SnapshotSectionTitle" xml:space="preserve"><value>अनुभाग स्कोर स्नैपशॉट</value></data>
+  <data name="SnapshotLiveData" xml:space="preserve"><value>लाइव ऑडिट डेटा के आधार पर</value></data>
+  <data name="Top5AgentsTitle" xml:space="preserve"><value>शीर्ष 5 एजेंट</value></data>
+  <data name="Top5AgentsSub" xml:space="preserve"><value>सर्वोच्च औसत स्कोर %</value></data>
+  <data name="Bottom5AgentsTitle" xml:space="preserve"><value>निम्नतम 5 एजेंट</value></data>
+  <data name="Bottom5AgentsSub" xml:space="preserve"><value>सबसे कम औसत स्कोर % — कोचिंग प्राथमिकता</value></data>
+  <data name="AgentPerfDetails" xml:space="preserve"><value>एजेंट प्रदर्शन विवरण</value></data>
+  <data name="BtnExportCsv" xml:space="preserve"><value>CSV निर्यात करें</value></data>
+  <data name="ThAudits" xml:space="preserve"><value>ऑडिट</value></data>
+  <data name="ThBand" xml:space="preserve"><value>बैंड</value></data>
+  <data name="ThScoreBar" xml:space="preserve"><value>स्कोर बार</value></data>
+  <data name="ThParameter" xml:space="preserve"><value>पैरामीटर</value></data>
+  <data name="ThScored" xml:space="preserve"><value>मूल्यांकित</value></data>
+  <data name="ParamPerfTitle" xml:space="preserve"><value>पैरामीटर-वार प्रदर्शन</value></data>
+  <data name="ParamPerfDetails" xml:space="preserve"><value>पैरामीटर प्रदर्शन विवरण</value></data>
+  <data name="CallTypeFormPerfTitle" xml:space="preserve"><value>कॉल प्रकार / फ़ॉर्म प्रदर्शन</value></data>
+  <data name="FormPerfDetails" xml:space="preserve"><value>फ़ॉर्म प्रदर्शन विवरण</value></data>
+  <data name="ThFormName" xml:space="preserve"><value>फ़ॉर्म का नाम</value></data>
+  <data name="AgentWisePerfTrend" xml:space="preserve"><value>एजेंट-वार प्रदर्शन ट्रेंड</value></data>
+  <data name="AgentWiseTrendSub" xml:space="preserve"><value>प्रति एजेंट दैनिक औसत स्कोर %</value></data>
+  <data name="SectionWiseScoreTrend" xml:space="preserve"><value>अनुभाग-वार स्कोर ट्रेंड</value></data>
+  <data name="SectionWiseTrendSub" xml:space="preserve"><value>प्रति मूल्यांकन अनुभाग दैनिक औसत स्कोर %</value></data>
+  <data name="AgentDailyScoreData" xml:space="preserve"><value>एजेंट दैनिक स्कोर डेटा</value></data>
+  <data name="TniTotalPlans" xml:space="preserve"><value>कुल TNI योजनाएं</value></data>
+  <data name="TniOpenPlans" xml:space="preserve"><value>खुली योजनाएं</value></data>
+  <data name="TniCompletedPlans" xml:space="preserve"><value>पूर्ण योजनाएं</value></data>
+  <data name="TniOverduePlans" xml:space="preserve"><value>विलंबित योजनाएं</value></data>
+  <data name="TniPlansByStatus" xml:space="preserve"><value>स्थिति के अनुसार योजनाएं</value></data>
+  <data name="TniRecentPlans" xml:space="preserve"><value>हाल की योजनाएं</value></data>
+  <data name="TniAgentSummary" xml:space="preserve"><value>एजेंट TNI सारांश</value></data>
+  <data name="ThTotalPlans" xml:space="preserve"><value>कुल योजनाएं</value></data>
+  <data name="ThOpen" xml:space="preserve"><value>खुला</value></data>
+  <data name="ThCompleted" xml:space="preserve"><value>पूर्ण</value></data>
+  <data name="ThCompletionRate" xml:space="preserve"><value>पूर्णता दर</value></data>
+  <data name="ThTitle" xml:space="preserve"><value>शीर्षक</value></data>
+  <data name="ThDue" xml:space="preserve"><value>देय तिथि</value></data>
+  <data name="TrainingPlansTniStatus" xml:space="preserve"><value>प्रशिक्षण योजनाएं (TNI) स्थिति</value></data>
+  <data name="LeadershipInferences" xml:space="preserve"><value>नेतृत्व अनुमान</value></data>
+  <data name="LeadershipTopPerformers" xml:space="preserve"><value>शीर्ष प्रदर्शनकर्ता</value></data>
+  <data name="LeadershipBottomPriority" xml:space="preserve"><value>कोचिंग प्राथमिकता</value></data>
+  <data name="AvgScorePercentLabel" xml:space="preserve"><value>औसत स्कोर %</value></data>
+  <data name="AuditCountLabel" xml:space="preserve"><value>ऑडिट संख्या</value></data>
+  <data name="LabelAvgScore" xml:space="preserve"><value>औसत स्कोर</value></data>
+  <data name="SectionPerfDetails" xml:space="preserve"><value>अनुभाग प्रदर्शन विवरण</value></data>
+  <data name="ThPerformance" xml:space="preserve"><value>प्रदर्शन</value></data>
+  <data name="NoDataAvailable" xml:space="preserve"><value>अभी तक कोई डेटा उपलब्ध नहीं है।</value></data>
+  <data name="ThDate" xml:space="preserve"><value>तारीख</value></data>
 </root>
