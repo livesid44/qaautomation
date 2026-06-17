@@ -1,25 +1,25 @@
 @model ProjectViewModel
 @{
-    ViewData["Title"] = "New Project";
+    ViewData["Title"] = L["ProjectsCreate"].Value;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>New Project</h5>
-    <a href="@Url.Action("Index", "Projects")" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <h5 class="fw-bold"><i class="bi bi-plus-circle me-2 text-primary"></i>@L["ProjectsCreate"]</h5>
+    <a href="@Url.Action("Index", "Projects")" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>@L["BtnBack"]</a>
 </div>
 <div class="card border-0 shadow-sm" style="max-width:520px">
     <div class="card-body">
         <form method="post" action="@Url.Action("Create", "Projects")">
             @Html.AntiForgeryToken()
             <div class="mb-3">
-                <label class="form-label fw-semibold small">Project Name *</label>
+                <label class="form-label fw-semibold small">@L["LblName"] *</label>
                 <input name="name" class="form-control" required maxlength="200" placeholder="e.g. Capital One" />
             </div>
             <div class="mb-3">
-                <label class="form-label fw-semibold small">Description</label>
+                <label class="form-label fw-semibold small">@L["LblDescription"]</label>
                 <textarea name="description" class="form-control" rows="2" placeholder="Optional description"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Create Project</button>
-            <a href="@Url.Action("Index", "Projects")" class="btn btn-link text-muted ms-2">Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>@L["ProjectsCreate"]</button>
+            <a href="@Url.Action("Index", "Projects")" class="btn btn-link text-muted ms-2">@L["BtnCancel"]</a>
         </form>
     </div>
 </div>

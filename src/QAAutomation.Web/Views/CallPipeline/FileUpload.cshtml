@@ -1,6 +1,6 @@
 @model CallPipelineFileUploadViewModel
 @{
-    ViewData["Title"] = "Upload Transcript File";
+    ViewData["Title"] = L["CallPipelineUploadTitle"].Value;
     var forms = ViewBag.Forms as List<LegacyFormViewModel> ?? new();
 }
 @section Styles {

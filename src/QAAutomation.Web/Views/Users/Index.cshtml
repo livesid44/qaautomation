@@ -1,14 +1,14 @@
 @model List<UserViewModel>
 @{
-    ViewData["Title"] = "Users";
+    ViewData["Title"] = L["PageTitleUsers"].Value;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-people me-2 text-primary"></i>Users</h4>
+        <h4 class="fw-bold mb-1"><i class="bi bi-people me-2 text-primary"></i>@L["UsersTitle"]</h4>
         <p class="text-muted mb-0">Manage system users and their roles.</p>
     </div>
     <a href="@Url.Action("Create", "Users")" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Add User
+        <i class="bi bi-plus-lg me-1"></i>@L["UsersCreate"]
     </a>
 </div>
 <div class="card border-0 shadow-sm">
@@ -26,12 +26,12 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Username</th>
+                            <th>@L["LblUsername"]</th>
                             <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th class="text-end">Actions</th>
+                            <th>@L["LblRole"]</th>
+                            <th>@L["LblStatus"]</th>
+                            <th>@L["LblCreatedAt"]</th>
+                            <th class="text-end">@L["LblActions"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -47,7 +47,7 @@
                                 </td>
                                 <td>
                                     <span class="badge @(u.IsActive ? "bg-success" : "bg-warning text-dark")">
-                                        @(u.IsActive ? "Active" : "Inactive")
+                                        @(u.IsActive ? L["LblActive"].Value : L["LblInactive"].Value)
                                     </span>
                                 </td>
                                 <td class="text-muted small">@u.CreatedAt.ToString("MMM d, yyyy")</td>

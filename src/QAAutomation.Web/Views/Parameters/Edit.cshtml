@@ -1,27 +1,27 @@
 @model CreateParameterViewModel
 @{
-    ViewData["Title"] = "Edit Parameter";
+    ViewData["Title"] = L["BtnEdit"].Value + " " + L["NavParameters"].Value;
 }
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-4">
-                <h5 class="fw-bold mb-0"><i class="bi bi-pencil me-2 text-primary"></i>Edit Parameter</h5>
+                <h5 class="fw-bold mb-0"><i class="bi bi-pencil me-2 text-primary"></i>@L["BtnEdit"] @L["NavParameters"]</h5>
             </div>
             <div class="card-body">
                 <form asp-action="Edit" asp-controller="Parameters" method="post">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
-                        <label asp-for="Name" class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+                        <label asp-for="Name" class="form-label fw-semibold">@L["LblName"] <span class="text-danger">*</span></label>
                         <input asp-for="Name" class="form-control" />
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
                     <div class="mb-3">
-                        <label asp-for="Description" class="form-label fw-semibold">Description</label>
+                        <label asp-for="Description" class="form-label fw-semibold">@L["LblDescription"]</label>
                         <textarea asp-for="Description" class="form-control" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label asp-for="Category" class="form-label fw-semibold">Category</label>
+                        <label asp-for="Category" class="form-label fw-semibold">@L["AuditLogCategory"]</label>
                         <input asp-for="Category" class="form-control" />
                     </div>
                     <div class="mb-3">
@@ -31,11 +31,11 @@
                     <div class="mb-3">
                         <div class="form-check">
                             <input asp-for="IsActive" class="form-check-input" type="checkbox" />
-                            <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
+                            <label asp-for="IsActive" class="form-check-label fw-semibold">@L["LblActive"]</label>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label asp-for="EvaluationType" class="form-label fw-semibold">Evaluation Type</label>
+                        <label asp-for="EvaluationType" class="form-label fw-semibold">@L["ParamsEvalType"]</label>
                         <select asp-for="EvaluationType" class="form-select">
                             <option value="LLM">LLM / Soft Skill — scored directly by the LLM</option>
                             <option value="KnowledgeBased">Knowledge Based — scored using RAG context from Knowledge Base</option>
@@ -56,9 +56,9 @@
                     }
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg me-1"></i>Save Changes
+                            <i class="bi bi-check-lg me-1"></i>@L["BtnSave"]
                         </button>
-                        <a href="@Url.Action("Index", "Parameters")" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="@Url.Action("Index", "Parameters")" class="btn btn-outline-secondary">@L["BtnCancel"]</a>
                     </div>
                 </form>
             </div>

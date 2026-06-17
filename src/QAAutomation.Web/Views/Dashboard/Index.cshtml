@@ -1,21 +1,21 @@
 @model DashboardViewModel
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = L["PageTitleDashboard"].Value;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1">Welcome back, @Model.Username!</h4>
+        <h4 class="fw-bold mb-1">@L["DashWelcomeBack"] @Model.Username!</h4>
         @if (!string.IsNullOrEmpty(Model.CurrentProjectName))
         {
             <p class="text-muted mb-0">
                 <i class="bi bi-building me-1 text-primary"></i>
                 <strong class="text-primary">@Model.CurrentProjectName</strong>
-                — Here's an overview of your QA Automation system.
+                — @L["DashOverview"]
             </p>
         }
         else
         {
-            <p class="text-muted mb-0">Here's an overview of your QA Automation system.</p>
+            <p class="text-muted mb-0">@L["DashOverview"]</p>
         }
     </div>
     <span class="badge bg-primary py-2 px-3 fs-6">@Model.Role</span>
@@ -30,7 +30,7 @@
                 </div>
                 <div>
                     <div class="fs-2 fw-bold">@Model.ParameterCount</div>
-                    <div class="text-muted small">Parameters</div>
+                    <div class="text-muted small">@L["DashParameterCount"]</div>
                 </div>
             </div>
         </div>
@@ -43,7 +43,7 @@
                 </div>
                 <div>
                     <div class="fs-2 fw-bold">@Model.ParameterClubCount</div>
-                    <div class="text-muted small">Parameter Clubs</div>
+                    <div class="text-muted small">@L["DashParameterClubs"]</div>
                 </div>
             </div>
         </div>
@@ -56,7 +56,7 @@
                 </div>
                 <div>
                     <div class="fs-2 fw-bold">@Model.RatingCriteriaCount</div>
-                    <div class="text-muted small">Rating Criteria</div>
+                    <div class="text-muted small">@L["DashRatingCriteria"]</div>
                 </div>
             </div>
         </div>
@@ -69,7 +69,7 @@
                 </div>
                 <div>
                     <div class="fs-2 fw-bold">@Model.EvaluationFormCount</div>
-                    <div class="text-muted small">Evaluation Forms</div>
+                    <div class="text-muted small">@L["DashEvaluationForms"]</div>
                 </div>
             </div>
         </div>
@@ -82,7 +82,7 @@
                 </div>
                 <div>
                     <div class="fs-2 fw-bold">@Model.AuditCount</div>
-                    <div class="text-muted small">Audit Records</div>
+                    <div class="text-muted small">@L["DashAuditRecords"]</div>
                 </div>
             </div>
         </div>
@@ -91,38 +91,38 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-0 pt-4 pb-0">
-        <h6 class="fw-bold mb-0">Quick Navigation</h6>
+        <h6 class="fw-bold mb-0">@L["DashQuickNavigation"]</h6>
     </div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-3">
                 <a href="@Url.Action("Index", "Parameters")" class="btn btn-outline-primary w-100 py-3">
                     <i class="bi bi-sliders d-block fs-4 mb-1"></i>
-                    Manage Parameters
+                    @L["DashManageParameters"]
                 </a>
             </div>
             <div class="col-md-3">
                 <a href="@Url.Action("Index", "ParameterClubs")" class="btn btn-outline-success w-100 py-3">
                     <i class="bi bi-collection d-block fs-4 mb-1"></i>
-                    Parameter Clubs
+                    @L["DashParameterClubs"]
                 </a>
             </div>
             <div class="col-md-3">
                 <a href="@Url.Action("Index", "RatingCriteria")" class="btn btn-outline-warning w-100 py-3">
                     <i class="bi bi-star-half d-block fs-4 mb-1"></i>
-                    Rating Criteria
+                    @L["DashRatingCriteria"]
                 </a>
             </div>
             <div class="col-md-3">
                 <a href="@Url.Action("Index", "FormDesigner")" class="btn btn-outline-info w-100 py-3">
                     <i class="bi bi-layout-text-window d-block fs-4 mb-1"></i>
-                    Form Designer
+                    @L["NavFormDesigner"]
                 </a>
             </div>
             <div class="col-md-3">
                 <a href="@Url.Action("Index", "Audit")" class="btn btn-outline-warning w-100 py-3">
                     <i class="bi bi-clipboard2-check d-block fs-4 mb-1"></i>
-                    Audit Records
+                    @L["DashAuditRecords"]
                 </a>
             </div>
         </div>

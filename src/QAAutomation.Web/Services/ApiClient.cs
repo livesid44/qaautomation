@@ -28,8 +28,7 @@ public class ApiClient
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Head, "api/parameters");
-            using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            using var resp = await _http.GetAsync("api/ping");
             sw.Stop();
             return new ApiPingResult
             {
@@ -609,16 +608,18 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityAnalytics failed"); return null; }
     }
 
-    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null)
+    public async Task<ExplainabilityInsightsViewModel?> GetExplainabilityInsights(int? projectId = null, string lang = "en")
     {
-        var url = projectId.HasValue ? $"api/analytics/explainability/insights?projectId={projectId.Value}" : "api/analytics/explainability/insights";
+        var qs = projectId.HasValue ? $"?projectId={projectId.Value}&lang={lang}" : $"?lang={lang}";
+        var url = $"api/analytics/explainability/insights{qs}";
         try { return await _http.GetFromJsonAsync<ExplainabilityInsightsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetExplainabilityInsights failed"); return null; }
     }
 
-    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null)
+    public async Task<AnalyticsInsightsViewModel?> GetAnalyticsInsights(int? projectId = null, string lang = "en")
     {
-        var url = projectId.HasValue ? $"api/analytics/insights?projectId={projectId.Value}" : "api/analytics/insights";
+        var qs = projectId.HasValue ? $"?projectId={projectId.Value}&lang={lang}" : $"?lang={lang}";
+        var url = $"api/analytics/insights{qs}";
         try { return await _http.GetFromJsonAsync<AnalyticsInsightsViewModel>(url, _jsonOptions); }
         catch (Exception ex) { _logger.LogError(ex, "GetAnalyticsInsights failed"); return null; }
     }
@@ -838,10 +839,21 @@ public class ApiClient
         catch (Exception ex) { _logger.LogError(ex, "StartReview failed"); return false; }
     }
 
-    public async Task<bool> SubmitReview(int id, object dto)
+    public async Task<(bool Success, string? ErrorDetail)> SubmitReview(int id, object dto)
     {
-        try { var r = await _http.PutAsJsonAsync($"api/humanreview/{id}/review", dto); return r.IsSuccessStatusCode; }
-        catch (Exception ex) { _logger.LogError(ex, "SubmitReview failed"); return false; }
+        try
+        {
+            var r = await _http.PutAsJsonAsync($"api/humanreview/{id}/review", dto);
+            if (r.IsSuccessStatusCode) return (true, null);
+            var body = await r.Content.ReadAsStringAsync();
+            _logger.LogWarning("SubmitReview returned {Status}: {Body}", (int)r.StatusCode, body);
+            return (false, $"API returned {(int)r.StatusCode}: {body}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SubmitReview failed");
+            return (false, ex.Message);
+        }
     }
 
     public async Task<bool> AddManualReview(object dto)

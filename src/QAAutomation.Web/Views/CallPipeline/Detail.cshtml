@@ -1,7 +1,7 @@
 @model CallPipelineJobViewModel
 @inject QAAutomation.Web.Services.ApiClient ApiClient
 @{
-    ViewData["Title"] = $"Pipeline Job: {Model.Name}";
+    ViewData["Title"] = L["PageTitleCallPipeline"].Value + ": " + Model.Name;
     var completePct = Model.TotalItems > 0 ? (double)(Model.CompletedItems + Model.FailedItems) / Model.TotalItems * 100 : 0;
     var avgScore = Model.Items.Any(i => i.ScorePercent.HasValue)
         ? Model.Items.Where(i => i.ScorePercent.HasValue).Average(i => i.ScorePercent!.Value)

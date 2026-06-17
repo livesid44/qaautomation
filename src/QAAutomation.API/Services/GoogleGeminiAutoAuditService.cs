@@ -60,18 +60,16 @@ public class GoogleGeminiAutoAuditService : IAutoAuditService
         var sw = Stopwatch.StartNew();
         try
         {
-            // Retrieve KB context concurrently for KnowledgeBased fields
+            // Retrieve KB context sequentially for KnowledgeBased fields.
+            // DbContext is not thread-safe; concurrent awaits on the same instance cause
+            // "A second operation was started on this context" errors.
             var kbContextMap = new Dictionary<int, string>();
             var kbFields = fieldList.Where(f => f.EvaluationType == "KnowledgeBased").ToList();
-            if (kbFields.Count > 0)
+            foreach (var f in kbFields)
             {
-                var tasks = kbFields.Select(f =>
-                    _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK, null, projectId)
-                       .ContinueWith(t => (f.FieldId, chunks: t.Result)));
-                var results = await Task.WhenAll(tasks);
-                foreach (var (fieldId, chunks) in results)
-                    if (chunks.Count > 0)
-                        kbContextMap[fieldId] = string.Join("\n\n", chunks);
+                var chunks = await _kb.RetrieveAsync($"{f.Label} {f.Description}", cfg.RagTopK, null, projectId);
+                if (chunks.Count > 0)
+                    kbContextMap[f.FieldId] = string.Join("\n\n", chunks);
             }
 
             var systemPrompt = AzureOpenAIAutoAuditService.BuildSystemPrompt(formName, fieldList, kbContextMap);

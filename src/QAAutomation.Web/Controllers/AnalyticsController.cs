@@ -11,9 +11,10 @@ public class AnalyticsController : ProjectAwareController
 
     public async Task<IActionResult> Index()
     {
-        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var pid  = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var lang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         var dataTask     = _api.GetAnalytics(pid);
-        var insightsTask = _api.GetAnalyticsInsights(pid);
+        var insightsTask = _api.GetAnalyticsInsights(pid, lang);
         var tniTask      = _api.GetTniSummary(pid);
         await Task.WhenAll(dataTask, insightsTask, tniTask);
         ViewBag.Insights  = await insightsTask ?? new Models.AnalyticsInsightsViewModel();
@@ -23,9 +24,10 @@ public class AnalyticsController : ProjectAwareController
 
     public async Task<IActionResult> Explainability()
     {
-        var pid = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var pid  = CurrentProjectId > 0 ? (int?)CurrentProjectId : null;
+        var lang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
         var dataTask     = _api.GetExplainabilityAnalytics(pid);
-        var insightsTask = _api.GetExplainabilityInsights(pid);
+        var insightsTask = _api.GetExplainabilityInsights(pid, lang);
         await Task.WhenAll(dataTask, insightsTask);
         ViewBag.Insights = await insightsTask ?? new Models.ExplainabilityInsightsViewModel();
         return View(await dataTask ?? new Models.ExplainabilityViewModel());

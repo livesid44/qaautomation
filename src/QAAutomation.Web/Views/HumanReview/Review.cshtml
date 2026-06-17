@@ -111,6 +111,20 @@
 
                 <!-- TAB 1: QUALITY SCORES -->
                 <div class="tab-pane fade show active" id="quality">
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                            <div>
+                                <strong>Review submission failed.</strong>
+                                Your scores are still shown below — please correct any issues and resubmit.
+                                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrEmpty(m)))
+                                {
+                                    <span class="d-block small mt-1">@err</span>
+                                }
+                            </div>
+                        </div>
+                    }
                     @if (audit != null && !string.IsNullOrEmpty(audit.OverallReasoning))
                     {
                         <div class="card border-0 shadow-sm mb-4">
@@ -258,6 +272,23 @@
                                     </div>
                                 }
                             </div>
+                        </div>
+                    }
+
+                    @if (!isReviewed)
+                    {
+                        <!-- Prompt bar: scores are entered here but submitted from the Verdict tab -->
+                        <div class="alert alert-primary d-flex align-items-center gap-3 mt-2" role="alert">
+                            <i class="bi bi-info-circle-fill fs-5 flex-shrink-0"></i>
+                            <div class="flex-grow-1 small">
+                                <strong>Scores adjusted?</strong>
+                                Once you have reviewed and adjusted the human scores above,
+                                click <strong>Save &amp; Submit Verdict</strong> to record your scores and verdict.
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm flex-shrink-0"
+                                    id="goToVerdictBtn">
+                                <i class="bi bi-pencil-square me-1"></i>Save &amp; Submit Verdict
+                            </button>
                         </div>
                     }
                 </div>
@@ -613,7 +644,7 @@
     var form = document.getElementById('reviewVerdictForm');
     if (!form) return;
 
-    form.addEventListener('submit', function () {
+    function collectScores() {
         var scores = [];
         // numeric inputs (rating 2+)
         document.querySelectorAll('.human-score-num').forEach(function (inp) {
@@ -630,8 +661,44 @@
             var humanScore = parseFloat(sel.value) || 0;
             scores.push({ fieldId: fieldId, aiScore: aiScore, humanScore: humanScore, comment: null });
         });
-        document.getElementById('fieldScoresJsonInput').value = JSON.stringify(scores);
+        return scores;
+    }
+
+    // Serialise scores into the hidden field just before the form POSTs
+    form.addEventListener('submit', function () {
+        document.getElementById('fieldScoresJsonInput').value = JSON.stringify(collectScores());
     });
+
+    // "Save & Submit Verdict" button on the Quality Scores tab:
+    // collect scores now, then switch to the Verdict tab so the reviewer
+    // can select a verdict and click the Submit button there.
+    var goBtn = document.getElementById('goToVerdictBtn');
+    if (goBtn) {
+        goBtn.addEventListener('click', function () {
+            document.getElementById('fieldScoresJsonInput').value = JSON.stringify(collectScores());
+            var verdictTab = document.querySelector('[data-bs-target="#verdict"]');
+            if (verdictTab) {
+                var tab = new bootstrap.Tab(verdictTab);
+                tab.show();
+            }
+        });
+    }
 })();
+
+// Pre-populate human score inputs with the previously submitted values when the form
+// re-renders after a failed save, so the reviewer does not lose their entered scores.
+(function () {
+    var rawJson = @Html.Raw(Json.Serialize(Model.FieldScoresJson));
+    if (!rawJson || rawJson === '[]') return;
+    try {
+        var saved = JSON.parse(rawJson);
+        saved.forEach(function (s) {
+            var num = document.querySelector('.human-score-num[data-field-id="' + s.fieldId + '"]');
+            if (num) num.value = s.humanScore;
+            var sel = document.querySelector('.human-score-select[data-field-id="' + s.fieldId + '"]');
+            if (sel) sel.value = String(s.humanScore);
+        });
+    } catch (e) { /* ignore parse errors */ }
+}());
 </script>
 }

@@ -1,14 +1,14 @@
 @model List<ParameterClubViewModel>
 @{
-    ViewData["Title"] = "Parameter Clubs";
+    ViewData["Title"] = L["PageTitleParameterClubs"].Value;
 }
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-1"><i class="bi bi-collection me-2 text-success"></i>Parameter Clubs</h4>
+        <h4 class="fw-bold mb-1"><i class="bi bi-collection me-2 text-success"></i>@L["PCTitle"]</h4>
         <p class="text-muted mb-0">Groups of parameters used to build evaluation form sections.</p>
     </div>
     <a href="@Url.Action("Designer", "ParameterClubs")" class="btn btn-success">
-        <i class="bi bi-plus-lg me-1"></i>New Club
+        <i class="bi bi-plus-lg me-1"></i>@L["PCCreate"]
     </a>
 </div>
 <div class="card border-0 shadow-sm">

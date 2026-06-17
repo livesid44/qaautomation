@@ -1,6 +1,6 @@
 @model QAAutomation.Web.Models.DecisionAssuranceViewModel
 @{
-    ViewData["Title"] = "Decision Assurance";
+    ViewData["Title"] = L["DATitle"].Value;
     bool hasData = Model.TotalAudits > 0;
 
     // ── Serialise for Chart.js (camelCase keys for safe JS access) ────────────

@@ -4,11 +4,11 @@
     ViewData["Title"] = "Login";
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign In — AuraAI</title>
+    <title>@L["LoginTitle"]</title>
     <link rel="stylesheet" href="~/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/bootstrap-icons.min.css" />
     <style>
@@ -137,8 +137,8 @@
 <div class="login-wrap">
     <div class="login-card">
         <div class="login-header">
-            <img src="~/asset1.png" alt="AuraAI Intelligent Automation" />
-            <p class="tagline mb-0">Intelligent Automation Platform</p>
+            <img src="~/logo.jpg" alt="AuraAI Intelligent Automation" />
+            <p class="tagline mb-0">@L["LoginTagline"]</p>
         </div>
         <div class="login-body">
             @if (!ViewData.ModelState.IsValid)
@@ -155,30 +155,30 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                 <div class="mb-3">
-                    <label asp-for="Username" class="form-label fw-semibold">Username</label>
+                    <label asp-for="Username" class="form-label fw-semibold">@L["LoginUsername"]</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input asp-for="Username" class="form-control" placeholder="Enter username" autocomplete="username" />
+                        <input asp-for="Username" class="form-control" placeholder="@L["LoginEnterUsername"]" autocomplete="username" />
                     </div>
                     <span asp-validation-for="Username" class="text-danger small"></span>
                 </div>
                 <div class="mb-4">
-                    <label asp-for="Password" class="form-label fw-semibold">Password</label>
+                    <label asp-for="Password" class="form-label fw-semibold">@L["LoginPassword"]</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                        <input asp-for="Password" type="password" class="form-control" placeholder="Enter password" autocomplete="current-password" />
+                        <input asp-for="Password" type="password" class="form-control" placeholder="@L["LoginEnterPassword"]" autocomplete="current-password" />
                     </div>
                     <span asp-validation-for="Password" class="text-danger small"></span>
                 </div>
                 <button type="submit" class="btn btn-brand w-100 py-2">
-                    <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                    <i class="bi bi-box-arrow-in-right me-1"></i>@L["LoginSignIn"]
                 </button>
             </form>
         </div>
     </div>
 
     <div class="login-footer">
-        &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> All rights reserved.
+        &copy; @DateTime.UtcNow.Year <span>Tech Mahindra Ltd.</span> @L["FooterAllRightsReserved"]
     </div>
 </div>
 <script src="~/js/bootstrap.bundle.min.js"></script>

@@ -136,17 +136,27 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[EvaluationForms]') AND type = N'U')
 BEGIN
     CREATE TABLE [dbo].[EvaluationForms] (
-        [Id]          INT            NOT NULL IDENTITY(1,1),
-        [Name]        NVARCHAR(200)  NOT NULL,
-        [Description] NVARCHAR(MAX)  NULL,
-        [CreatedAt]   DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
-        [UpdatedAt]   DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
-        [IsActive]    BIT            NOT NULL DEFAULT 1,
-        [LobId]       INT            NULL,
+        [Id]            INT            NOT NULL IDENTITY(1,1),
+        [Name]          NVARCHAR(200)  NOT NULL,
+        [Description]   NVARCHAR(MAX)  NULL,
+        [CreatedAt]     DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+        [UpdatedAt]     DATETIME2      NOT NULL DEFAULT SYSUTCDATETIME(),
+        [IsActive]      BIT            NOT NULL DEFAULT 1,
+        [LobId]         INT            NULL,
+        -- 0 = Generic (proportional sum); 1 = SectionAutoFail
+        [ScoringMethod] INT            NOT NULL DEFAULT 0,
         CONSTRAINT [PK_EvaluationForms] PRIMARY KEY ([Id]),
         CONSTRAINT [FK_EvaluationForms_Lobs] FOREIGN KEY ([LobId])
             REFERENCES [dbo].[Lobs] ([Id]) ON DELETE NO ACTION
     );
+END
+ELSE
+BEGIN
+    -- Backfill: add ScoringMethod to databases created before this column existed
+    IF NOT EXISTS (SELECT 1 FROM sys.columns
+                   WHERE object_id = OBJECT_ID(N'[dbo].[EvaluationForms]') AND name = N'ScoringMethod')
+        ALTER TABLE [dbo].[EvaluationForms]
+            ADD [ScoringMethod] INT NOT NULL CONSTRAINT [DF_EvalForms_ScoringMethod] DEFAULT (0);
 END
 GO
 
@@ -470,6 +480,33 @@ BEGIN
         CONSTRAINT [FK_HumanReviewItems_SamplingPolicies] FOREIGN KEY ([SamplingPolicyId])
             REFERENCES [dbo].[SamplingPolicies] ([Id]) ON DELETE SET NULL
     );
+END
+GO
+
+-- -----------------------------------------------------------------------------
+-- HumanFieldScores
+-- -----------------------------------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[HumanFieldScores]') AND type = N'U')
+BEGIN
+    CREATE TABLE [dbo].[HumanFieldScores] (
+        [Id]                INT            NOT NULL IDENTITY(1,1),
+        [HumanReviewItemId] INT            NOT NULL,
+        [FieldId]           INT            NOT NULL,
+        [AiScore]           FLOAT          NOT NULL DEFAULT 0,
+        [HumanScore]        FLOAT          NOT NULL DEFAULT 0,
+        [Comment]           NVARCHAR(1000) NULL,
+        CONSTRAINT [PK_HumanFieldScores] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_HumanFieldScores_HumanReviewItems] FOREIGN KEY ([HumanReviewItemId])
+            REFERENCES [dbo].[HumanReviewItems] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_HumanFieldScores_FormFields] FOREIGN KEY ([FieldId])
+            REFERENCES [dbo].[FormFields] ([Id]) ON DELETE NO ACTION
+    );
+
+    CREATE NONCLUSTERED INDEX [IX_HumanFieldScores_HumanReviewItemId]
+        ON [dbo].[HumanFieldScores] ([HumanReviewItemId]);
+
+    CREATE NONCLUSTERED INDEX [IX_HumanFieldScores_FieldId]
+        ON [dbo].[HumanFieldScores] ([FieldId]);
 END
 GO
 

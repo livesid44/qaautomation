@@ -127,13 +127,15 @@ GO
 -- ── EvaluationForms ───────────────────────────────────────────────────────────
 CREATE TABLE dbo.EvaluationForms
 (
-    Id          INT           IDENTITY(1,1) NOT NULL,
-    Name        NVARCHAR(200) NOT NULL,
-    Description NVARCHAR(MAX) NULL,
-    IsActive    BIT           NOT NULL CONSTRAINT DF_EvalForms_IsActive DEFAULT (1),
-    LobId       INT           NULL,
-    CreatedAt   DATETIME2     NOT NULL CONSTRAINT DF_EvalForms_CreatedAt DEFAULT (SYSUTCDATETIME()),
-    UpdatedAt   DATETIME2     NOT NULL CONSTRAINT DF_EvalForms_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+    Id            INT           IDENTITY(1,1) NOT NULL,
+    Name          NVARCHAR(200) NOT NULL,
+    Description   NVARCHAR(MAX) NULL,
+    IsActive      BIT           NOT NULL CONSTRAINT DF_EvalForms_IsActive DEFAULT (1),
+    LobId         INT           NULL,
+    CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_EvalForms_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt     DATETIME2     NOT NULL CONSTRAINT DF_EvalForms_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+    -- 0 = Generic (proportional sum); 1 = SectionAutoFail (zero on any field zeroes the section)
+    ScoringMethod INT           NOT NULL CONSTRAINT DF_EvalForms_ScoringMethod DEFAULT (0),
 
     CONSTRAINT PK_EvaluationForms PRIMARY KEY (Id),
     CONSTRAINT FK_EvalForms_Lob FOREIGN KEY (LobId) REFERENCES dbo.Lobs (Id) ON DELETE SET NULL

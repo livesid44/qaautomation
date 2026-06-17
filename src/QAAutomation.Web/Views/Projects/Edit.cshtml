@@ -1,6 +1,6 @@
 @model ProjectViewModel
 @{
-    ViewData["Title"] = $"Edit — {Model.Name}";
+    ViewData["Title"] = L["BtnEdit"].Value + " — " + Model.Name;
     var projectUsers = ViewData["ProjectUsers"] as List<ProjectUserViewModel> ?? new();
     var allUsers = ViewData["AllUsers"] as List<UserViewModel> ?? new();
     var assignedIds = projectUsers.Select(u => u.Id).ToHashSet();
@@ -11,7 +11,7 @@
         <h5 class="fw-bold mb-0"><i class="bi bi-building me-2 text-primary"></i>@Model.Name</h5>
         <small class="text-muted">Project ID: @Model.Id · <a href="@Url.Action("Index", "Lobs", new { projectId = Model.Id })">Manage LOBs</a></small>
     </div>
-    <a href="@Url.Action("Index", "Projects")" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>All Projects</a>
+    <a href="@Url.Action("Index", "Projects")" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>@L["NavProjects"]</a>
 </div>
 
 @if (TempData["Success"] != null)
@@ -24,24 +24,24 @@
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-3">
-                <h6 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>Project Settings</h6>
+                <h6 class="fw-bold mb-0"><i class="bi bi-gear me-2 text-secondary"></i>@L["LblDetails"]</h6>
             </div>
             <div class="card-body">
                 <form method="post" action="@Url.Action("Edit", "Projects", new { id = Model.Id })">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Project Name *</label>
+                        <label class="form-label fw-semibold small">@L["LblName"] *</label>
                         <input name="name" class="form-control" value="@Model.Name" required maxlength="200" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Description</label>
+                        <label class="form-label fw-semibold small">@L["LblDescription"]</label>
                         <textarea name="description" class="form-control" rows="2">@Model.Description</textarea>
                     </div>
                     <div class="mb-3 form-check">
                         <input type="checkbox" name="isActive" value="true" class="form-check-input" id="isActive"
                                @(Model.IsActive ? "checked" : "") />
                         <input type="hidden" name="isActive" value="false" />
-                        <label for="isActive" class="form-check-label small">Project is active</label>
+                        <label for="isActive" class="form-check-label small">@L["LblActive"]</label>
                     </div>
                     <hr class="my-3" />
                     <div class="mb-2">
